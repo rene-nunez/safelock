@@ -1,19 +1,20 @@
 #pragma once
 
 #include <Arduino.h>
+#include "RFID.h"
 
-#define TASK1_INTERVAL 1000
-#define TASK2_INTERVAL 2000
+#define RFID_POLL_INTERVAL 200
 
 class millis_tasks {
   private:
-    unsigned long previous_task1_millis = 0;
-    unsigned long previous_task2_millis = 0;
+    rfid_reader &rfid;
+
+    unsigned long previous_rfid_millis = 0;
     unsigned long current_millis = 0;
 
-    void run_task1();
-    void run_task2();
+    void run_rfid_task();
 
   public:
+    millis_tasks(rfid_reader &reader);
     void run();
 };
