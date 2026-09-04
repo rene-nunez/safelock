@@ -1,10 +1,13 @@
 #include <Arduino.h>
 #include <Tasks.h>
+#include <RFID.h>
 
-millis_tasks tasks;
+rfid_reader rfid;
+millis_tasks tasks(rfid);
 
 void setup() {
   Serial.begin(115200);
+  rfid.begin();
 }
 
 void loop() {
