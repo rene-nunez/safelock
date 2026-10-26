@@ -1,11 +1,13 @@
 #include "Tasks.h"
 
-millis_tasks::millis_tasks(rfid_reader &reader) : rfid(reader) {}
+millis_tasks::millis_tasks(rfid_reader &reader, numpad_input &pad)
+  : rfid(reader), numpad(pad) {}
 
 void millis_tasks::run() {
   current_millis = millis();
 
   run_rfid_task();
+  run_numpad_task();
 }
 
 void millis_tasks::run_rfid_task() {
@@ -30,4 +32,16 @@ void millis_tasks::run_rfid_task() {
   } else {
     Serial.println("RFID unauthorized");
   }
+}
+
+void millis_tasks::run_numpad_task() {
+  if ((current_millis - previous_numpad_millis) < NUMPAD_POLL_INTERVAL) return;
+
+  previous_numpad_millis = current_millis;
+
+  char key = numpad.read_key();
+  if (key == NO_KEY) return;
+
+  Serial.print("Numpad key pressed: ");
+  Serial.println(key);
 }
