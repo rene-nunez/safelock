@@ -32,3 +32,7 @@
 // I2C reservado para el clock DS1307
 #define RTC_SDA 21
 #define RTC_SCL 22
+
+// Driver DRV8871 para la cerradura solenoide de 12V
+// IN2 del DRV8871 va a GND y IN1 al GPIO de control
+#define LOCK_IN1 12

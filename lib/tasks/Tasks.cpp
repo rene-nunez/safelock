@@ -5,8 +5,9 @@ millis_tasks::millis_tasks(
   numpad_input &pad,
   oled_display &screen,
   rtc_clock &rtc_device,
-  sd_storage &sd
-) : rfid(reader), numpad(pad), display(screen), rtc(rtc_device), storage(sd) {
+  sd_storage &sd,
+  solenoid_lock &lock_device
+) : rfid(reader), numpad(pad), display(screen), rtc(rtc_device), storage(sd), lock(lock_device) {
   state_millis = millis();
   last_sd_attempt = state_millis;
 }
@@ -17,16 +18,31 @@ void millis_tasks::run() {
   run_storage_task();
   run_rfid_task();
   run_numpad_task();
+  run_lock_task();
   run_display_task();
 }
 
 void millis_tasks::run_storage_task() {
   if (state == WAIT_SD) {
     if (storage.is_ready()) return;
-    if ((current_millis - last_sd_attempt) < SD_RETRY_MS) return;
+    if (sd_init_attempts >= SD_MAX_ATTEMPTS) return;
 
+    if (!first_sd_attempt && (current_millis - last_sd_attempt) < SD_RETRY_MS) {
+      return;
+    }
+
+    first_sd_attempt = false;
     last_sd_attempt = current_millis;
-    storage.begin();
+    sd_init_attempts++;
+
+    if (storage.begin()) return;
+
+    if (sd_init_attempts >= SD_MAX_ATTEMPTS) {
+      Serial.print("microSD not detected after ");
+      Serial.print(SD_MAX_ATTEMPTS);
+      Serial.println(" attempts, continuing without SD");
+    }
+
     return;
   }
 
@@ -34,8 +50,16 @@ void millis_tasks::run_storage_task() {
   if ((current_millis - last_sd_attempt) < SD_RETRY_MS) return;
 
   last_sd_attempt = current_millis;
+  log_attempts++;
 
-  if (!try_log_access()) {
+  bool saved = try_log_access();
+  last_sd_attempt = millis();
+
+  if (saved) return;
+
+  if (log_attempts >= SD_MAX_ATTEMPTS) {
+    finish_log_failure();
+  } else {
     Serial.println("Access log pending, retrying...");
   }
 }
@@ -87,14 +111,19 @@ void millis_tasks::run_numpad_task() {
   add_digit(key);
 }
 
+void millis_tasks::run_lock_task() {
+  lock.update();
+}
+
 void millis_tasks::run_display_task() {
   switch (state) {
     case WAIT_SD:
-      if (!storage.is_ready()) return;
+      if (!storage.is_ready() && sd_init_attempts < SD_MAX_ATTEMPTS) return;
       if ((current_millis - state_millis) < LOCK_SPLASH_MS) return;
 
       state = ENTERING;
       entered_digits = 0;
+      display.wake();
       display.show_entry(0);
       break;
 
@@ -155,6 +184,7 @@ void millis_tasks::grant_access(const char *method) {
   entered_digits = 0;
   entered_password[0] = '\0';
   display.show_success();
+  lock.unlock();
 
   String timestamp = rtc.timestamp();
 
@@ -176,8 +206,16 @@ void millis_tasks::grant_access(const char *method) {
   state = LOGGING;
   state_millis = current_millis;
   last_sd_attempt = current_millis;
+  log_attempts = 1;
 
-  if (!try_log_access()) {
+  bool saved = try_log_access();
+  last_sd_attempt = millis();
+
+  if (saved) return;
+
+  if (log_attempts >= SD_MAX_ATTEMPTS) {
+    finish_log_failure();
+  } else {
     Serial.println("Access log pending, retrying...");
   }
 }
@@ -194,7 +232,21 @@ bool millis_tasks::try_log_access() {
   current_millis = millis();
   state = SUCCESS;
   state_millis = current_millis;
+  display.wake();
+  display.show_success();
   return true;
+}
+
+void millis_tasks::finish_log_failure() {
+  Serial.print("Access log not saved after ");
+  Serial.print(SD_MAX_ATTEMPTS);
+  Serial.println(" attempts, continuing");
+
+  current_millis = millis();
+  state = SUCCESS;
+  state_millis = current_millis;
+  display.wake();
+  display.show_success();
 }
 
 void millis_tasks::deny_access() {
