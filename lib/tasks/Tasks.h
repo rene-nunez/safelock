@@ -4,6 +4,7 @@
 #include "RFID.h"
 #include "Numpad.h"
 #include "Display.h"
+#include "Clock.h"
 #include "lock_config.h"
 
 #define RFID_POLL_INTERVAL 200
@@ -21,6 +22,7 @@ class millis_tasks {
     rfid_reader &rfid;
     numpad_input &numpad;
     oled_display &display;
+    rtc_clock &rtc;
 
     lock_state state = SPLASH;
     char entered_password[PASSWORD_LENGTH + 1] = "";
@@ -42,6 +44,11 @@ class millis_tasks {
     void deny_access();
 
   public:
-    millis_tasks(rfid_reader &reader, numpad_input &pad, oled_display &screen);
+    millis_tasks(
+      rfid_reader &reader,
+      numpad_input &pad,
+      oled_display &screen,
+      rtc_clock &rtc_device
+    );
     void run();
 };

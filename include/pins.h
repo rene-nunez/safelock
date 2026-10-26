@@ -16,7 +16,7 @@
 #define NUMPAD_COL_3 33
 
 // OLED SPI (comparte SCK y SDA/MOSI con el RFID)
-// RES va al pin EN del ESP32 (o 3V3) para liberar el GPIO 22
+// RES va directo a 3V3 para liberar el GPIO 22 (SCL del RTC)
 #define OLED_SCK   18
 #define OLED_SDA   23
 #define OLED_CS    13
