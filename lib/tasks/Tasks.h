@@ -17,7 +17,7 @@
 #define ERROR_BLINK_MS      250
 #define ERROR_DURATION_MS  2500
 #define SD_RETRY_MS        1000
-#define SD_MAX_ATTEMPTS       3
+#define SD_MAX_ATTEMPTS       5
 
 class millis_tasks {
   private:
@@ -34,10 +34,9 @@ class millis_tasks {
     char entered_password[PASSWORD_LENGTH + 1] = "";
     uint8_t entered_digits = 0;
     bool error_icon_visible = true;
-    bool first_sd_attempt = true;
 
     uint8_t sd_init_attempts = 0;
-    uint8_t log_attempts = 0;
+    uint8_t sd_log_attempts = 0;
 
     String pending_date;
     String pending_time;
@@ -60,7 +59,7 @@ class millis_tasks {
     void grant_access(const char *method);
     void deny_access();
     bool try_log_access();
-    void finish_log_failure();
+    void finish_log_without_write();
 
   public:
     millis_tasks(

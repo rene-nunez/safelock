@@ -19,20 +19,21 @@ millis_tasks tasks(rfid, numpad, display, rtc, storage, lock);
 void setup() {
   Serial.begin(115200);
 
-  // Mantiene todos los dispositivos SPI deseleccionados durante el arranque.
-  pinMode(OLED_CS, OUTPUT);
-  digitalWrite(OLED_CS, HIGH);
+  // Todos los dispositivos comparten el bus SPI: deja sus CS en HIGH
+  // antes de inicializar cualquiera para que ninguno quede seleccionado.
   pinMode(SD_CS, OUTPUT);
   digitalWrite(SD_CS, HIGH);
   pinMode(RFID_SS, OUTPUT);
   digitalWrite(RFID_SS, HIGH);
+  pinMode(OLED_CS, OUTPUT);
+  digitalWrite(OLED_CS, HIGH);
 
   lock.begin();
   rtc.begin();
-  display.begin();
-  display.show_lock();
   rfid.begin();
   numpad.begin();
+  display.begin();
+  display.show_lock();
 }
 
 void loop() {

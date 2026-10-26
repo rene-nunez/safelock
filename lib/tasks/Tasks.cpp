@@ -26,23 +26,18 @@ void millis_tasks::run_storage_task() {
   if (state == WAIT_SD) {
     if (storage.is_ready()) return;
     if (sd_init_attempts >= SD_MAX_ATTEMPTS) return;
+    if (sd_init_attempts > 0 &&
+        (current_millis - last_sd_attempt) < SD_RETRY_MS) return;
 
-    if (!first_sd_attempt && (current_millis - last_sd_attempt) < SD_RETRY_MS) {
-      return;
-    }
-
-    first_sd_attempt = false;
     last_sd_attempt = current_millis;
     sd_init_attempts++;
 
-    if (storage.begin()) return;
+    Serial.print("microSD init attempt ");
+    Serial.print(sd_init_attempts);
+    Serial.print("/");
+    Serial.println(SD_MAX_ATTEMPTS);
 
-    if (sd_init_attempts >= SD_MAX_ATTEMPTS) {
-      Serial.print("microSD not detected after ");
-      Serial.print(SD_MAX_ATTEMPTS);
-      Serial.println(" attempts, continuing without SD");
-    }
-
+    storage.begin();
     return;
   }
 
@@ -50,16 +45,8 @@ void millis_tasks::run_storage_task() {
   if ((current_millis - last_sd_attempt) < SD_RETRY_MS) return;
 
   last_sd_attempt = current_millis;
-  log_attempts++;
 
-  bool saved = try_log_access();
-  last_sd_attempt = millis();
-
-  if (saved) return;
-
-  if (log_attempts >= SD_MAX_ATTEMPTS) {
-    finish_log_failure();
-  } else {
+  if (!try_log_access()) {
     Serial.println("Access log pending, retrying...");
   }
 }
@@ -120,6 +107,12 @@ void millis_tasks::run_display_task() {
     case WAIT_SD:
       if (!storage.is_ready() && sd_init_attempts < SD_MAX_ATTEMPTS) return;
       if ((current_millis - state_millis) < LOCK_SPLASH_MS) return;
+
+      if (!storage.is_ready()) {
+        Serial.print("microSD not available after ");
+        Serial.print(SD_MAX_ATTEMPTS);
+        Serial.println(" attempts, continuing without logging");
+      }
 
       state = ENTERING;
       entered_digits = 0;
@@ -206,41 +199,57 @@ void millis_tasks::grant_access(const char *method) {
   state = LOGGING;
   state_millis = current_millis;
   last_sd_attempt = current_millis;
-  log_attempts = 1;
+  sd_log_attempts = 0;
 
-  bool saved = try_log_access();
-  last_sd_attempt = millis();
-
-  if (saved) return;
-
-  if (log_attempts >= SD_MAX_ATTEMPTS) {
-    finish_log_failure();
-  } else {
+  if (!try_log_access()) {
     Serial.println("Access log pending, retrying...");
   }
 }
 
 bool millis_tasks::try_log_access() {
-  if (!storage.is_ready() && !storage.begin()) return false;
-
-  if (!storage.log_access(pending_date, pending_time, pending_method)) {
-    storage.reset();
-    return false;
+  if (sd_log_attempts >= SD_MAX_ATTEMPTS) {
+    finish_log_without_write();
+    return true;
   }
 
-  Serial.println("Access log saved");
-  current_millis = millis();
-  state = SUCCESS;
-  state_millis = current_millis;
-  display.wake();
-  display.show_success();
-  return true;
+  sd_log_attempts++;
+
+  bool saved = false;
+
+  if (storage.is_ready() || storage.begin()) {
+    saved = storage.log_access(pending_date, pending_time, pending_method);
+  }
+
+  if (saved) {
+    Serial.println("Access log saved");
+    current_millis = millis();
+    state = SUCCESS;
+    state_millis = current_millis;
+    display.wake();
+    display.show_success();
+    return true;
+  }
+
+  storage.reset();
+
+  Serial.print("Access log attempt ");
+  Serial.print(sd_log_attempts);
+  Serial.print("/");
+  Serial.print(SD_MAX_ATTEMPTS);
+  Serial.println(" failed");
+
+  if (sd_log_attempts >= SD_MAX_ATTEMPTS) {
+    finish_log_without_write();
+    return true;
+  }
+
+  return false;
 }
 
-void millis_tasks::finish_log_failure() {
-  Serial.print("Access log not saved after ");
+void millis_tasks::finish_log_without_write() {
+  Serial.print("Access not logged: microSD unavailable after ");
   Serial.print(SD_MAX_ATTEMPTS);
-  Serial.println(" attempts, continuing");
+  Serial.println(" attempts");
 
   current_millis = millis();
   state = SUCCESS;
