@@ -20,6 +20,8 @@ class oled_display {
     oled_display();
 
     void begin();
+    void reinit();
+    void recover();
     void show_lock();
     void show_entry(uint8_t digits);
     void show_success();

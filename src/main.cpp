@@ -5,14 +5,16 @@
 #include <Display.h>
 #include <Clock.h>
 #include <Storage.h>
-#include "pins.h"
+#include <Lock.h>
+#include <pins.h>
 
 rfid_reader rfid;
 numpad_input numpad;
 oled_display display;
 rtc_clock rtc;
 sd_storage storage;
-millis_tasks tasks(rfid, numpad, display, rtc, storage);
+solenoid_lock lock;
+millis_tasks tasks(rfid, numpad, display, rtc, storage, lock);
 
 void setup() {
   Serial.begin(115200);
@@ -26,6 +28,7 @@ void setup() {
   pinMode(OLED_CS, OUTPUT);
   digitalWrite(OLED_CS, HIGH);
 
+  lock.begin();
   rtc.begin();
   rfid.begin();
   numpad.begin();

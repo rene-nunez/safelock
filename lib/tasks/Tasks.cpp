@@ -5,8 +5,9 @@ millis_tasks::millis_tasks(
   numpad_input &pad,
   oled_display &screen,
   rtc_clock &rtc_device,
-  sd_storage &sd
-) : rfid(reader), numpad(pad), display(screen), rtc(rtc_device), storage(sd) {
+  sd_storage &sd,
+  solenoid_lock &lock_device
+) : rfid(reader), numpad(pad), display(screen), rtc(rtc_device), storage(sd), lock(lock_device) {
   state_millis = millis();
   last_sd_attempt = state_millis;
 }
@@ -17,6 +18,7 @@ void millis_tasks::run() {
   run_storage_task();
   run_rfid_task();
   run_numpad_task();
+  run_lock_task();
   run_display_task();
 }
 
@@ -96,6 +98,10 @@ void millis_tasks::run_numpad_task() {
   add_digit(key);
 }
 
+void millis_tasks::run_lock_task() {
+  lock.update();
+}
+
 void millis_tasks::run_display_task() {
   switch (state) {
     case WAIT_SD:
@@ -115,9 +121,11 @@ void millis_tasks::run_display_task() {
 
     case SUCCESS:
       if ((current_millis - state_millis) < SUCCESS_HOLD_MS) return;
+      if (lock.is_active()) return;
 
       state = ENTERING;
       entered_digits = 0;
+      display.recover();
       display.show_entry(0);
       break;
 
@@ -170,6 +178,7 @@ void millis_tasks::grant_access(const char *method) {
   entered_digits = 0;
   entered_password[0] = '\0';
   display.show_success();
+  lock.unlock();
 
   String timestamp = rtc.timestamp();
 
@@ -217,7 +226,6 @@ bool millis_tasks::try_log_access() {
     current_millis = millis();
     state = SUCCESS;
     state_millis = current_millis;
-    display.show_success();
     return true;
   }
 
@@ -241,9 +249,11 @@ void millis_tasks::finish_log_without_write() {
   Serial.print("Access not logged: microSD unavailable after ");
   Serial.print(SD_MAX_ATTEMPTS);
   Serial.println(" attempts");
+
   current_millis = millis();
   state = SUCCESS;
   state_millis = current_millis;
+  display.recover();
   display.show_success();
 }
 

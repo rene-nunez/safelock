@@ -1,9 +1,11 @@
 #include "Display.h"
 #include "pins.h"
 #include "lock_config.h"
+#include <SPI.h>
 
+// 4 MHz para tener mas margen en el bus SPI compartido con SD y RFID.
 oled_display::oled_display()
-  : display(SCREEN_WIDTH, SCREEN_HEIGHT, &SPI, OLED_DC, -1, OLED_CS) {}
+  : display(SCREEN_WIDTH, SCREEN_HEIGHT, &SPI, OLED_DC, -1, OLED_CS, 4000000) {}
 
 void oled_display::begin() {
   if (!display.begin(SSD1306_SWITCHCAPVCC)) {
@@ -15,6 +17,43 @@ void oled_display::begin() {
   display.clearDisplay();
   display.display();
   Serial.println("OLED initialized");
+}
+
+void oled_display::reinit() {
+  ready = false;
+
+  // Deja que la alimentacion se estabilice si el acceso a la SD
+  // provoco una caida de tension.
+  delay(100);
+
+  if (!display.begin(SSD1306_SWITCHCAPVCC)) {
+    Serial.println("OLED reinitialization failed");
+    return;
+  }
+
+  ready = true;
+  display.clearDisplay();
+  display.display();
+  Serial.println("OLED reinitialized");
+}
+
+void oled_display::recover() {
+  if (!ready) return;
+
+  // Recupera solo el inicio de linea y vuelve a encender el panel.
+  // No reconfigura multiplexado ni pines COM, para no corromper la
+  // imagen si el OLED ya estaba funcionando.
+  SPI.beginTransaction(SPISettings(4000000, MSBFIRST, SPI_MODE0));
+  digitalWrite(OLED_CS, LOW);
+  digitalWrite(OLED_DC, LOW);
+
+  SPI.transfer(0x8D);  // charge pump
+  SPI.transfer(0x14);  // enable
+  SPI.transfer(0x40);  // start line 0
+  SPI.transfer(0xAF);  // display on
+
+  digitalWrite(OLED_CS, HIGH);
+  SPI.endTransaction();
 }
 
 void oled_display::show_lock() {
