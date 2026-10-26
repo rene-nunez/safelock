@@ -17,7 +17,7 @@
 #define ERROR_BLINK_MS      250
 #define ERROR_DURATION_MS  2500
 #define SD_RETRY_MS        1000
-#define SD_MAX_ATTEMPTS       5
+#define SD_MAX_ATTEMPTS       10
 
 class millis_tasks {
   private:

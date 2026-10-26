@@ -116,15 +116,16 @@ void millis_tasks::run_display_task() {
 
       state = ENTERING;
       entered_digits = 0;
-      display.wake();
       display.show_entry(0);
       break;
 
     case SUCCESS:
       if ((current_millis - state_millis) < SUCCESS_HOLD_MS) return;
+      if (lock.is_active()) return;
 
       state = ENTERING;
       entered_digits = 0;
+      display.recover();
       display.show_entry(0);
       break;
 
@@ -225,8 +226,6 @@ bool millis_tasks::try_log_access() {
     current_millis = millis();
     state = SUCCESS;
     state_millis = current_millis;
-    display.wake();
-    display.show_success();
     return true;
   }
 
@@ -254,7 +253,7 @@ void millis_tasks::finish_log_without_write() {
   current_millis = millis();
   state = SUCCESS;
   state_millis = current_millis;
-  display.wake();
+  display.recover();
   display.show_success();
 }
 

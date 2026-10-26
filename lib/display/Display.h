@@ -21,7 +21,7 @@ class oled_display {
 
     void begin();
     void reinit();
-    void wake();
+    void recover();
     void show_lock();
     void show_entry(uint8_t digits);
     void show_success();
