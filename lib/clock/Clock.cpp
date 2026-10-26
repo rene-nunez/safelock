@@ -23,7 +23,7 @@ bool rtc_clock::begin() {
 }
 
 String rtc_clock::timestamp() {
-  if (!ready) return "RTC unavailable";
+  if (!ready) return "";
 
   DateTime now = rtc.now();
   return now.timestamp(DateTime::TIMESTAMP_FULL);

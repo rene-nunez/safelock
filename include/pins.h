@@ -15,6 +15,13 @@
 #define NUMPAD_COL_2  4
 #define NUMPAD_COL_3 33
 
+// microSD SPI (comparte SCK, MISO y MOSI con el RFID)
+// El modulo con regulador AMS1117 se alimenta desde 5V (VIN)
+#define SD_SCK   18
+#define SD_MISO  19
+#define SD_MOSI  23
+#define SD_CS     2
+
 // OLED SPI (comparte SCK y SDA/MOSI con el RFID)
 // RES va directo a 3V3 para liberar el GPIO 22 (SCL del RTC)
 #define OLED_SCK   18

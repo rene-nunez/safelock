@@ -4,12 +4,14 @@
 #include <Numpad.h>
 #include <Display.h>
 #include <Clock.h>
+#include <Storage.h>
 
 rfid_reader rfid;
 numpad_input numpad;
 oled_display display;
 rtc_clock rtc;
-millis_tasks tasks(rfid, numpad, display, rtc);
+sd_storage storage;
+millis_tasks tasks(rfid, numpad, display, rtc, storage);
 
 void setup() {
   Serial.begin(115200);
@@ -18,6 +20,7 @@ void setup() {
   numpad.begin();
   display.begin();
   display.show_lock();
+  storage.begin();
 }
 
 void loop() {

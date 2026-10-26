@@ -4,23 +4,49 @@ millis_tasks::millis_tasks(
   rfid_reader &reader,
   numpad_input &pad,
   oled_display &screen,
-  rtc_clock &rtc_device
-) : rfid(reader), numpad(pad), display(screen), rtc(rtc_device) {
+  rtc_clock &rtc_device,
+  sd_storage &sd
+) : rfid(reader), numpad(pad), display(screen), rtc(rtc_device), storage(sd) {
   state_millis = millis();
+  last_sd_attempt = state_millis;
 }
 
 void millis_tasks::run() {
   current_millis = millis();
 
+  run_storage_task();
   run_rfid_task();
   run_numpad_task();
   run_display_task();
+}
+
+void millis_tasks::run_storage_task() {
+  if (state == WAIT_SD) {
+    if (storage.is_ready()) return;
+    if ((current_millis - last_sd_attempt) < SD_RETRY_MS) return;
+
+    last_sd_attempt = current_millis;
+    storage.begin();
+    return;
+  }
+
+  if (state != LOGGING) return;
+  if ((current_millis - last_sd_attempt) < SD_RETRY_MS) return;
+
+  last_sd_attempt = current_millis;
+
+  if (!try_log_access()) {
+    Serial.println("Access log pending, retrying...");
+  }
 }
 
 void millis_tasks::run_rfid_task() {
   if ((current_millis - previous_rfid_millis) < RFID_POLL_INTERVAL) return;
 
   previous_rfid_millis = current_millis;
+
+  if (state != ENTERING) return;
+
   rfid.poll();
 
   if (!rfid.is_card_present()) return;
@@ -31,13 +57,13 @@ void millis_tasks::run_rfid_task() {
   if (!rfid.is_master_set()) {
     rfid.set_master();
     Serial.println("RFID first card registered as master");
-    grant_access();
+    grant_access("rfid");
     return;
   }
 
   if (rfid.is_authorized()) {
     Serial.println("RFID authorized");
-    grant_access();
+    grant_access("rfid");
   } else {
     Serial.println("RFID unauthorized");
     deny_access();
@@ -63,7 +89,8 @@ void millis_tasks::run_numpad_task() {
 
 void millis_tasks::run_display_task() {
   switch (state) {
-    case SPLASH:
+    case WAIT_SD:
+      if (!storage.is_ready()) return;
       if ((current_millis - state_millis) < LOCK_SPLASH_MS) return;
 
       state = ENTERING;
@@ -101,6 +128,7 @@ void millis_tasks::run_display_task() {
       break;
 
     case ENTERING:
+    case LOGGING:
       break;
   }
 }
@@ -117,25 +145,60 @@ void millis_tasks::add_digit(char digit) {
   if (entered_digits < PASSWORD_LENGTH) return;
 
   if (strcmp(entered_password, DEFAULT_PASSWORD) == 0) {
-    grant_access();
+    grant_access("password");
   } else {
     deny_access();
   }
 }
 
-void millis_tasks::grant_access() {
-  state = SUCCESS;
-  state_millis = current_millis;
+void millis_tasks::grant_access(const char *method) {
   entered_digits = 0;
   entered_password[0] = '\0';
+  display.show_success();
+
+  String timestamp = rtc.timestamp();
+
+  if (timestamp.isEmpty()) {
+    Serial.println("Access granted (RTC unavailable)");
+    current_millis = millis();
+    state = SUCCESS;
+    state_millis = current_millis;
+    return;
+  }
 
   Serial.print("Access granted at ");
-  Serial.println(rtc.timestamp());
+  Serial.println(timestamp);
 
-  display.show_success();
+  pending_date = timestamp.substring(0, 10);
+  pending_time = timestamp.substring(11, 19);
+  pending_method = method;
+
+  state = LOGGING;
+  state_millis = current_millis;
+  last_sd_attempt = current_millis;
+
+  if (!try_log_access()) {
+    Serial.println("Access log pending, retrying...");
+  }
+}
+
+bool millis_tasks::try_log_access() {
+  if (!storage.is_ready() && !storage.begin()) return false;
+
+  if (!storage.log_access(pending_date, pending_time, pending_method)) {
+    storage.reset();
+    return false;
+  }
+
+  Serial.println("Access log saved");
+  current_millis = millis();
+  state = SUCCESS;
+  state_millis = current_millis;
+  return true;
 }
 
 void millis_tasks::deny_access() {
+  current_millis = millis();
   state = ERROR;
   state_millis = current_millis;
   last_blink_millis = current_millis;
