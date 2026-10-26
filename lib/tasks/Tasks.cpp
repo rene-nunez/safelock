@@ -1,7 +1,11 @@
 #include "Tasks.h"
 
-millis_tasks::millis_tasks(rfid_reader &reader, numpad_input &pad, oled_display &screen)
-  : rfid(reader), numpad(pad), display(screen) {
+millis_tasks::millis_tasks(
+  rfid_reader &reader,
+  numpad_input &pad,
+  oled_display &screen,
+  rtc_clock &rtc_device
+) : rfid(reader), numpad(pad), display(screen), rtc(rtc_device) {
   state_millis = millis();
 }
 
@@ -124,6 +128,10 @@ void millis_tasks::grant_access() {
   state_millis = current_millis;
   entered_digits = 0;
   entered_password[0] = '\0';
+
+  Serial.print("Access granted at ");
+  Serial.println(rtc.timestamp());
+
   display.show_success();
 }
 
