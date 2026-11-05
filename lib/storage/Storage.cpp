@@ -12,7 +12,15 @@ sd_storage::sd_storage() {}
 bool sd_storage::begin() {
   if (ready) return true;
 
-  const uint32_t frequencies[] = {4000000, 1000000};
+  // Deja el CS en alto y da tiempo a que el modulo estabilice su
+  // alimentacion antes de intentar montar la tarjeta.
+  pinMode(SD_CS, OUTPUT);
+  digitalWrite(SD_CS, HIGH);
+  delay(20);
+
+  // 1 MHz es mas tolerante con modulos con level shifter y cables
+  // largos; 400 kHz es el respaldo para tarjetas/modulos lentos.
+  const uint32_t frequencies[] = {1000000, 400000};
   bool mounted = false;
 
   for (uint8_t i = 0; i < sizeof(frequencies) / sizeof(frequencies[0]); i++) {
@@ -25,6 +33,7 @@ bool sd_storage::begin() {
     }
 
     SD.end();
+    digitalWrite(SD_CS, HIGH);
   }
 
   if (!mounted) {
@@ -60,6 +69,8 @@ bool sd_storage::is_ready() {
 
 void sd_storage::reset() {
   SD.end();
+  pinMode(SD_CS, OUTPUT);
+  digitalWrite(SD_CS, HIGH);
   ready = false;
 }
 

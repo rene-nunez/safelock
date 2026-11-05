@@ -8,11 +8,60 @@ rfid_reader::rfid_reader() : mfrc522(RFID_SS, RFID_RST) {
   memset(current_uid, 0, sizeof(current_uid));
 }
 
+void rfid_reader::hard_reset() {
+  pinMode(RFID_RST, OUTPUT);
+  digitalWrite(RFID_RST, LOW);
+  delay(10);
+  digitalWrite(RFID_RST, HIGH);
+  delay(50);
+}
+
 void rfid_reader::begin() {
   SPI.begin();
+  hard_reset();
   mfrc522.PCD_Init();
   delay(100);
-  Serial.println("RFID reader initialized");
+
+  byte version = mfrc522.PCD_ReadRegister(MFRC522::VersionReg);
+
+  Serial.print("RFID version: 0x");
+  Serial.println(version, HEX);
+
+  if (version == 0x91 || version == 0x92) {
+    Serial.println("RFID reader initialized");
+  } else {
+    Serial.println("RFID reader not responding");
+    Serial.print("RFID pins: RST=");
+    Serial.print(digitalRead(RFID_RST));
+    Serial.print(" SS=");
+    Serial.print(digitalRead(RFID_SS));
+    Serial.print(" MISO=");
+    Serial.println(digitalRead(RFID_MISO));
+  }
+}
+
+bool rfid_reader::is_ready() {
+  byte version = mfrc522.PCD_ReadRegister(MFRC522::VersionReg);
+  return version == 0x91 || version == 0x92;
+}
+
+void rfid_reader::recover() {
+  // Si el MFRC522 sigue respondiendo, no lo reinicies: hacerlo en
+  // cada acceso puede hacer que se pierdan lecturas.
+  if (is_ready()) return;
+
+  // El pulso del solenoide puede dejar el MFRC522 bloqueado o
+  // reiniciado. Un reset fisico es mas fiable que solo PCD_Init.
+  delay(100);
+  hard_reset();
+  mfrc522.PCD_Init();
+  delay(50);
+
+  if (is_ready()) {
+    Serial.println("RFID reader recovered");
+  } else {
+    Serial.println("RFID reader still not responding");
+  }
 }
 
 void rfid_reader::poll() {

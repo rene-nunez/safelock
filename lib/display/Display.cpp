@@ -3,9 +3,11 @@
 #include "lock_config.h"
 #include <SPI.h>
 
-// 4 MHz para tener mas margen en el bus SPI compartido con SD y RFID.
+// 1 MHz para tener mas margen con cables largos y ruido en el bus SPI.
+static const uint32_t OLED_SPI_HZ = 1000000;
+
 oled_display::oled_display()
-  : display(SCREEN_WIDTH, SCREEN_HEIGHT, &SPI, OLED_DC, -1, OLED_CS, 4000000) {}
+  : display(SCREEN_WIDTH, SCREEN_HEIGHT, &SPI, OLED_DC, -1, OLED_CS, OLED_SPI_HZ) {}
 
 void oled_display::begin() {
   if (!display.begin(SSD1306_SWITCHCAPVCC)) {
@@ -43,7 +45,7 @@ void oled_display::recover() {
   // Recupera solo el inicio de linea y vuelve a encender el panel.
   // No reconfigura multiplexado ni pines COM, para no corromper la
   // imagen si el OLED ya estaba funcionando.
-  SPI.beginTransaction(SPISettings(4000000, MSBFIRST, SPI_MODE0));
+  SPI.beginTransaction(SPISettings(OLED_SPI_HZ, MSBFIRST, SPI_MODE0));
   digitalWrite(OLED_CS, LOW);
   digitalWrite(OLED_DC, LOW);
 

@@ -15,10 +15,11 @@
 #define NUMPAD_COL_2  4
 #define NUMPAD_COL_3 33
 
-// microSD SPI (modulo v474, SOLO 3.3V)
-// VCC -> 3V3, GND -> GND
+// microSD SPI (misma asignacion para ambos modulos)
+// Modulo v474: VCC -> 3V3 (NO alimentar con 5V)
+// Modulo anterior con AMS1117: VCC -> 5V (VIN)
 // CS -> GPIO2, CLK -> GPIO18, MOSI -> GPIO23, MISO -> GPIO19
-// No alimentar este modulo con 5V.
+// GPIO2 es strapping: agregar pull-up de 10k de CS a 3V3.
 #define SD_SCK   18
 #define SD_MISO  19
 #define SD_MOSI  23

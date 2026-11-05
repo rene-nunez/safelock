@@ -14,11 +14,14 @@ class rfid_reader {
 
     bool compare_uids(byte *uid1, byte *uid2);
     String uid_to_string(byte *uid);
+    bool is_ready();
+    void hard_reset();
 
   public:
     rfid_reader();
 
     void begin();
+    void recover();
     void poll();
     bool is_card_present();
     bool is_master_set();

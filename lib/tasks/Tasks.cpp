@@ -125,6 +125,7 @@ void millis_tasks::run_display_task() {
 
       state = ENTERING;
       entered_digits = 0;
+      rfid.recover();
       display.recover();
       display.show_entry(0);
       break;
