@@ -26,15 +26,29 @@
 #define SD_CS     2
 
 // OLED SPI (comparte SCK y SDA/MOSI con el RFID)
-// RES va directo a 3V3 para liberar el GPIO 22 (SCL del RTC)
+// RES va directo a 3V3. NO conectar RES a GPIO15: ese pin es del buzzer.
 #define OLED_SCK   18
 #define OLED_SDA   23
 #define OLED_CS    13
 #define OLED_DC    14
 
-// I2C reservado para el clock DS1307
+// I2C compartido: clock DS1307 y expansor PCF8574T
 #define RTC_SDA 21
 #define RTC_SCL 22
+
+// PCF8574T para LEDs de estado.
+// VCC -> 3V3, GND -> GND, SDA -> GPIO21, SCL -> GPIO22.
+// P0 -> LED rojo, P1 -> LED verde. Ambos activos en bajo.
+#define PCF8574_RED_BIT 0
+#define PCF8574_GREEN_BIT 1
+#define PCF8574_LED_ACTIVE_LOW 1
+
+// Buzzer pasivo en GPIO15 mediante PWM (LEDC).
+// Si el buzzer consume mas de 20 mA, usar transistor NPN y pull-down
+// de 10k en la base para que no suene al arrancar.
+#define BUZZER_PIN 15
+#define BUZZER_LEDC_CHANNEL 0
+#define BUZZER_PASSIVE 1
 
 // Driver DRV8871 para la cerradura solenoide de 12V
 // IN2 del DRV8871 va a GND y IN1 al GPIO de control

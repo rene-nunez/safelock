@@ -6,8 +6,9 @@ millis_tasks::millis_tasks(
   oled_display &screen,
   rtc_clock &rtc_device,
   sd_storage &sd,
-  solenoid_lock &lock_device
-) : rfid(reader), numpad(pad), display(screen), rtc(rtc_device), storage(sd), lock(lock_device) {
+  solenoid_lock &lock_device,
+  status_indicators &indicators_device
+) : rfid(reader), numpad(pad), display(screen), rtc(rtc_device), storage(sd), lock(lock_device), indicators(indicators_device) {
   state_millis = millis();
   last_sd_attempt = state_millis;
 }
@@ -20,6 +21,7 @@ void millis_tasks::run() {
   run_numpad_task();
   run_lock_task();
   run_display_task();
+  indicators.update();
 }
 
 void millis_tasks::run_storage_task() {
@@ -99,7 +101,12 @@ void millis_tasks::run_numpad_task() {
 }
 
 void millis_tasks::run_lock_task() {
+  bool was_active = lock.is_active();
   lock.update();
+
+  if (was_active && !lock.is_active()) {
+    indicators.show_locked();
+  }
 }
 
 void millis_tasks::run_display_task() {
@@ -180,6 +187,8 @@ void millis_tasks::grant_access(const char *method) {
   entered_password[0] = '\0';
   display.show_success();
   lock.unlock();
+  indicators.show_unlocked();
+  indicators.beep_ok();
 
   String timestamp = rtc.timestamp();
 
@@ -264,5 +273,7 @@ void millis_tasks::deny_access() {
   state_millis = current_millis;
   last_blink_millis = current_millis;
   error_icon_visible = true;
+  indicators.show_denied();
+  indicators.beep_error();
   display.show_error();
 }

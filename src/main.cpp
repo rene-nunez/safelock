@@ -6,6 +6,7 @@
 #include <Clock.h>
 #include <Storage.h>
 #include <Lock.h>
+#include <Indicators.h>
 #include <pins.h>
 
 rfid_reader rfid;
@@ -14,7 +15,8 @@ oled_display display;
 rtc_clock rtc;
 sd_storage storage;
 solenoid_lock lock;
-millis_tasks tasks(rfid, numpad, display, rtc, storage, lock);
+status_indicators indicators;
+millis_tasks tasks(rfid, numpad, display, rtc, storage, lock, indicators);
 
 void setup() {
   Serial.begin(115200);
@@ -30,6 +32,8 @@ void setup() {
 
   lock.begin();
   rtc.begin();
+  indicators.begin();
+  indicators.show_locked();
   rfid.begin();
   numpad.begin();
   display.begin();
