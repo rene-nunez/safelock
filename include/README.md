@@ -57,6 +57,7 @@ Notas:
 | 27 | `RFID_RST` | Reset del MFRC522 | Salida | MFRC522 | ADC2. |
 | 32 | `KEY_ROW_4` | Fila 4 del teclado | Entrada | Teclado 4x3 | ADC1. |
 | 33 | `KEY_COL_3` | Columna 3 del teclado | Salida | Teclado 4x3 | ADC1. |
+| 34 | `LOCK_SENSE` | Sensor de estado de la cerradura | Entrada | Cerradura | Solo entrada, sin pull-up interno: 10 k a 3.3 V obligatorio. |
 
 Pines no usados o reservados:
 
@@ -65,7 +66,7 @@ Pines no usados o reservados:
 | 0 | Libre | Strapping/boot. Si se usa, activo en bajo y con pull-up. |
 | 1, 3 | Reservados | UART0 / monitor serie. |
 | 6-11 | No usar | Conectados a la memoria flash. |
-| 34-39 | No usar para salidas | Solo entrada. |
+| 34-39 | Solo entrada | No tienen pull-up/pull-down interno. GPIO34 usado por `LOCK_SENSE`. |
 
 ---
 
@@ -281,6 +282,57 @@ Proteccion:
 - El retorno de corriente del solenoide debe ir directo a la fuente de 12 V, no a la tierra del ESP32.
 - GPIO12 es strapping: debe estar bajo al arrancar. No agregar pull-up.
 
+### 5.9 Sensor de estado de la cerradura
+
+La cerradura trae un contacto seco extra (dos cables) que indica si el pestillo esta cerrado o abierto. Un cable va a **GND** y el otro a **GPIO34**.
+
+```text
+Cerradura: cable 1 ---- GND
+Cerradura: cable 2 ---- GPIO34
+
+3.3 V ---- 10 k ---- GPIO34
+GPIO34 -- 1 k --+---- 100 nF ---- GND
+                |
+             cable del sensor
+```
+
+| Elemento | Valor | Motivo |
+|---|---|---|
+| Pull-up | 10 k a 3.3 V | GPIO34 no tiene pull-up interno. Es obligatorio. |
+| Serie | 1 k | Limita corriente y ruido del cable largo. |
+| Filtro | 100 nF a GND | Elimina ruido del solenoide y de los cables. |
+
+Notas:
+
+- GPIO34 es **solo entrada**. No sirve para LEDs ni para el buzzer, pero es ideal para un sensor.
+- GPIO34 es ADC1, asi que sigue funcionando aunque se active WiFi (ADC2 no).
+- No usa ningun pin de strapping y no interfiere con SPI, I2C ni el teclado.
+- El firmware ya aplica antirrebote de 50 ms (`LOCK_SENSE_DEBOUNCE_MS`).
+- Polaridad en `pins.h`:
+
+```cpp
+#define LOCK_SENSE_ACTIVE_LOW 1  // contacto cierra a GND = cerrada
+#define LOCK_SENSE_ACTIVE_LOW 0  // logica invertida
+```
+
+Antes de conectar el sensor al ESP32, verifica con un multimetro:
+
+- Que los dos cables del sensor **no** tengan continuidad con la bobina del solenoide.
+- Que no haya 12 V presentes entre esos cables.
+- Que el contacto cambie de estado al accionar la cerradura.
+
+Si el sensor comparte tierra con la bobina o no estas seguro, usa un optoacoplador `PC817` para aislarlo del ESP32.
+
+Comportamiento en el monitor serie:
+
+```text
+Lock sensor: closed
+Lock sensor: open
+Warning: lock still reports open after release
+```
+
+La ultima linea avisa que la cerradura no volvio a cerrar mecanicamente (o que el sensor quedo mal calibrado).
+
 ---
 
 ## 6. Capacitores y protecciones
@@ -293,6 +345,7 @@ Proteccion:
 | VCC de cada modulo | 100 nF | Desacoplo de alta frecuencia. |
 | I2C `SDA`/`SCL` | 4.7 k a 3.3 V | Pull-ups del bus. |
 | `SD_CS`, `RFID_SS`, `OLED_CS` | 10 k a 3.3 V | Evitan seleccion accidental al arrancar. |
+| `LOCK_SENSE` | 10 k a 3.3 V + 100 nF a GND | Pull-up obligatorio (GPIO34 no tiene interno) y filtro del sensor. |
 
 ---
 
@@ -305,6 +358,8 @@ Proteccion:
 - En PCB, dejar un area sin cobre debajo de la antena del RFID.
 - Mantener los capacitores de desacoplo lo mas cerca posible de cada modulo.
 - Evitar que el modulo SD y el RFID compartan un cable de alimentacion largo y delgado.
+- Rutear el cable del sensor de la cerradura junto al par trenzado del solenoide pero separado de SPI, I2C y la antena RFID.
+- No alimentar el sensor desde la etapa de 12 V: el contacto debe ser seco y referido a GND de logica.
 
 ---
 
@@ -317,7 +372,7 @@ Proteccion:
 - GPIO12 debe estar bajo al arrancar por la tension de flash. No poner pull-up.
 - GPIO15 puede desactivar el log de arranque si se lleva a bajo con el pull-down del buzzer. No impide el arranque.
 - GPIO6-11 estan conectados a la flash. No usarlos.
-- GPIO34-39 son solo entrada.
+- GPIO34-39 son solo entrada y no tienen pull-up interno. GPIO34 se usa para `LOCK_SENSE`.
 - WiFi consume picos de corriente. Usar una fuente de 5 V de al menos 2 A y un regulador de 3.3 V de al menos 1 A para la PCB.
 
 ---
@@ -332,6 +387,7 @@ Proteccion:
 - Para el PCF8574T, usar el modelo de expansor I2C y configurar la direccion `0x20`.
 - Para el teclado, usar una matriz 4x3.
 - Para el DRV8871, usar un simbolo de driver de motor; representar el solenoide como inductor + resistencia y agregar el diodo/TVS.
+- Para el sensor de la cerradura, usar un interruptor (SW-SPST) entre `LOCK_SENSE` y GND, con pull-up de 10 k a 3.3 V y 100 nF a GND.
 - Para el buzzer pasivo, usar un piezo con transistor NPN y resistencia de base.
 - Para los LEDs, usar LED + resistencia de 330 ohm.
 - Agregar los capacitores de desacoplo en el esquema, no solo en la PCB.
@@ -350,7 +406,7 @@ Proteccion:
 - Dejar la antena del RFID sin cobre debajo y lejos del solenoide.
 - Rutear SPI corto y directo; no hace falta igualar longitudes a 1 MHz, pero si evitar bucles y cruces con 12 V.
 - Rutear I2C con pull-ups una sola vez.
-- Agregar test points para 3.3 V, 5 V, 12 V, GND, `SPI_SCK`, `SPI_MOSI`, `SPI_MISO`, `I2C_SDA` y `I2C_SCL`.
+- Agregar test points para 3.3 V, 5 V, 12 V, GND, `SPI_SCK`, `SPI_MOSI`, `SPI_MISO`, `I2C_SDA`, `I2C_SCL` y `LOCK_SENSE`.
 - Agregar conectores etiquetados y con llave para evitar invertir módulos.
 - Dejar pads para pull-ups y capacitores opcionales.
 - Prever disipacion/térmica para el DRV8871 y el regulador de 3.3 V.
@@ -386,6 +442,7 @@ Proteccion:
 | `KEY_COL_3` | GPIO33 | Teclado |
 | `LOCK_IN1` | GPIO12 | DRV8871 `IN1` |
 | `LOCK_IN2` | GND | DRV8871 `IN2` |
+| `LOCK_SENSE` | GPIO34 | Contacto de estado de la cerradura |
 | `BUZZER_PWM` | GPIO15 | Base del transistor del buzzer |
 | `LED_RED` | PCF8574T `P0` | LED rojo |
 | `LED_GREEN` | PCF8574T `P1` | LED verde |

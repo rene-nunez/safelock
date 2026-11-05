@@ -53,3 +53,14 @@
 // Driver DRV8871 para la cerradura solenoide de 12V
 // IN2 del DRV8871 va a GND y IN1 al GPIO de control
 #define LOCK_IN1 12
+
+// Sensor de estado de la cerradura (contacto seco del solenoide).
+// Un cable del sensor va a GND y el otro a GPIO34.
+// GPIO34 es solo entrada y NO tiene pull-up interno:
+// agregar 10k entre GPIO34 y 3V3, y 100nF de GPIO34 a GND.
+//
+// LOCK_SENSE_ACTIVE_LOW 1: el contacto cierra a GND cuando la cerradura
+// esta cerrada. Cambiar a 0 si el sensor trabaja al reves.
+#define LOCK_SENSE_PIN 34
+#define LOCK_SENSE_ACTIVE_LOW 1
+#define LOCK_SENSE_DEBOUNCE_MS 50

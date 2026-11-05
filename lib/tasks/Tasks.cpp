@@ -104,8 +104,17 @@ void millis_tasks::run_lock_task() {
   bool was_active = lock.is_active();
   lock.update();
 
+  if (lock.sense_changed()) {
+    Serial.print("Lock sensor: ");
+    Serial.println(lock.is_closed() ? "closed" : "open");
+  }
+
   if (was_active && !lock.is_active()) {
     indicators.show_locked();
+
+    if (!lock.is_closed()) {
+      Serial.println("Warning: lock still reports open after release");
+    }
   }
 }
 
