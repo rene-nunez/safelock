@@ -7,6 +7,7 @@
 #include "Clock.h"
 #include "Storage.h"
 #include "Lock.h"
+#include "Indicators.h"
 #include "lock_config.h"
 
 #define RFID_POLL_INTERVAL 200
@@ -29,6 +30,7 @@ class millis_tasks {
     rtc_clock &rtc;
     sd_storage &storage;
     solenoid_lock &lock;
+    status_indicators &indicators;
 
     lock_state state = WAIT_SD;
     char entered_password[PASSWORD_LENGTH + 1] = "";
@@ -68,7 +70,8 @@ class millis_tasks {
       oled_display &screen,
       rtc_clock &rtc_device,
       sd_storage &sd,
-      solenoid_lock &lock_device
+      solenoid_lock &lock_device,
+      status_indicators &indicators_device
     );
     void run();
 };
