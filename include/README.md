@@ -22,7 +22,7 @@ Estado actual:
 |---|---|---|---|---|
 | 12 V | Fuente/baterias de 12 V | DRV8871 `VM`, solenoide | 470 uF / 25 V junto al DRV8871 | 100 nF |
 | 5 V | USB, fuente o buck | Modulo microSD con AMS1117, buzzer de 5 V, RTC si su modulo lo requiere | 470 uF / 16 V | 100 nF |
-| 3.3 V | Regulador del ESP32 o regulador externo | ESP32, MFRC522, OLED, PCF8574T, microSD v474 | 470 uF / 10 V | 100 nF por modulo |
+| 3.3 V | Regulador del ESP32 o regulador externo | ESP32, MFRC522, OLED, PCF8574T, microSD v474 | 470 uF / 10 V | 100 nF por modulo, excepto RFID |
 | GND | Comun | Todos los modulos | - | - |
 
 Notas:
@@ -54,7 +54,7 @@ Notas:
 | 23 | `SPI_MOSI` | Datos SPI del ESP32 al esclavo | Salida | SD, RFID, OLED | Compartido. |
 | 25 | `KEY_ROW_3` | Fila 3 del teclado | Entrada | Teclado 4x3 | ADC2. |
 | 26 | `KEY_ROW_2` | Fila 2 del teclado | Entrada | Teclado 4x3 | ADC2. |
-| 27 | `RFID_RST` | Reset del MFRC522 | Salida | MFRC522 | ADC2. |
+| 27 | `RFID_RST` | Reset del MFRC522 | Salida | MFRC522 | ADC2. Pull-up 10 k a 3.3 V. |
 | 32 | `KEY_ROW_4` | Fila 4 del teclado | Entrada | Teclado 4x3 | ADC1. |
 | 33 | `KEY_COL_3` | Columna 3 del teclado | Salida | Teclado 4x3 | ADC1. |
 | 34 | `LOCK_SENSE` | Sensor de estado de la cerradura | Entrada | Cerradura | Solo entrada, sin pull-up interno: 10 k a 3.3 V obligatorio. |
@@ -128,13 +128,21 @@ Notas:
 | `MISO` | GPIO19 | Compartido. |
 | `IRQ` | No conectar | No se usa. |
 | `GND` | GND | - |
-| `RST` | GPIO27 | Reset. |
+| `RST` | GPIO27 | Reset. Lleva pull-up de 10 k a 3.3 V. |
 | `3.3V` | 3.3 V | No alimentar el modulo comun con 5 V. |
 
 Proteccion:
 
-- 100 nF entre `3.3V` y `GND` del modulo.
-- 470 uF en el riel de 3.3 V.
+- El modulo **no lleva capacitores**: no agregar 100 nF ni 470 uF en el RFID.
+- Solo lleva una resistencia de **10 k entre 3.3 V y `RST`**. Mantiene el MFRC522 fuera de reset si GPIO27 queda flotando al arrancar.
+
+```text
+3.3 V ---- 10 k ----+---- RFID RST (pin del modulo)
+                    |
+                 GPIO27
+```
+
+
 - Mantener el RFID lejos del solenoide, cables de 12 V y del modulo SD.
 - No poner plano de cobre debajo de la antena del RFID en la PCB.
 
@@ -340,9 +348,10 @@ La ultima linea avisa que la cerradura no volvio a cerrar mecanicamente (o que e
 | Ubicacion | Capacitor | Funcion |
 |---|---|---|
 | `VM` del DRV8871 | 470 uF / 25 V + 100 nF | Absorbe el pico del solenoide. |
-| Riel de 3.3 V | 470 uF / 10 V | Estabiliza WiFi, RFID, OLED y SD. |
+| Riel de 3.3 V | 470 uF / 10 V | Estabiliza WiFi, OLED, SD y PCF8574T. |
 | Riel de 5 V | 470 uF / 16 V | Estabiliza SD con AMS1117 y buzzer. |
-| VCC de cada modulo | 100 nF | Desacoplo de alta frecuencia. |
+| VCC de cada modulo | 100 nF | Desacoplo de alta frecuencia, excepto el RFID. |
+| RFID `RST` | 10 k a 3.3 V | Pull-up que evita reset accidental del MFRC522. |
 | I2C `SDA`/`SCL` | 4.7 k a 3.3 V | Pull-ups del bus. |
 | `SD_CS`, `RFID_SS`, `OLED_CS` | 10 k a 3.3 V | Evitan seleccion accidental al arrancar. |
 | `LOCK_SENSE` | 10 k a 3.3 V + 100 nF a GND | Pull-up obligatorio (GPIO34 no tiene interno) y filtro del sensor. |
@@ -356,7 +365,7 @@ La ultima linea avisa que la cerradura no volvio a cerrar mecanicamente (o que e
 - Trenzar los cables del solenoide y mantenerlos separados de RFID, OLED, SD y SPI.
 - No pasar cables de 12 V por debajo de la antena del RFID.
 - En PCB, dejar un area sin cobre debajo de la antena del RFID.
-- Mantener los capacitores de desacoplo lo mas cerca posible de cada modulo.
+- Mantener los capacitores de desacoplo lo mas cerca posible de cada modulo (el RFID no lleva capacitores).
 - Evitar que el modulo SD y el RFID compartan un cable de alimentacion largo y delgado.
 - Rutear el cable del sensor de la cerradura junto al par trenzado del solenoide pero separado de SPI, I2C y la antena RFID.
 - No alimentar el sensor desde la etapa de 12 V: el contacto debe ser seco y referido a GND de logica.
@@ -381,7 +390,7 @@ La ultima linea avisa que la cerradura no volvio a cerrar mecanicamente (o que e
 
 - Usar etiquetas de red (net labels) con los nombres de este README para no depender del cableado fisico.
 - Para el ESP32, usar un simbolo de DevKit ESP32 y mapear los GPIO segun la tabla.
-- Para el MFRC522, si no hay modelo de simulacion, usar un conector de 8 pines con los nombres `SDA/SS`, `SCK`, `MOSI`, `MISO`, `IRQ`, `GND`, `RST`, `3.3V`.
+- Para el MFRC522, si no hay modelo de simulacion, usar un conector de 8 pines con los nombres `SDA/SS`, `SCK`, `MOSI`, `MISO`, `IRQ`, `GND`, `RST`, `3.3V`. Agregar solo el pull-up de 10 k de 3.3 V a `RST`, sin capacitores en el modulo.
 - Para la microSD, usar un conector SPI de 6 pines.
 - Para el OLED, usar un conector SPI de 7 pines.
 - Para el PCF8574T, usar el modelo de expansor I2C y configurar la direccion `0x20`.
@@ -390,7 +399,7 @@ La ultima linea avisa que la cerradura no volvio a cerrar mecanicamente (o que e
 - Para el sensor de la cerradura, usar un interruptor (SW-SPST) entre `LOCK_SENSE` y GND, con pull-up de 10 k a 3.3 V y 100 nF a GND.
 - Para el buzzer pasivo, usar un piezo con transistor NPN y resistencia de base.
 - Para los LEDs, usar LED + resistencia de 330 ohm.
-- Agregar los capacitores de desacoplo en el esquema, no solo en la PCB.
+- Agregar los capacitores de desacoplo en el esquema, no solo en la PCB, excepto en el RFID: ese solo lleva el pull-up de 10 k en `RST`.
 - Verificar que los `CS` de SPI tengan pull-up y esten en alto al inicio de la simulacion.
 
 ---
@@ -402,7 +411,7 @@ La ultima linea avisa que la cerradura no volvio a cerrar mecanicamente (o que e
 - Usar plano de tierra de potencia y plano de tierra de logica unidos en un solo punto.
 - Colocar el 470 uF del DRV8871 junto al pin `VM`.
 - Colocar el 470 uF de 3.3 V cerca del ESP32 y del RFID/OLED.
-- Colocar 100 nF junto a cada modulo.
+- Colocar 100 nF junto a cada modulo, excepto el RFID: ese solo lleva el pull-up de 10 k en `RST`.
 - Dejar la antena del RFID sin cobre debajo y lejos del solenoide.
 - Rutear SPI corto y directo; no hace falta igualar longitudes a 1 MHz, pero si evitar bucles y cruces con 12 V.
 - Rutear I2C con pull-ups una sola vez.
@@ -427,7 +436,7 @@ La ultima linea avisa que la cerradura no volvio a cerrar mecanicamente (o que e
 | `SPI_MISO` | GPIO19 | SD, RFID |
 | `SD_CS` | GPIO2 | microSD |
 | `RFID_SS` | GPIO5 | MFRC522 |
-| `RFID_RST` | GPIO27 | MFRC522 |
+| `RFID_RST` | GPIO27 | MFRC522 `RST`, con pull-up de 10 k a 3.3 V |
 | `OLED_CS` | GPIO13 | OLED |
 | `OLED_DC` | GPIO14 | OLED |
 | `OLED_RES` | 3.3 V | OLED |
@@ -467,7 +476,7 @@ Si el PCF8574T no responde, el monitor serie muestra `PCF8574 not found`. Los LE
 El RFID sigue pendiente de diagnostico fisico. Con la microSD desconectada, el firmware reporta `RFID version: 0xFF`, lo que indica que el MFRC522 no responde por SPI. Revisar:
 
 - Alimentacion de 3.3 V en el modulo.
-- `RST` en alto.
+- `RST` en alto. Debe tener el pull-up de 10 k a 3.3 V; sin el, el MFRC522 puede quedar en reset.
 - Continuidad de `MISO`, `MOSI`, `SCK`, `SS` y `GND`.
 - Soldaduras del header, especialmente `MISO` y `RST`.
 - Probar otro modulo MFRC522.
