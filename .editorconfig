@@ -2,11 +2,26 @@ root = true
 
 [*]
 charset = utf-8
-trim_trailing_whitespace = true
-insert_final_newline = true
 end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
 indent_style = space
 indent_size = 2
 
+# Python
+[*.{py,pyi}]
+indent_size = 4
+max_line_length = 79
+
+# JavaScript, TypeScript
+[*.{js,jsx,mjs,cjs,ts,tsx}]
+max_line_length = 100
+
+# Makefile
+[{Makefile,*.mk}]
+indent_style = tab
+
+# Markdown
 [*.md]
 trim_trailing_whitespace = false
+max_line_length = off
