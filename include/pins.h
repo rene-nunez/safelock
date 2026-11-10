@@ -1,5 +1,7 @@
 #pragma once
 
+// MFRC522: pull-up obligatorio de 10k de RST a 3V3. El modulo no lleva
+// capacitores; el firmware mantiene RST como salida alta tras PCD_Init().
 #define RFID_MOSI 23
 #define RFID_MISO 19
 #define RFID_SCK  18

@@ -60,6 +60,18 @@ void millis_tasks::run_rfid_task() {
 
   if (state != ENTERING) return;
 
+  // Recupera el lector aunque el fallo ocurra sin que haya un acceso
+  // (por ejemplo, un reset espurio al arrancar o por ruido).
+  if ((current_millis - last_rfid_health_millis) >= RFID_HEALTH_INTERVAL) {
+    last_rfid_health_millis = current_millis;
+
+    // No bloquees la lectura del teclado mientras el usuario esta
+    // escribiendo la contrasena.
+    if (!rfid.healthy() && entered_digits == 0) {
+      rfid.recover();
+    }
+  }
+
   rfid.poll();
 
   if (!rfid.is_card_present()) return;

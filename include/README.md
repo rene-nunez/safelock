@@ -85,7 +85,7 @@ Reglas:
 
 - Los tres `CS` deben estar en alto al arrancar. El firmware lo hace en `setup()`.
 - Agregar pull-up de 10 k a 3.3 V en `SD_CS`, `RFID_SS` y `OLED_CS`.
-- Frecuencia actual: 1 MHz para los tres dispositivos.
+- Frecuencia actual: 500 kHz para el RFID y 1 MHz para microSD y OLED.
 - La SD y el RFID comparten `MISO`. Si un modulo deja `MISO` activo aunque su `CS` este alto, el otro deja de responder. Para PCB, usar modulos con salida tri-state o agregar un buffer.
 - No conectar el `RES` del OLED a GPIO15. Va directo a 3.3 V.
 
@@ -471,12 +471,20 @@ Si el PCF8574T no responde, el monitor serie muestra `PCF8574 not found`. Los LE
 
 ---
 
-## 13. Pendiente: RFID
+## 13. RFID: diagnostico y recuperacion
 
-El RFID sigue pendiente de diagnostico fisico. Con la microSD desconectada, el firmware reporta `RFID version: 0xFF`, lo que indica que el MFRC522 no responde por SPI. Revisar:
+El firmware verifica el MFRC522 cada 2 s y lo reinicializa si deja de responder o si la antena queda apagada. Esto cubre el fallo intermitente en el que el lector seguia respondiendo por SPI pero ya no detectaba tarjetas.
+
+Puntos importantes:
+
+- `RST` debe tener el pull-up de 10 k a 3.3 V. Despues de `PCD_Init()`, el firmware deja `RST` como salida alta para que el pin no quede flotando.
+- La antena se valida leyendo `TxControlReg`; si esta apagada, se reinicializa el lector (hasta dos intentos).
+- El SPI del RFID funciona a 500 kHz para tener mas margen con cables largos y ruido.
+- El RFID solo lleva el pull-up de 10 k en `RST`; no agregar capacitores al modulo.
+
+Si el monitor serie sigue mostrando `RFID version: 0xFF` o `RFID reader still not responding`, revisar:
 
 - Alimentacion de 3.3 V en el modulo.
-- `RST` en alto. Debe tener el pull-up de 10 k a 3.3 V; sin el, el MFRC522 puede quedar en reset.
 - Continuidad de `MISO`, `MOSI`, `SCK`, `SS` y `GND`.
 - Soldaduras del header, especialmente `MISO` y `RST`.
 - Probar otro modulo MFRC522.

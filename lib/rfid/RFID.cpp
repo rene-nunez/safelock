@@ -4,6 +4,7 @@
 rfid_reader::rfid_reader() : mfrc522(RFID_SS, RFID_RST) {
   master_set = false;
   card_present = false;
+  antenna_off_reported = false;
   memset(master_uid, 0, sizeof(master_uid));
   memset(current_uid, 0, sizeof(current_uid));
 }
@@ -11,15 +12,25 @@ rfid_reader::rfid_reader() : mfrc522(RFID_SS, RFID_RST) {
 void rfid_reader::hard_reset() {
   pinMode(RFID_RST, OUTPUT);
   digitalWrite(RFID_RST, LOW);
-  delay(10);
+  delay(20);
   digitalWrite(RFID_RST, HIGH);
-  delay(50);
+  delay(100);
+}
+
+void rfid_reader::hold_reset_high() {
+  // PCD_Init() deja el pin RST como INPUT si lo encuentra en alto, y el
+  // NRSTPD del MFRC522 queda flotando. Con ruido en el cable el chip se
+  // resetea o entra en power-down (MISO en 0xFF). Lo dejamos como salida
+  // alta para que eso no ocurra.
+  pinMode(RFID_RST, OUTPUT);
+  digitalWrite(RFID_RST, HIGH);
 }
 
 void rfid_reader::begin() {
   SPI.begin();
   hard_reset();
   mfrc522.PCD_Init();
+  hold_reset_high();
   delay(100);
 
   byte version = mfrc522.PCD_ReadRegister(MFRC522::VersionReg);
@@ -45,27 +56,93 @@ bool rfid_reader::is_ready() {
   return version == 0x91 || version == 0x92;
 }
 
+bool rfid_reader::antenna_on() {
+  return (mfrc522.PCD_ReadRegister(MFRC522::TxControlReg) & 0x03) == 0x03;
+}
+
+bool rfid_reader::healthy() {
+  // 0xFF en VersionReg/TxControlReg tiene los bits 0 y 1 en alto, asi
+  // que hay que validar primero que el chip responde de verdad.
+  if (!is_ready()) return false;
+  return antenna_on();
+}
+
+void rfid_reader::log_status(const char *tag) {
+  byte version = mfrc522.PCD_ReadRegister(MFRC522::VersionReg);
+  byte tx_control = mfrc522.PCD_ReadRegister(MFRC522::TxControlReg);
+  bool valid = (version == 0x91 || version == 0x92);
+
+  Serial.print("[RFID] ");
+  Serial.print(tag);
+  Serial.print(": VersionReg=0x");
+  Serial.print(version, HEX);
+  Serial.print(" TxControlReg=0x");
+  Serial.print(tx_control, HEX);
+  Serial.print(" link=");
+  Serial.print(valid ? "OK" : "NO_RESPONSE");
+  Serial.print(" antenna=");
+
+  if (!valid) {
+    Serial.println("UNKNOWN");
+  } else {
+    Serial.println((tx_control & 0x03) == 0x03 ? "ON" : "OFF");
+  }
+}
+
 void rfid_reader::recover() {
-  // Si el MFRC522 sigue respondiendo, no lo reinicies: hacerlo en
-  // cada acceso puede hacer que se pierdan lecturas.
-  if (is_ready()) return;
+  if (healthy()) return;
+
+  if (is_ready()) {
+    Serial.println("RFID reader alive but antenna is OFF, reinitializing");
+  } else {
+    Serial.println("RFID reader not responding, attempting hard reset");
+    log_status("recover before");
+  }
 
   // El pulso del solenoide puede dejar el MFRC522 bloqueado o
   // reiniciado. Un reset fisico es mas fiable que solo PCD_Init.
-  delay(100);
-  hard_reset();
-  mfrc522.PCD_Init();
-  delay(50);
+  const uint8_t max_attempts = 2;
 
-  if (is_ready()) {
-    Serial.println("RFID reader recovered");
-  } else {
-    Serial.println("RFID reader still not responding");
+  for (uint8_t attempt = 1; attempt <= max_attempts; attempt++) {
+    delay(100);
+    hard_reset();
+    mfrc522.PCD_Init();
+    hold_reset_high();
+    delay(100);
+
+    if (healthy()) {
+      Serial.print("RFID reader recovered on attempt ");
+      Serial.println(attempt);
+      return;
+    }
+
+    Serial.print("RFID recovery attempt ");
+    Serial.print(attempt);
+    Serial.print("/");
+    Serial.print(max_attempts);
+    Serial.println(" failed");
   }
+
+  Serial.println("RFID reader still not responding");
+  log_status("recover after");
 }
 
 void rfid_reader::poll() {
   card_present = false;
+
+  if (!healthy()) {
+    if (!antenna_off_reported) {
+      antenna_off_reported = true;
+      Serial.println("[RFID] WARNING: reader not healthy (link down or antenna OFF)");
+      log_status("poll");
+    }
+    return;
+  }
+
+  if (antenna_off_reported) {
+    antenna_off_reported = false;
+    Serial.println("[RFID] reader healthy again");
+  }
 
   if (!mfrc522.PICC_IsNewCardPresent()) return;
   if (!mfrc522.PICC_ReadCardSerial()) return;
