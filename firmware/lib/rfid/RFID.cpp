@@ -60,6 +60,18 @@ bool rfid_reader::antenna_on() {
   return (mfrc522.PCD_ReadRegister(MFRC522::TxControlReg) & 0x03) == 0x03;
 }
 
+void rfid_reader::set_antenna(bool on) {
+  // El campo de 13.56 MHz irradiado por la antena acopla al modulo
+  // microSD, a sus cables y al riel de 3.3 V compartido. El firmware la
+  // apaga en las ventanas donde el lector no hace polling (montaje y
+  // escritura del log en SD) y la reenciende al terminar.
+  if (on) {
+    mfrc522.PCD_AntennaOn();
+  } else {
+    mfrc522.PCD_AntennaOff();
+  }
+}
+
 bool rfid_reader::healthy() {
   // 0xFF en VersionReg/TxControlReg tiene los bits 0 y 1 en alto, asi
   // que hay que validar primero que el chip responde de verdad.

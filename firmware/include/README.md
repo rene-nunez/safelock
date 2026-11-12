@@ -163,6 +163,7 @@ Proteccion:
 - 470 uF en el riel de alimentacion de la SD.
 - No alimentar el modulo v474 con 5 V.
 - Si el modulo tiene level shifter, verificar que `MISO` quede en alta impedancia cuando `CS` esta alto.
+- El firmware apaga la antena del RFID durante el montaje de la tarjeta y cada escritura del log, y la reenciende al terminar. En esos estados (`WAIT_SD`/`LOGGING`) el lector no hace polling, asi que no se pierde lectura de tarjetas; se evita que el campo de 13.56 MHz acople al modulo SD, a sus cables y al riel de 3.3 V compartido.
 
 ### 5.3 OLED SSD1306 SPI
 
@@ -481,6 +482,7 @@ Puntos importantes:
 - La antena se valida leyendo `TxControlReg`; si esta apagada, se reinicializa el lector (hasta dos intentos).
 - El SPI del RFID funciona a 500 kHz para tener mas margen con cables largos y ruido.
 - El RFID solo lleva el pull-up de 10 k en `RST`; no agregar capacitores al modulo.
+- Tras `PCD_Init()` la antena queda encendida de forma permanente (irradia 13.56 MHz mientras haya alimentacion). El firmware la apaga solo en las ventanas de acceso a la microSD (ver seccion 5.2). Si la SD falla solo cuando el RFID esta activo, el campo de la antena o la corriente extra del lector son el origen del fallo, no el bus SPI.
 
 Si el monitor serie sigue mostrando `RFID version: 0xFF` o `RFID reader still not responding`, revisar:
 

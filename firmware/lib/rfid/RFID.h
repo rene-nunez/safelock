@@ -28,6 +28,7 @@ class rfid_reader {
     void recover();
     void poll();
     bool healthy();
+    void set_antenna(bool on);
     bool is_card_present();
     bool is_master_set();
     bool is_authorized();

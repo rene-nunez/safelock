@@ -39,7 +39,12 @@ void millis_tasks::run_storage_task() {
     Serial.print("/");
     Serial.println(SD_MAX_ATTEMPTS);
 
+    // Apaga la antena del RFID mientras se habla con la SD: en WAIT_SD el
+    // lector no hace polling y su campo de 13.56 MHz induce errores en el
+    // montaje de la tarjeta y baja el riel compartido.
+    rfid.set_antenna(false);
     storage.begin();
+    rfid.set_antenna(true);
     return;
   }
 
@@ -248,9 +253,15 @@ bool millis_tasks::try_log_access() {
 
   bool saved = false;
 
+  // En LOGGING el lector no hace polling: apagar la antena durante la
+  // escritura del log evita el mismo acoplo que en el montaje de la SD.
+  rfid.set_antenna(false);
+
   if (storage.is_ready() || storage.begin()) {
     saved = storage.log_access(pending_date, pending_time, pending_method);
   }
+
+  rfid.set_antenna(true);
 
   if (saved) {
     Serial.println("Access log saved");
