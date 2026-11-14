@@ -30,14 +30,19 @@ void setup() {
   pinMode(OLED_CS, OUTPUT);
   digitalWrite(OLED_CS, HIGH);
 
+  // La microSD se monta antes que cualquier otro periferico. Comparte el
+  // riel de 3V3 con la OLED y el RFID, y la tarjeta es la mas sensible a
+  // las caidas de tension al inicializar, asi que se le da el riel solo.
+  storage.begin();
+
   lock.begin();
   rtc.begin();
   indicators.begin();
   indicators.show_locked();
-  rfid.begin();
   numpad.begin();
   display.begin();
   display.show_lock();
+  rfid.begin();
 }
 
 void loop() {
