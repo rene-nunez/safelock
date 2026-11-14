@@ -8,15 +8,10 @@ dist/
 
 # Backend
 .env
-.env.*
-!.env.example
 .venv
 venv/
 __pycache__/
-*.py[cod]
-.pytest_cache/
-.ruff_cache/
-.mypy_cache/
 
+# Extra
 .vscode
 .DS_Store
