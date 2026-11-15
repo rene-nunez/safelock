@@ -29,10 +29,8 @@ void Display::begin() {
 void Display::recover() {
   if (!ready) return;
 
-  // Wake the panel without reconfiguring multiplexing or COM pins, so a
-  // frame that is already correct is not corrupted
   display.ssd1306_command(SSD1306_CHARGEPUMP);
-  display.ssd1306_command(0x14);  // charge pump enable
+  display.ssd1306_command(0x14); // Charge pump enable
   display.ssd1306_command(SSD1306_SETSTARTLINE);
   display.ssd1306_command(SSD1306_DISPLAYON);
 }
