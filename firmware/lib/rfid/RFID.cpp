@@ -1,7 +1,7 @@
 #include "RFID.h"
 #include "pins.h"
 
-rfid_reader::rfid_reader() : mfrc522(RFID_SS, RFID_RST) {
+RFID::RFID() : mfrc522(RFID_SS, RFID_RST) {
   master_set = false;
   card_present = false;
   antenna_off_reported = false;
@@ -9,7 +9,7 @@ rfid_reader::rfid_reader() : mfrc522(RFID_SS, RFID_RST) {
   memset(current_uid, 0, sizeof(current_uid));
 }
 
-void rfid_reader::hard_reset() {
+void RFID::hard_reset() {
   pinMode(RFID_RST, OUTPUT);
   digitalWrite(RFID_RST, LOW);
   delay(20);
@@ -17,7 +17,7 @@ void rfid_reader::hard_reset() {
   delay(100);
 }
 
-void rfid_reader::hold_reset_high() {
+void RFID::hold_reset_high() {
   // PCD_Init() deja el pin RST como INPUT si lo encuentra en alto, y el
   // NRSTPD del MFRC522 queda flotando. Con ruido en el cable el chip se
   // resetea o entra en power-down (MISO en 0xFF). Lo dejamos como salida
@@ -26,7 +26,7 @@ void rfid_reader::hold_reset_high() {
   digitalWrite(RFID_RST, HIGH);
 }
 
-void rfid_reader::begin() {
+void RFID::begin() {
   SPI.begin();
   hard_reset();
   mfrc522.PCD_Init();
@@ -51,23 +51,23 @@ void rfid_reader::begin() {
   }
 }
 
-bool rfid_reader::is_ready() {
+bool RFID::is_ready() {
   byte version = mfrc522.PCD_ReadRegister(MFRC522::VersionReg);
   return version == 0x91 || version == 0x92;
 }
 
-bool rfid_reader::antenna_on() {
+bool RFID::antenna_on() {
   return (mfrc522.PCD_ReadRegister(MFRC522::TxControlReg) & 0x03) == 0x03;
 }
 
-bool rfid_reader::healthy() {
+bool RFID::healthy() {
   // 0xFF en VersionReg/TxControlReg tiene los bits 0 y 1 en alto, asi
   // que hay que validar primero que el chip responde de verdad.
   if (!is_ready()) return false;
   return antenna_on();
 }
 
-void rfid_reader::log_status(const char *tag) {
+void RFID::log_status(const char *tag) {
   byte version = mfrc522.PCD_ReadRegister(MFRC522::VersionReg);
   byte tx_control = mfrc522.PCD_ReadRegister(MFRC522::TxControlReg);
   bool valid = (version == 0x91 || version == 0x92);
@@ -89,7 +89,7 @@ void rfid_reader::log_status(const char *tag) {
   }
 }
 
-void rfid_reader::recover() {
+void RFID::recover() {
   if (healthy()) return;
 
   if (is_ready()) {
@@ -127,7 +127,7 @@ void rfid_reader::recover() {
   log_status("recover after");
 }
 
-void rfid_reader::poll() {
+void RFID::poll() {
   card_present = false;
 
   if (!healthy()) {
@@ -152,20 +152,20 @@ void rfid_reader::poll() {
   mfrc522.PICC_HaltA();
 }
 
-bool rfid_reader::is_card_present() {
+bool RFID::is_card_present() {
   return card_present;
 }
 
-bool rfid_reader::is_master_set() {
+bool RFID::is_master_set() {
   return master_set;
 }
 
-bool rfid_reader::is_authorized() {
+bool RFID::is_authorized() {
   if (!master_set || !card_present) return false;
   return compare_uids(master_uid, current_uid);
 }
 
-void rfid_reader::set_master() {
+void RFID::set_master() {
   if (!card_present) return;
   memcpy(master_uid, current_uid, 4);
   master_set = true;
@@ -173,19 +173,19 @@ void rfid_reader::set_master() {
   Serial.println(uid_to_string(master_uid));
 }
 
-String rfid_reader::get_uid_string() {
+String RFID::get_uid_string() {
   if (!card_present) return "";
   return uid_to_string(current_uid);
 }
 
-bool rfid_reader::compare_uids(byte *uid1, byte *uid2) {
+bool RFID::compare_uids(byte *uid1, byte *uid2) {
   for (int i = 0; i < 4; i++) {
     if (uid1[i] != uid2[i]) return false;
   }
   return true;
 }
 
-String rfid_reader::uid_to_string(byte *uid) {
+String RFID::uid_to_string(byte *uid) {
   String result = "";
   for (int i = 0; i < 4; i++) {
     if (uid[i] < 0x10) result += "0";

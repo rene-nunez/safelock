@@ -14,7 +14,7 @@
 #define NUMPAD_ROW_4 32
 
 #define NUMPAD_COL_1 17
-#define NUMPAD_COL_2  4 // must be LOW at reset; no external pull-up
+#define NUMPAD_COL_2  4 // Must be LOW at reset; no external pull-up
 #define NUMPAD_COL_3 33
 
 // MicroSD (module v474 needs 3V3, and module AMS1117 5V)
@@ -25,7 +25,7 @@
 
 // SSD1306 OLED
 #define OLED_CS 13
-#define OLED_DC 14 // display RES goes straight to 3V3
+#define OLED_DC 14 // Display RES pin goes straight to 3V3
 
 // I2C: DS1307 RTC + PCF8574T Expander
 #define RTC_SDA 21
@@ -42,9 +42,9 @@
 #define BUZZER_PASSIVE 1
 
 // DRV8871 Lock Driver, IN2 tied to GND
-#define LOCK_IN1 12 // must be LOW at reset (selects the 3.3V flash voltage)
+#define LOCK_IN1 12 // Must be LOW at reset (selects the 3.3V flash voltage)
 
 // Lock State Switch (dry contact to GND)
-#define LOCK_SENSE_PIN 34 // input-only, external 10k pull-up required
+#define LOCK_SENSE_PIN 34 // Input-only, external 10k pull-up required
 #define LOCK_SENSE_ACTIVE_LOW 1
 #define LOCK_SENSE_DEBOUNCE_MS 50

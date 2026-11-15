@@ -2,7 +2,7 @@
 
 #include <Arduino.h>
 
-class status_indicators {
+class Indicators {
   private:
     uint8_t address = 0;
     uint8_t pcf_state = 0xFF;
@@ -24,7 +24,7 @@ class status_indicators {
     void buzzer_off();
 
   public:
-    status_indicators();
+    Indicators();
 
     bool begin();
     void show_locked();

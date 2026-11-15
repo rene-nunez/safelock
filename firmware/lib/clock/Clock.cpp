@@ -1,9 +1,9 @@
 #include "Clock.h"
 #include "pins.h"
 
-rtc_clock::rtc_clock() {}
+Clock::Clock() {}
 
-bool rtc_clock::begin() {
+bool Clock::begin() {
   Wire.begin(RTC_SDA, RTC_SCL);
 
   if (!rtc.begin()) {
@@ -22,7 +22,7 @@ bool rtc_clock::begin() {
   return true;
 }
 
-String rtc_clock::timestamp() {
+String Clock::timestamp() {
   if (!ready) return "";
 
   DateTime now = rtc.now();

@@ -4,7 +4,7 @@
 #include <SPI.h>
 #include <MFRC522.h>
 
-class rfid_reader {
+class RFID {
   private:
     MFRC522 mfrc522;
     byte master_uid[4];
@@ -22,7 +22,7 @@ class rfid_reader {
     void log_status(const char *tag);
 
   public:
-    rfid_reader();
+    RFID();
 
     void begin();
     void recover();

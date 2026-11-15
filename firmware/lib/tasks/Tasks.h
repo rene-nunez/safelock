@@ -24,17 +24,17 @@
 #define SD_RETRY_MS        1000
 #define SD_MAX_ATTEMPTS       10
 
-class millis_tasks {
+class Tasks {
   private:
     enum lock_state { WAIT_SD, ENTERING, SUCCESS, LOGGING, ERROR };
 
-    rfid_reader &rfid;
-    numpad_input &numpad;
-    oled_display &display;
-    rtc_clock &rtc;
-    sd_storage &storage;
-    solenoid_lock &lock;
-    status_indicators &indicators;
+    RFID &rfid;
+    Numpad &numpad;
+    Display &display;
+    Clock &clock;
+    Storage &storage;
+    Lock &lock;
+    Indicators &indicators;
 
     lock_state state = WAIT_SD;
     char entered_password[PASSWORD_LENGTH + 1] = "";
@@ -69,14 +69,14 @@ class millis_tasks {
     void finish_log_without_write();
 
   public:
-    millis_tasks(
-      rfid_reader &reader,
-      numpad_input &pad,
-      oled_display &screen,
-      rtc_clock &rtc_device,
-      sd_storage &sd,
-      solenoid_lock &lock_device,
-      status_indicators &indicators_device
+    Tasks(
+      RFID &reader,
+      Numpad &pad,
+      Display &screen,
+      Clock &clock_device,
+      Storage &sd,
+      Lock &lock_device,
+      Indicators &indicators_device
     );
     void run();
 };

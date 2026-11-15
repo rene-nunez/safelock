@@ -2,9 +2,9 @@
 #include "pins.h"
 #include "lock_config.h"
 
-solenoid_lock::solenoid_lock() {}
+Lock::Lock() {}
 
-bool solenoid_lock::read_sense_pin() {
+bool Lock::read_sense_pin() {
   bool level = digitalRead(LOCK_SENSE_PIN) == HIGH;
 
 #if LOCK_SENSE_ACTIVE_LOW
@@ -15,7 +15,7 @@ bool solenoid_lock::read_sense_pin() {
 #endif
 }
 
-void solenoid_lock::begin() {
+void Lock::begin() {
   pinMode(LOCK_IN1, OUTPUT);
   digitalWrite(LOCK_IN1, LOCK_ACTIVE_LEVEL == HIGH ? LOW : HIGH);
 
@@ -30,14 +30,14 @@ void solenoid_lock::begin() {
   Serial.println("Lock driver initialized");
 }
 
-void solenoid_lock::unlock() {
+void Lock::unlock() {
   digitalWrite(LOCK_IN1, LOCK_ACTIVE_LEVEL);
   active = true;
   activated_millis = millis();
   Serial.println("Lock energized");
 }
 
-void solenoid_lock::update() {
+void Lock::update() {
   unsigned long now = millis();
   bool raw = read_sense_pin();
 
@@ -58,15 +58,15 @@ void solenoid_lock::update() {
   Serial.println("Lock released");
 }
 
-bool solenoid_lock::is_active() {
+bool Lock::is_active() {
   return active;
 }
 
-bool solenoid_lock::is_closed() {
+bool Lock::is_closed() {
   return sense_stable;
 }
 
-bool solenoid_lock::sense_changed() {
+bool Lock::sense_changed() {
   bool changed = sense_event;
   sense_event = false;
   return changed;

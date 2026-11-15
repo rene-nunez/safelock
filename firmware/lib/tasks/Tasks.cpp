@@ -1,19 +1,19 @@
 #include "Tasks.h"
 
-millis_tasks::millis_tasks(
-  rfid_reader &reader,
-  numpad_input &pad,
-  oled_display &screen,
-  rtc_clock &rtc_device,
-  sd_storage &sd,
-  solenoid_lock &lock_device,
-  status_indicators &indicators_device
-) : rfid(reader), numpad(pad), display(screen), rtc(rtc_device), storage(sd), lock(lock_device), indicators(indicators_device) {
+Tasks::Tasks(
+  RFID &reader,
+  Numpad &pad,
+  Display &screen,
+  Clock &clock_device,
+  Storage &sd,
+  Lock &lock_device,
+  Indicators &indicators_device
+) : rfid(reader), numpad(pad), display(screen), clock(clock_device), storage(sd), lock(lock_device), indicators(indicators_device) {
   state_millis = millis();
   last_sd_attempt = state_millis;
 }
 
-void millis_tasks::run() {
+void Tasks::run() {
   current_millis = millis();
 
   run_storage_task();
@@ -24,7 +24,7 @@ void millis_tasks::run() {
   indicators.update();
 }
 
-void millis_tasks::run_storage_task() {
+void Tasks::run_storage_task() {
   if (state == WAIT_SD) {
     if (storage.is_ready()) return;
     if (sd_init_attempts >= SD_MAX_ATTEMPTS) return;
@@ -53,7 +53,7 @@ void millis_tasks::run_storage_task() {
   }
 }
 
-void millis_tasks::run_rfid_task() {
+void Tasks::run_rfid_task() {
   if ((current_millis - previous_rfid_millis) < RFID_POLL_INTERVAL) return;
 
   previous_rfid_millis = current_millis;
@@ -95,7 +95,7 @@ void millis_tasks::run_rfid_task() {
   }
 }
 
-void millis_tasks::run_numpad_task() {
+void Tasks::run_numpad_task() {
   if ((current_millis - previous_numpad_millis) < NUMPAD_POLL_INTERVAL) return;
 
   previous_numpad_millis = current_millis;
@@ -112,7 +112,7 @@ void millis_tasks::run_numpad_task() {
   add_digit(key);
 }
 
-void millis_tasks::run_lock_task() {
+void Tasks::run_lock_task() {
   bool was_active = lock.is_active();
   lock.update();
 
@@ -130,7 +130,7 @@ void millis_tasks::run_lock_task() {
   }
 }
 
-void millis_tasks::run_display_task() {
+void Tasks::run_display_task() {
   switch (state) {
     case WAIT_SD:
       if (!storage.is_ready() && sd_init_attempts < SD_MAX_ATTEMPTS) return;
@@ -185,7 +185,7 @@ void millis_tasks::run_display_task() {
   }
 }
 
-void millis_tasks::add_digit(char digit) {
+void Tasks::add_digit(char digit) {
   if (entered_digits >= PASSWORD_LENGTH) return;
 
   entered_password[entered_digits] = digit;
@@ -203,7 +203,7 @@ void millis_tasks::add_digit(char digit) {
   }
 }
 
-void millis_tasks::grant_access(const char *method) {
+void Tasks::grant_access(const char *method) {
   entered_digits = 0;
   entered_password[0] = '\0';
   display.show_success();
@@ -211,7 +211,7 @@ void millis_tasks::grant_access(const char *method) {
   indicators.show_unlocked();
   indicators.beep_ok();
 
-  String timestamp = rtc.timestamp();
+  String timestamp = clock.timestamp();
 
   if (timestamp.isEmpty()) {
     Serial.println("Access granted (RTC unavailable)");
@@ -238,7 +238,7 @@ void millis_tasks::grant_access(const char *method) {
   }
 }
 
-bool millis_tasks::try_log_access() {
+bool Tasks::try_log_access() {
   if (sd_log_attempts >= SD_MAX_ATTEMPTS) {
     finish_log_without_write();
     return true;
@@ -276,7 +276,7 @@ bool millis_tasks::try_log_access() {
   return false;
 }
 
-void millis_tasks::finish_log_without_write() {
+void Tasks::finish_log_without_write() {
   Serial.print("Access not logged: microSD unavailable after ");
   Serial.print(SD_MAX_ATTEMPTS);
   Serial.println(" attempts");
@@ -288,7 +288,7 @@ void millis_tasks::finish_log_without_write() {
   display.show_success();
 }
 
-void millis_tasks::deny_access() {
+void Tasks::deny_access() {
   current_millis = millis();
   state = ERROR;
   state_millis = current_millis;

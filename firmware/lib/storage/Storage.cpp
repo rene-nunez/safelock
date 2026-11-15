@@ -7,9 +7,9 @@
 
 #define SD_LOG_FILE "/accesos.json"
 
-sd_storage::sd_storage() {}
+Storage::Storage() {}
 
-bool sd_storage::begin() {
+bool Storage::begin() {
   if (ready) return true;
 
   // Deja el CS en alto y da tiempo a que el modulo estabilice su
@@ -63,18 +63,18 @@ bool sd_storage::begin() {
   return true;
 }
 
-bool sd_storage::is_ready() {
+bool Storage::is_ready() {
   return ready;
 }
 
-void sd_storage::reset() {
+void Storage::reset() {
   SD.end();
   pinMode(SD_CS, OUTPUT);
   digitalWrite(SD_CS, HIGH);
   ready = false;
 }
 
-bool sd_storage::log_access(const String &date, const String &time, const String &method) {
+bool Storage::log_access(const String &date, const String &time, const String &method) {
   if (!ready) return false;
 
   JsonDocument document;
@@ -118,7 +118,7 @@ bool sd_storage::log_access(const String &date, const String &time, const String
   return true;
 }
 
-bool sd_storage::create_log_file() {
+bool Storage::create_log_file() {
   File file = SD.open(SD_LOG_FILE, FILE_WRITE);
   if (!file) {
     Serial.println("Could not create access log");

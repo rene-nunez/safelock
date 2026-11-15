@@ -16,4 +16,4 @@
 
 ### Pinout
 
-Pins are defined in [`firmware/include/pins.h`](firmware/include/pins.h), including the pull-ups, strapping pins and input-only notes. The microSD, MFRC522 and OLED share SPI; the DS1307 and PCF8574T share I2C.
+Pins are defined in [`firmware/include/pins.h`](firmware/include/pins.h), including the pull-ups, reset-state constraints and input-only notes. The microSD, MFRC522 and OLED share SPI; the DS1307 and PCF8574T share I2C.

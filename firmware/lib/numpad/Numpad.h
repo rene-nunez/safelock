@@ -3,7 +3,7 @@
 #include <Arduino.h>
 #include <Keypad.h>
 
-class numpad_input {
+class Numpad {
   private:
     static const byte ROWS = 4;
     static const byte COLS = 3;
@@ -15,7 +15,7 @@ class numpad_input {
     Keypad keypad;
 
   public:
-    numpad_input();
+    Numpad();
 
     void begin();
     char read_key();

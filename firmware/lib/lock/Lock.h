@@ -2,7 +2,7 @@
 
 #include <Arduino.h>
 
-class solenoid_lock {
+class Lock {
   private:
     bool active = false;
     unsigned long activated_millis = 0;
@@ -15,7 +15,7 @@ class solenoid_lock {
     bool read_sense_pin();
 
   public:
-    solenoid_lock();
+    Lock();
 
     void begin();
     void unlock();

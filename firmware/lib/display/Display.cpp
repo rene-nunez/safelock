@@ -6,10 +6,10 @@
 // 1 MHz para tener mas margen con cables largos y ruido en el bus SPI.
 static const uint32_t OLED_SPI_HZ = 1000000;
 
-oled_display::oled_display()
+Display::Display()
   : display(SCREEN_WIDTH, SCREEN_HEIGHT, &SPI, OLED_DC, -1, OLED_CS, OLED_SPI_HZ) {}
 
-void oled_display::begin() {
+void Display::begin() {
   if (!display.begin(SSD1306_SWITCHCAPVCC)) {
     Serial.println("OLED initialization failed");
     return;
@@ -21,7 +21,7 @@ void oled_display::begin() {
   Serial.println("OLED initialized");
 }
 
-void oled_display::reinit() {
+void Display::reinit() {
   ready = false;
 
   // Deja que la alimentacion se estabilice si el acceso a la SD
@@ -39,7 +39,7 @@ void oled_display::reinit() {
   Serial.println("OLED reinitialized");
 }
 
-void oled_display::recover() {
+void Display::recover() {
   if (!ready) return;
 
   // Recupera solo el inicio de linea y vuelve a encender el panel.
@@ -58,7 +58,7 @@ void oled_display::recover() {
   SPI.endTransaction();
 }
 
-void oled_display::show_lock() {
+void Display::show_lock() {
   if (!ready) return;
 
   display.clearDisplay();
@@ -66,7 +66,7 @@ void oled_display::show_lock() {
   display.display();
 }
 
-void oled_display::show_entry(uint8_t digits) {
+void Display::show_entry(uint8_t digits) {
   if (!ready) return;
 
   display.clearDisplay();
@@ -91,7 +91,7 @@ void oled_display::show_entry(uint8_t digits) {
   display.display();
 }
 
-void oled_display::show_success() {
+void Display::show_success() {
   if (!ready) return;
 
   display.clearDisplay();
@@ -99,7 +99,7 @@ void oled_display::show_success() {
   display.display();
 }
 
-void oled_display::show_error() {
+void Display::show_error() {
   if (!ready) return;
 
   display.clearDisplay();
@@ -107,14 +107,14 @@ void oled_display::show_error() {
   display.display();
 }
 
-void oled_display::clear() {
+void Display::clear() {
   if (!ready) return;
 
   display.clearDisplay();
   display.display();
 }
 
-void oled_display::draw_lock_icon() {
+void Display::draw_lock_icon() {
   const int16_t center_x = SCREEN_WIDTH / 2;
   const int16_t body_top = 28;
   const int16_t body_width = 40;
@@ -131,14 +131,14 @@ void oled_display::draw_lock_icon() {
   display.fillRect(center_x - 2, body_top + 11, 4, 9, BLACK);
 }
 
-void oled_display::draw_check_icon() {
+void Display::draw_check_icon() {
   for (int8_t offset = -2; offset <= 2; offset++) {
     display.drawLine(44 + offset, 32, 56 + offset, 44, WHITE);
     display.drawLine(56 + offset, 44, 84 + offset, 18, WHITE);
   }
 }
 
-void oled_display::draw_cross_icon() {
+void Display::draw_cross_icon() {
   for (int8_t offset = -2; offset <= 2; offset++) {
     display.drawLine(46 + offset, 18, 82 + offset, 54, WHITE);
     display.drawLine(82 + offset, 18, 46 + offset, 54, WHITE);

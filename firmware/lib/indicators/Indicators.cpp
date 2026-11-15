@@ -3,9 +3,9 @@
 
 #include <Wire.h>
 
-status_indicators::status_indicators() {}
+Indicators::Indicators() {}
 
-uint8_t status_indicators::find_address() {
+uint8_t Indicators::find_address() {
   // PCF8574T: 0x20-0x27. PCF8574AT: 0x38-0x3F.
   for (uint8_t addr = 0x20; addr <= 0x27; addr++) {
     Wire.beginTransmission(addr);
@@ -20,7 +20,7 @@ uint8_t status_indicators::find_address() {
   return 0;
 }
 
-bool status_indicators::begin() {
+bool Indicators::begin() {
   // El RTC ya inicializa Wire, pero repetirlo permite usar este modulo
   // aunque el RTC no este presente.
   Wire.begin(RTC_SDA, RTC_SCL);
@@ -51,7 +51,7 @@ bool status_indicators::begin() {
   return ready;
 }
 
-void status_indicators::write_pcf() {
+void Indicators::write_pcf() {
   if (!ready) return;
 
   Wire.beginTransmission(address);
@@ -59,7 +59,7 @@ void status_indicators::write_pcf() {
   Wire.endTransmission();
 }
 
-void status_indicators::set_leds(bool red, bool green) {
+void Indicators::set_leds(bool red, bool green) {
   uint8_t next = pcf_state;
 
 #if PCF8574_LED_ACTIVE_LOW
@@ -94,19 +94,19 @@ void status_indicators::set_leds(bool red, bool green) {
   write_pcf();
 }
 
-void status_indicators::show_locked() {
+void Indicators::show_locked() {
   set_leds(true, false);
 }
 
-void status_indicators::show_unlocked() {
+void Indicators::show_unlocked() {
   set_leds(false, true);
 }
 
-void status_indicators::show_denied() {
+void Indicators::show_denied() {
   set_leds(true, false);
 }
 
-void status_indicators::buzzer_on() {
+void Indicators::buzzer_on() {
 #if BUZZER_PASSIVE
   ledcWriteTone(BUZZER_LEDC_CHANNEL, beep_freq);
   ledcWrite(BUZZER_LEDC_CHANNEL, 512);
@@ -115,7 +115,7 @@ void status_indicators::buzzer_on() {
 #endif
 }
 
-void status_indicators::buzzer_off() {
+void Indicators::buzzer_off() {
 #if BUZZER_PASSIVE
   ledcWrite(BUZZER_LEDC_CHANNEL, 0);
 #else
@@ -123,7 +123,7 @@ void status_indicators::buzzer_off() {
 #endif
 }
 
-void status_indicators::start_beep(
+void Indicators::start_beep(
   uint16_t freq,
   uint16_t on_ms,
   uint16_t off_ms,
@@ -142,15 +142,15 @@ void status_indicators::start_beep(
   beep_phase_end = millis() + on_ms;
 }
 
-void status_indicators::beep_ok() {
+void Indicators::beep_ok() {
   start_beep(2000, 80, 0, 1);
 }
 
-void status_indicators::beep_error() {
+void Indicators::beep_error() {
   start_beep(800, 120, 80, 2);
 }
 
-void status_indicators::update() {
+void Indicators::update() {
   if (!beep_active) return;
 
   unsigned long now = millis();

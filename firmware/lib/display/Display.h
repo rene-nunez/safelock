@@ -7,7 +7,7 @@
 #define SCREEN_WIDTH  128
 #define SCREEN_HEIGHT  64
 
-class oled_display {
+class Display {
   private:
     Adafruit_SSD1306 display;
     bool ready = false;
@@ -17,7 +17,7 @@ class oled_display {
     void draw_cross_icon();
 
   public:
-    oled_display();
+    Display();
 
     void begin();
     void reinit();

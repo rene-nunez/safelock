@@ -3,13 +3,13 @@
 #include <Arduino.h>
 #include <RTClib.h>
 
-class rtc_clock {
+class Clock {
   private:
     RTC_DS1307 rtc;
     bool ready = false;
 
   public:
-    rtc_clock();
+    Clock();
 
     bool begin();
     String timestamp();

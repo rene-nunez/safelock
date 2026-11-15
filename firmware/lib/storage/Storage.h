@@ -2,14 +2,14 @@
 
 #include <Arduino.h>
 
-class sd_storage {
+class Storage {
   private:
     bool ready = false;
 
     bool create_log_file();
 
   public:
-    sd_storage();
+    Storage();
 
     bool begin();
     void reset();
