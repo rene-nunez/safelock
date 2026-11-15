@@ -32,15 +32,12 @@
 #define RTC_SDA 21
 #define RTC_SCL 22
 
-// PCF8574T status LEDs, active low
-#define PCF8574_RED_BIT 0
+// PCF8574T status LEDs
+#define PCF8574_RED_BIT   0
 #define PCF8574_GREEN_BIT 1
-#define PCF8574_LED_ACTIVE_LOW 1
 
 // Passive buzzer driven by LEDC
 #define BUZZER_PIN 15 // 10k pull-down on the transistor base
-#define BUZZER_LEDC_CHANNEL 0
-#define BUZZER_PASSIVE 1
 
 // DRV8871 lock driver
 // Pin IN2 tied to GND
@@ -48,5 +45,3 @@
 
 // Lock state switch (dry contact to GND)
 #define LOCK_SENSE_PIN 34 // Input-only, external 10k pull-up required
-#define LOCK_SENSE_ACTIVE_LOW 1
-#define LOCK_SENSE_DEBOUNCE_MS 50

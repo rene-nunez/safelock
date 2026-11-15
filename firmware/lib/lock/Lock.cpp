@@ -1,6 +1,6 @@
 #include "Lock.h"
 #include "pins.h"
-#include "lock_config.h"
+#include "config.h"
 
 bool Lock::read_sense_pin() const {
   bool level = digitalRead(LOCK_SENSE_PIN) == HIGH;

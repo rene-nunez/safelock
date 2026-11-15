@@ -1,5 +1,6 @@
 #include "Indicators.h"
 #include "pins.h"
+#include "config.h"
 
 #include <Wire.h>
 

@@ -8,7 +8,7 @@ SafeLock: sistema embebido de control de acceso por RFID (MFRC522) + teclado num
 
 Hardware: ESP32 dev board, MFRC522 por SPI, teclado 4x3, SSD1306 por SPI, DS1307 por I2C. **Falta el actuador**: relé, sensor de puerta y pulsador de salida. El diseño usa cerradura *fail-secure* con retención, UPS en el controlador y llave mecánica.
 
-- `firmware/` es PlatformIO (`src/`, `lib/`, `include/`, `platformio.ini`) y compila con `pio run -d firmware`. Clases en PascalCase con el nombre exacto de su header, `Device` como fachada de arranque y lector RFID que solo identifica (UID de 4–10 bytes); la allowlist temporal vive en `include/lock_config.h`.
+- `firmware/` es PlatformIO (`src/`, `lib/`, `include/`, `platformio.ini`) y compila con `pio run -d firmware`. Clases en PascalCase con el nombre exacto de su header, `Device` como fachada de arranque y lector RFID que solo identifica (UID de 4–10 bytes); la allowlist temporal vive en `include/config.h`.
 - `backend/` y `frontend/` existen pero están vacíos. No hay `Makefile` todavía: los comandos viven en este documento.
 - Mosquitto nativo en dev y MongoDB Atlas.
 
@@ -115,7 +115,7 @@ Pendientes, en este orden:
 
 1. `net` — WiFi con reconexión + **SNTP** (TLS necesita reloj correcto; se siembra del DS1307).
 2. `mqtt_client` — `WiFiClientSecure` con **CA fijada**, `setBufferSize(8192)`, LWT, backoff con jitter. Prohibido `setInsecure()`.
-3. `config` — credenciales en NVS (`Preferences`), provisión por SoftAP o serie.
+3. `settings` — credenciales en NVS (`Preferences`), provisión por SoftAP o serie.
 4. `outbox` — cola persistente en LittleFS, replay al reconectar, `seq` monotónico.
 5. `acl` — lista blanca + versión, cargada desde un snapshot completo con commit atómico en LittleFS.
 6. `lock` — relé, sensor de puerta, pulsador, watchdog, tope de 5 s de apertura.
@@ -146,6 +146,7 @@ Variables de entorno del backend: `MQTT_URL`, `MQTT_TLS`, `MQTT_CA_PATH`, `MQTT_
 - Commits convencionales (`feat:`, `fix:`, `chore:`, `docs:`) en inglés. Mensajes al usuario: español.
 - Código e identificadores en inglés; comentarios solo donde el "por qué" no es obvio.
 - Clases en PascalCase y con el nombre exacto de su header (`Display` en `Display.h`, `RFID` en `RFID.h`); variables, parámetros y métodos en `snake_case`.
+- `include/pins.h` solo lleva numeración de GPIO y bits del expansor con notas de cableado; polaridades, tiempos y política van en `include/config.h`. El futuro módulo de NVS será `Settings` (`lib/settings/Settings.h`), nunca `config/Config.h`.
 - Nombres: `device_id` tipo `sl-0001`; UID de tarjeta `AA:BB:CC:DD` en mayúsculas con `:`.
 - **Nunca** commitear secretos, `.env`, certificados privados ni `credentials.md`.
 - **Nunca** loggear payloads MQTT (contienen PIN y UIDs). Loggear `id`, `device_id`, tipo y decisión.

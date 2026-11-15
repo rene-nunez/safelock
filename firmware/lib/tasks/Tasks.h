@@ -8,7 +8,7 @@
 #include "Storage.h"
 #include "Lock.h"
 #include "Indicators.h"
-#include "lock_config.h"
+#include "config.h"
 
 #define RFID_POLL_INTERVAL 200
 #define NUMPAD_POLL_INTERVAL 20

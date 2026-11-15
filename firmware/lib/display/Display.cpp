@@ -1,6 +1,6 @@
 #include "Display.h"
 #include "pins.h"
-#include "lock_config.h"
+#include "config.h"
 
 #include <SPI.h>
 
