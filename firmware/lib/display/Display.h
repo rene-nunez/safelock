@@ -20,7 +20,6 @@ class Display {
     Display();
 
     void begin();
-    void reinit();
     void recover();
     void show_lock();
     void show_entry(uint8_t digits);

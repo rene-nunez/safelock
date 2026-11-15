@@ -1,61 +1,40 @@
 #include "Display.h"
 #include "pins.h"
 #include "lock_config.h"
+
 #include <SPI.h>
 
-// 1 MHz para tener mas margen con cables largos y ruido en el bus SPI.
+// 1 MHz keeps margin with long wires and a noisy SPI bus
 static const uint32_t OLED_SPI_HZ = 1000000;
 
-Display::Display()
-  : display(SCREEN_WIDTH, SCREEN_HEIGHT, &SPI, OLED_DC, -1, OLED_CS, OLED_SPI_HZ) {}
+Display::Display() : display(SCREEN_WIDTH, SCREEN_HEIGHT, &SPI, OLED_DC, -1, OLED_CS, OLED_SPI_HZ) {}
 
 void Display::begin() {
-  if (!display.begin(SSD1306_SWITCHCAPVCC)) {
-    Serial.println("OLED initialization failed");
-    return;
-  }
-
-  ready = true;
-  display.clearDisplay();
-  display.display();
-  Serial.println("OLED initialized");
-}
-
-void Display::reinit() {
   ready = false;
 
-  // Deja que la alimentacion se estabilice si el acceso a la SD
-  // provoco una caida de tension.
+  // Let the 3V3 rail settle after a microSD burst
   delay(100);
 
   if (!display.begin(SSD1306_SWITCHCAPVCC)) {
-    Serial.println("OLED reinitialization failed");
+    Serial.println("Display begin: failed");
     return;
   }
 
   ready = true;
   display.clearDisplay();
   display.display();
-  Serial.println("OLED reinitialized");
+  Serial.println("Display begin: ok");
 }
 
 void Display::recover() {
   if (!ready) return;
 
-  // Recupera solo el inicio de linea y vuelve a encender el panel.
-  // No reconfigura multiplexado ni pines COM, para no corromper la
-  // imagen si el OLED ya estaba funcionando.
-  SPI.beginTransaction(SPISettings(OLED_SPI_HZ, MSBFIRST, SPI_MODE0));
-  digitalWrite(OLED_CS, LOW);
-  digitalWrite(OLED_DC, LOW);
-
-  SPI.transfer(0x8D);  // charge pump
-  SPI.transfer(0x14);  // enable
-  SPI.transfer(0x40);  // start line 0
-  SPI.transfer(0xAF);  // display on
-
-  digitalWrite(OLED_CS, HIGH);
-  SPI.endTransaction();
+  // Wake the panel without reconfiguring multiplexing or COM pins, so a
+  // frame that is already correct is not corrupted
+  display.ssd1306_command(SSD1306_CHARGEPUMP);
+  display.ssd1306_command(0x14);  // charge pump enable
+  display.ssd1306_command(SSD1306_SETSTARTLINE);
+  display.ssd1306_command(SSD1306_DISPLAYON);
 }
 
 void Display::show_lock() {
