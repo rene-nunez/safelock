@@ -27,7 +27,6 @@ class Indicators {
     bool begin();
     void show_locked();
     void show_unlocked();
-    void show_denied();
     void beep_ok();
     void beep_error();
     void update();

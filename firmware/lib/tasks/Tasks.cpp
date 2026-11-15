@@ -293,7 +293,7 @@ void Tasks::deny_access() {
   state_millis = current_millis;
   last_blink_millis = current_millis;
   error_icon_visible = true;
-  indicators.show_denied();
+  indicators.show_locked();
   indicators.beep_error();
   display.show_error();
 }

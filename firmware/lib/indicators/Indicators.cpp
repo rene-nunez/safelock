@@ -4,12 +4,13 @@
 #include <Wire.h>
 
 uint8_t Indicators::find_address() {
-  // PCF8574T: 0x20-0x27. PCF8574AT: 0x38-0x3F.
+  // PCF8574T
   for (uint8_t addr = 0x20; addr <= 0x27; addr++) {
     Wire.beginTransmission(addr);
     if (Wire.endTransmission() == 0) return addr;
   }
 
+  // PCF8574AT
   for (uint8_t addr = 0x38; addr <= 0x3F; addr++) {
     Wire.beginTransmission(addr);
     if (Wire.endTransmission() == 0) return addr;
@@ -19,8 +20,7 @@ uint8_t Indicators::find_address() {
 }
 
 bool Indicators::begin() {
-  // The RTC already brings up Wire, but doing it here lets this module work
-  // even when the RTC is missing
+  // The RTC already brings up Wire, but doing it here lets this module work even when the RTC is missing
   Wire.begin(RTC_SDA, RTC_SCL);
 
   address = find_address();
@@ -85,10 +85,6 @@ void Indicators::show_unlocked() {
   set_leds(false, true);
 }
 
-void Indicators::show_denied() {
-  set_leds(true, false);
-}
-
 void Indicators::buzzer_on() {
 #if BUZZER_PASSIVE
   ledcWriteTone(BUZZER_LEDC_CHANNEL, beep_freq);
@@ -106,12 +102,7 @@ void Indicators::buzzer_off() {
 #endif
 }
 
-void Indicators::start_beep(
-  uint16_t freq,
-  uint16_t on_ms,
-  uint16_t off_ms,
-  uint8_t repeats
-) {
+void Indicators::start_beep(uint16_t freq, uint16_t on_ms, uint16_t off_ms, uint8_t repeats) {
   if (repeats == 0) return;
 
   beep_freq = freq;
