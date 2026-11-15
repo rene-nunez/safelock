@@ -29,14 +29,16 @@ bool Indicators::begin() {
 
   if (address == 0) {
     ready = false;
-    Serial.println("PCF8574 not found");
+    Serial.println("Indicators begin: failed (PCF8574 not found)");
   } else {
     ready = true;
     pcf_state = 0xFF;
     write_pcf();
 
-    Serial.print("PCF8574 initialized at 0x");
-    Serial.println(address, HEX);
+    Serial.printf(
+      "Indicators begin: ok (0x%02X)\n",
+      static_cast<unsigned>(address)
+    );
   }
 
 #if BUZZER_PASSIVE

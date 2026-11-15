@@ -25,16 +25,16 @@ void Lock::begin() {
   sense_raw = sense_stable;
   sense_millis = millis();
 
+  Serial.println("Lock begin: ok");
   Serial.print("Lock sensor: ");
   Serial.println(sense_stable ? "closed" : "open");
-  Serial.println("Lock driver initialized");
 }
 
 void Lock::unlock() {
   digitalWrite(LOCK_IN1, LOCK_ACTIVE_LEVEL);
   active = true;
   activated_millis = millis();
-  Serial.println("Lock energized");
+  Serial.println("Lock unlock: energized");
 }
 
 void Lock::update() {
@@ -55,7 +55,7 @@ void Lock::update() {
 
   digitalWrite(LOCK_IN1, LOCK_ACTIVE_LEVEL == HIGH ? LOW : HIGH);
   active = false;
-  Serial.println("Lock released");
+  Serial.println("Lock unlock: released");
 }
 
 bool Lock::is_active() {
