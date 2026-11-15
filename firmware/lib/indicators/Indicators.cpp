@@ -21,8 +21,8 @@ uint8_t Indicators::find_address() {
 }
 
 bool Indicators::begin() {
-  // El RTC ya inicializa Wire, pero repetirlo permite usar este modulo
-  // aunque el RTC no este presente.
+  // The RTC already brings up Wire, but doing it here lets this module work
+  // even when the RTC is missing
   Wire.begin(RTC_SDA, RTC_SCL);
 
   address = find_address();
@@ -62,32 +62,15 @@ void Indicators::write_pcf() {
 }
 
 void Indicators::set_leds(bool red, bool green) {
-  uint8_t next = pcf_state;
+  const uint8_t mask = (1 << PCF8574_RED_BIT) | (1 << PCF8574_GREEN_BIT);
+  uint8_t next = pcf_state & ~mask;
 
+  if (red) next |= 1 << PCF8574_RED_BIT;
+  if (green) next |= 1 << PCF8574_GREEN_BIT;
+
+  // The expander sinks current, so a LED turns on with a LOW pin
 #if PCF8574_LED_ACTIVE_LOW
-  if (red) {
-    next &= ~(1 << PCF8574_RED_BIT);
-  } else {
-    next |= (1 << PCF8574_RED_BIT);
-  }
-
-  if (green) {
-    next &= ~(1 << PCF8574_GREEN_BIT);
-  } else {
-    next |= (1 << PCF8574_GREEN_BIT);
-  }
-#else
-  if (red) {
-    next |= (1 << PCF8574_RED_BIT);
-  } else {
-    next &= ~(1 << PCF8574_RED_BIT);
-  }
-
-  if (green) {
-    next |= (1 << PCF8574_GREEN_BIT);
-  } else {
-    next &= ~(1 << PCF8574_GREEN_BIT);
-  }
+  next ^= mask;
 #endif
 
   if (next == pcf_state) return;
@@ -158,21 +141,15 @@ void Indicators::update() {
   unsigned long now = millis();
   if ((int32_t)(now - beep_phase_end) < 0) return;
 
+  beep_on = !beep_on;
+
   if (beep_on) {
-    buzzer_off();
-    beep_on = false;
-    beep_remaining--;
-
-    if (beep_remaining == 0) {
-      beep_active = false;
-      return;
-    }
-
-    beep_phase_end = now + beep_off_ms;
+    buzzer_on();
+    beep_phase_end = now + beep_on_ms;
     return;
   }
 
-  buzzer_on();
-  beep_on = true;
-  beep_phase_end = now + beep_on_ms;
+  buzzer_off();
+  if (--beep_remaining == 0) beep_active = false;
+  beep_phase_end = now + beep_off_ms;
 }
