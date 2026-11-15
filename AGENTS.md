@@ -2,21 +2,15 @@
 
 Memoria del proyecto para agentes. Si algo de este documento contradice una suposición tuya, gana este documento. Si hay que cambiar una decisión de aquí, se cambia aquí en el mismo commit.
 
-## Proyecto
+## Proyecto y estado
 
 SafeLock: sistema embebido de control de acceso por RFID (MFRC522) + teclado numérico + OLED + RTC, con backend FastAPI, frontend React y MongoDB Atlas. Monorepo.
 
-Hardware actual: ESP32 dev board, MFRC522 por SPI, teclado 4x3, SSD1306 por SPI, DS1307 por I2C. **Falta el actuador**: no hay relé, sensor de puerta ni pulsador de salida todavía.
+Hardware: ESP32 dev board, MFRC522 por SPI, teclado 4x3, SSD1306 por SPI, DS1307 por I2C. **Falta el actuador**: relé, sensor de puerta y pulsador de salida. El diseño usa cerradura *fail-secure* con retención, UPS en el controlador y llave mecánica.
 
-## Estado del repo (actualizar al cerrar cada fase)
-
-- Firmware PlatformIO en `firmware/` (`src/`, `lib/`, `include/`, `platformio.ini`). Compila con `pio run -d firmware`. `firmware/.vscode/` solo conserva `extensions.json`; `c_cpp_properties.json` y `launch.json` los regenera la extensión PlatformIO.
-- `backend/` y `frontend/` existen pero están vacíos.
-- No hay `Makefile` todavía: los comandos viven en este documento. Se creará cuando aparezcan scripts que repetir en CI y en local.
-- Memoria de agentes: `AGENTS.md`, versionado y compartido con el equipo.
-- `.editorconfig` con base global de 2 espacios y solo las excepciones: Python 4 (línea 88), JS/TS línea 100, Makefile con tab, Markdown sin trim.
-- `credentials.md` eliminado y usuario de Atlas rotado. **Nunca** volver a commitear credenciales.
-- Sin Docker. Mosquitto y MongoDB se usan nativos/Atlas.
+- `firmware/` es PlatformIO (`src/`, `lib/`, `include/`, `platformio.ini`) y compila con `pio run -d firmware`. Clases en PascalCase con el nombre exacto de su header, `Device` como fachada de arranque y lector RFID que solo identifica (UID de 4–10 bytes); la allowlist temporal vive en `include/lock_config.h`.
+- `backend/` y `frontend/` existen pero están vacíos. No hay `Makefile` todavía: los comandos viven en este documento.
+- Mosquitto nativo en dev y MongoDB Atlas.
 
 ## Decisiones de arquitectura (cerradas)
 
@@ -24,16 +18,10 @@ Hardware actual: ESP32 dev board, MFRC522 por SPI, teclado 4x3, SSD1306 por SPI,
 |---|---|
 | Topología | Un solo sitio, N dispositivos, 1 puerta por dispositivo, estado por dispositivo. `site` como documento embebido, no multi-tenant |
 | Decisión de acceso | **Local-first**. La ACL en caché del dispositivo decide las tarjetas. El backend es plano de control, nunca está en la ruta crítica del desbloqueo |
-| PIN | Verificado **solo en el backend**, sobre TLS. Nunca se cachea ni se compara localmente. ≥6 dígitos |
-| Offline | Tarjetas en caché permitidas. PIN denegado. `stale_acl_hours` por puerta (72 h). `offline_policy: allow \| deny` por puerta |
-| Enrolamiento | *Claim code* desde OLED/serie → el admin lo ingresa en la web. **Prohibido** "primera tarjeta = master" |
-| Broker | EMQX Serverless, MQTT 3.1.1, TLS 8883, ACL en modo lista blanca con `${username}` |
-| Comandos | Nunca confiar en la cola del broker (expira a las 2 h). Comandos pendientes en Mongo, se empujan al reconectar |
-| Base de datos | Atlas M0. `pymongo.AsyncMongoClient` (Motor está deprecado). Repos planos + Pydantic, sin ODM |
-| App web | Solo administración. Roles `admin` (enrolar/revocar) y `operator` (ver/abrir remoto). Sin autorregistro |
-| Tiempo real | WebSocket `/ws/events` alimentado por el consumidor MQTT. **Un solo worker de uvicorn** |
-| Energía | Actuador de retención (latching), cerradura *fail-secure*, UPS en el controlador, pulsador de salida y llave mecánica |
-| Infra | Sin Docker: Mosquitto nativo en dev, Atlas para Mongo |
+| Credenciales | El UID identifica; el PIN es un segundo factor opcional del portador |
+| PIN | Verificado **solo en el backend**, sobre TLS. ≥6 dígitos |
+| Offline | Tarjetas en caché permitidas. PIN denegado. `stale_acl_hours` por dispositivo (72 h). `offline_policy: allow \| deny` |
+| Enrolamiento | *Claim code* desde OLED/serie → el admin lo ingresa en la web |
 
 ## Modelo de acceso
 
@@ -41,75 +29,62 @@ La variable relevante no es "hay internet" sino **"¿el dispositivo puede hablar
 
 | Escenario | RFID | PIN |
 |---|---|---|
-| Backend alcanzable | Abre (decide el dispositivo, 50–100 ms) y luego audita | Abre si el backend valida (200–400 ms) |
-| Backend no alcanzable | Abre con ACL en caché dentro de `stale_acl_hours`; evento al outbox | Deniega: "sin conexión, use su tarjeta" |
+| Backend alcanzable | Abre en 50–100 ms con la ACL local y luego audita | Abre si el backend valida (200–400 ms) |
+| Backend no alcanzable | Según `offline_policy` y `stale_acl_hours`; evento al outbox | Deniega: "sin conexión, use su tarjeta" |
 
-Reparto de autoridad:
-
-| Quién decide | Qué |
-|---|---|
-| Dispositivo (siempre) | ¿Tarjeta en ACL local, activa, vigente según RTC, no bloqueada? |
-| Backend | ¿PIN correcto? ¿Credencial existe/revocada? ¿Apertura remota autorizada? |
-| Nadie offline | Enrolar, revocar, cambiar PIN, horarios, OTA |
-
-Reglas derivadas:
-
-- Toda persona debe tener al menos una credencial `card` activa. El PIN es complemento opcional. Se valida en el esquema.
-- `requires_pin: true` por puerta = tarjeta + PIN (2FA), solo con conexión. v1 en `false`.
-- Tarjeta desconocida → se deniega localmente **pero se publica** (`decision: "unknown"`) para que quede en la auditoría.
-- Salud del backend en el dispositivo = timeout de `ack` (3 s) + `hb`. Estar conectado al broker no implica que el backend esté vivo.
-- Reloj inválido (pila del DS1307 muerta) → no evaluar vigencias, no intentar TLS, alerta crítica en el siguiente `hb`.
+- **Decide el dispositivo** la tarjeta (en ACL, activa, vigente según RTC). **Decide el backend** el PIN, la revocación y la apertura remota. Offline no se enrola, revoca ni cambia PIN.
+- Cada portador necesita al menos una tarjeta activa; el PIN es opcional. `requires_pin` es por dispositivo (v1 `false`).
+- Tarjeta desconocida: se deniega localmente **pero se publica** (`decision: "unknown"`) para la auditoría.
+- Salud del backend = timeout de `ack` (3 s) + `hb`. Estar conectado al broker no implica que el backend esté vivo.
+- RTC inválido (pila del DS1307 muerta) → no evaluar vigencias, no intentar TLS, alerta crítica en el siguiente `hb`.
 
 ## Contrato MQTT (`docs/protocol.md` es la fuente de verdad)
 
-MQTT **3.1.1** (PubSubClient no soporta 5), QoS 1, TLS 8883, `state` retenido + LWT. **Usuario MQTT == `device_id`** (lo exige la plantilla ACL de EMQX).
+MQTT **3.1.1** (PubSubClient no soporta 5), QoS 1, TLS 8883, `state` retenido + LWT. **Usuario MQTT == `device_id`** (lo exige la plantilla ACL de EMQX). La autenticación del dispositivo es su credencial MQTT sobre TLS; no hay sobre firmado.
 
 | Topic | Dirección | Contenido |
 |---|---|---|
 | `safelock/v1/dev/{id}/evt/scan` | dev→be | UID + origen |
-| `safelock/v1/dev/{id}/evt/pin` | dev→be | `pin_proof` |
+| `safelock/v1/dev/{id}/evt/pin` | dev→be | PIN (dentro de TLS) |
 | `safelock/v1/dev/{id}/evt/decision` | dev→be | decisión local aplicada |
-| `safelock/v1/dev/{id}/state` | dev→be | retenido: online, fw, `acl_version`, cerradura |
+| `safelock/v1/dev/{id}/state` | dev→be | retenido: fw, `acl_version`, cerradura |
 | `safelock/v1/dev/{id}/hb` | dev→be | heartbeat 30–60 s |
 | `safelock/v1/dev/{id}/cmd/unlock` | be→dev | `request_id`, `duration_ms`, `expires_at` |
-| `safelock/v1/dev/{id}/cmd/sync` | be→dev | snapshot de ACL fragmentado |
+| `safelock/v1/dev/{id}/cmd/sync` | be→dev | snapshot **completo** de ACL |
 | `safelock/v1/dev/{id}/ack` | dev→be | `request_id` + resultado |
 
 Sobre de mensaje, idéntico en todos los topics:
 
 ```json
-{ "v":1, "id":"<uuid4>", "ts":1761..., "device_id":"sl-0001",
-  "nonce":"<aleatorio>", "data":{...}, "sig":"<hmac-sha256 hex>" }
+{ "v":1, "id":"<uuid4>", "ts":1761..., "device_id":"sl-0001", "data":{...} }
 ```
 
-Validación en el backend: HMAC inválido → descartar; `|ahora - ts| > 120 s` → descartar; `id` duplicado → descartar (índice único + TTL). El `device_secret` se guarda **cifrado y reversible** (`secret_enc`, AES-GCM/Fernet con clave de entorno), porque verificar el HMAC requiere la clave. No existe `secret_hash`.
+Validación: `id` duplicado → descartar (índice único + TTL). `ts` es la hora del evento; si el RTC no es válido se usa la hora de recepción y se marca `degraded`. **No hay `sig`, `nonce` ni ventana temporal**: TLS + credenciales del broker + ACL de topics ya dan confidencialidad, integridad y autenticación.
 
-PIN: el dispositivo envía `pin_proof = HMAC-SHA256(device_secret, "pin:" + pin)`, nunca el PIN en claro. El backend guarda `Argon2id(pin_proof)` y aplica rate limit por credencial y por dispositivo. El prefijo `"pin:"` separa dominios.
+PIN: `evt/pin` lleva el PIN dentro de TLS, igual que un formulario HTTPS. El backend guarda `Argon2id(pin)` y aplica rate limit por portador y por dispositivo, con bloqueo temporal tras 5 fallos.
 
-Sync de ACL: snapshot versionado con forma de delta desde el día uno.
+Sync de ACL: snapshot **completo**, sin partes ni hash.
 
 ```json
-{ "mode":"full", "acl_version":42, "acl_hash":"sha256:…",
-  "part":1, "parts":3, "entries":[…] }
+{ "mode":"full", "acl_version":42, "entries":[…] }
 ```
 
-- Mensajes ≤ 4 KB (~60 entradas) por el buffer de PubSubClient.
-- Commit **atómico** en el dispositivo: partes a archivo temporal en LittleFS, verificar `acl_hash`, luego renombrar y fijar `acl_version`. Nunca aplicar ACL parcial.
-- `mode: "delta"` reservado, no implementado en v1. La colección `credential_revocations` (tombstones) existe desde ya.
+- Un solo mensaje (≈ 8 KB de buffer en PubSubClient). Si algún día no alcanza, se pagina `entries`; no hay `parts` ni `acl_hash`.
+- Commit **atómico** en el dispositivo: escribir a archivo temporal en LittleFS y renombrar. Nunca aplicar ACL parcial.
+- Sin tombstones: el snapshot completo es la verdad; un UID que no aparece está revocado.
 - Backend limita a ~10 mensajes/s por dispositivo (límite de EMQX Serverless).
 
-Comandos: se crean en Mongo con `expires_at` (30 s). Si el dispositivo está offline, se reintentan en el siguiente `hb` solo si no expiraron; si expiran, `failed`. La UI muestra el estado real, nunca éxito optimista.
+Comandos: se publican solo si el dispositivo está online (`last_seen` < 90 s). Llevan `expires_at` (30 s); si no llega `ack`, la UI lo marca como fallido. Sin cola en Mongo ni reintentos al reconectar.
 
 ## Modelo de datos (MongoDB)
 
 | Colección | Campos clave | Índices |
 |---|---|---|
-| `devices` | `device_id`, `secret_enc`, `door_id`, `site`, `fw`, `online`, `acl_version`, `last_sync_at`, `offline_policy`, `stale_acl_hours`, `min_acl_version`, `claim_code`, `pending_commands` | `device_id` unique, `claim_code` |
-| `doors` | `name`, `device_id`, `unlock_ms`, `schedule_id`, `requires_pin` | `device_id` |
-| `cardholders` | `name`, `email`, `unit`, `status` | `email` |
-| `credentials` | `holder_id`, `type` (`card`/`pin`), `uid` o `pin_hash`, `status`, `valid_from/to`, `revoked_at`, `essential` | `uid` unique parcial, `holder_id` |
-| `credential_revocations` | `uid`, `revoked_at`, `acl_version` | `uid` |
-| `access_events` | `device_id`, `ts`, `credential_id`, `decision`, `reason`, `source`, `request_id`, `mqtt_id`, `degraded`, `acl_age_s` | `(device_id, ts)`, TTL 2 años, `mqtt_id` unique |
+| `devices` | `device_id`, `name`, `site`, `fw`, `last_seen`, `acl_version`, `last_sync_at`, `offline_policy`, `stale_acl_hours`, `unlock_ms`, `requires_pin`, `schedule_id`, `claim_code` | `device_id` unique, `claim_code` |
+| `cardholders` | `name`, `email`, `unit`, `status`, `pin_hash` (Argon2id, opcional), `pin_fails`, `pin_locked_until` | `email` |
+| `credentials` | `holder_id`, `uid`, `status`, `valid_from/to`, `revoked_at` | `uid` unique, `holder_id` |
+| `enrollments` | `device_id`, `requested_by`, `created_at` | TTL 60 s |
+| `access_events` | `device_id`, `ts`, `uid`, `credential_id?`, `decision`, `reason`, `source`, `request_id`, `mqtt_id`, `degraded`, `acl_age_s` | `(device_id, ts)`, TTL 2 años, `mqtt_id` unique |
 | `audit_logs` | `actor_id`, `action`, `target`, `before/after`, `ip`, `ts` | `ts` |
 | `schedules` | `name`, `windows[]`, `tz` | — |
 | `users` | `email`, `password_hash` (Argon2id), `role`, `active`, `last_login_at` | `email` unique |
@@ -118,22 +93,13 @@ Bases: `safelock_dev`, `safelock_test_<uuid>` (se crea y borra por corrida de te
 
 ## Backend
 
-FastAPI + Pydantic v2 + `aiomqtt` (consumidor en el `lifespan`) + `pymongo.AsyncMongoClient`. `ruff` + `mypy` + `pytest-asyncio` + `httpx.AsyncClient`.
+FastAPI + Pydantic v2 + `aiomqtt` (consumidor en el `lifespan`) + `pymongo.AsyncMongoClient` (Atlas M0; Motor está deprecado). Repos planos + Pydantic, sin ODM. `ruff` + `mypy` + `pytest-asyncio` + `httpx.AsyncClient`.
 
-```
-backend/app/
-├── main.py            # app + lifespan (Mongo, tarea MQTT, bus de eventos)
-├── core/              # settings, security (JWT/Argon2id), logging, deps
-├── api/v1/            # auth users cardholders credentials devices doors events enrollments schedules ws health
-├── schemas/           # Pydantic: request/response + sobre MQTT
-├── db/                # cliente, índices, repositorios
-├── services/          # access_decision, mqtt_gateway, acl_sync, audit, provisioning, realtime
-└── workers/           # consumidor MQTT, detector de offline, retención
-```
+`backend/app/`: `main.py`, `core/`, `api/v1/`, `schemas/`, `db/` y `services/` (`access_decision`, `mqtt_gateway`, `acl_sync`, `audit`, `provisioning`, `realtime`).
 
-Endpoints: `/auth/{login,refresh,me}`, `/users`, `/cardholders`, `/credentials` (+ `/revoke`), `/enrollments`, `/devices` (+ `/claim`, `/commands/unlock`, `/acl/preview`), `/doors`, `/events` (+ CSV), `/schedules`, `/healthz`, `WS /ws/events`.
+Endpoints: `/auth/{login,refresh,me}`, `/users`, `/cardholders`, `/credentials` (+ `/revoke`), `/enrollments`, `/devices` (+ `/claim`, `/commands/unlock`, `/acl/preview`), `/events` (+ CSV), `/schedules`, `/healthz`, `WS /ws/events`.
 
-Reglas: toda mutación administrativa escribe `audit_logs`; `access_events` es append-only; access token 15 min en memoria, refresh 7 días en cookie `httpOnly`+`Secure`+`SameSite=Strict`; la UI oculta botones pero **el backend verifica el rol** (`require_role`). Primer admin por CLI (`python -m app.cli create-admin`), nunca por endpoint público.
+Reglas: mutación administrativa → `audit_logs`; `access_events` append-only; access token 15 min, refresh 7 días en cookie `httpOnly`+`Secure`+`SameSite=Strict`; roles `admin`/`operator` verificados en el backend (`require_role`), sin autorregistro; primer admin por CLI (`python -m app.cli create-admin`), nunca por endpoint público. `online` se deriva de `last_seen` (sin worker); WS `/ws/events` se alimenta del consumidor MQTT; el dispositivo se autentica en el broker con usuario `device_id` y contraseña, y el backend no guarda secretos reversibles.
 
 ## Frontend
 
@@ -148,10 +114,10 @@ Enrolamiento por toque: `POST /enrollments` con TTL 60 s → el `evt/scan` de es
 Pendientes, en este orden:
 
 1. `net` — WiFi con reconexión + **SNTP** (TLS necesita reloj correcto; se siembra del DS1307).
-2. `mqtt_client` — `WiFiClientSecure` con **CA fijada**, `setBufferSize(4096)`, LWT, backoff con jitter. Prohibido `setInsecure()`.
+2. `mqtt_client` — `WiFiClientSecure` con **CA fijada**, `setBufferSize(8192)`, LWT, backoff con jitter. Prohibido `setInsecure()`.
 3. `config` — credenciales en NVS (`Preferences`), provisión por SoftAP o serie.
 4. `outbox` — cola persistente en LittleFS, replay al reconectar, `seq` monotónico.
-5. `acl` — lista blanca + versión + contadores de bloqueo de PIN.
+5. `acl` — lista blanca + versión, cargada desde un snapshot completo con commit atómico en LittleFS.
 6. `lock` — relé, sensor de puerta, pulsador, watchdog, tope de 5 s de apertura.
 7. `Tasks` → máquina de estados **no bloqueante** (el handshake TLS bloquea segundos).
 
@@ -159,19 +125,9 @@ Arranque: NVS → ¿RTC válido? → WiFi → SNTP → MQTT (LWT) → `state` re
 
 ## Infra local (sin Docker)
 
-Mosquitto nativo en `127.0.0.1:1883` **sin TLS** para desarrollo; TLS solo se prueba contra EMQX. `/etc/mosquitto/conf.d/safelock.conf`:
+Mosquitto nativo en `127.0.0.1:1883` **sin TLS** para desarrollo; TLS solo se prueba contra EMQX. `/etc/mosquitto/conf.d/safelock.conf`: listener 1883, `allow_anonymous false`, `password_file`, `acl_file`, `persistence true`, `log_dest stdout`.
 
-```
-listener 1883 127.0.0.1
-allow_anonymous false
-password_file /etc/mosquitto/safelock.passwd
-acl_file      /etc/mosquitto/safelock.acl
-persistence true
-persistence_location /var/lib/mosquitto/
-log_dest stdout
-```
-
-`safelock.acl` (equivalente a la plantilla de EMQX, para que el firmware se comporte igual en local y en producción):
+`safelock.acl` (equivalente a la plantilla de EMQX para que el firmware se comporte igual en local y en producción):
 
 ```
 user svc-backend
@@ -182,18 +138,19 @@ pattern write safelock/v1/dev/%u/#
 pattern read  safelock/v1/dev/%u/cmd/#
 ```
 
-Variables de entorno del backend: `MQTT_URL`, `MQTT_TLS`, `MQTT_CA_PATH`, `MONGODB_URI`, `MONGODB_DB`, `APP_SECRET_KEY`, `JWT_SECRET`. Siempre `.env` + `.env.example`; `.env` en `.gitignore`.
+Variables de entorno del backend: `MQTT_URL`, `MQTT_TLS`, `MQTT_CA_PATH`, `MQTT_USERNAME`, `MQTT_PASSWORD`, `MONGODB_URI`, `MONGODB_DB`, `JWT_SECRET`. Siempre `.env` + `.env.example`; `.env` en `.gitignore`.
 
 ## Convenciones
 
-- `.editorconfig`: UTF-8, LF, espacios, 2 de indentación, newline final.
-- Commits convencionales (`feat:`, `fix:`, `chore:`, `docs:`), en inglés como el historial actual. Mensajes de la conversación con el usuario: español.
+- `.editorconfig`: UTF-8, LF, espacios, 2 de indentación, newline final; Python 4 (línea 88), JS/TS 100, Makefile con tab, Markdown sin trim.
+- Commits convencionales (`feat:`, `fix:`, `chore:`, `docs:`) en inglés. Mensajes al usuario: español.
 - Código e identificadores en inglés; comentarios solo donde el "por qué" no es obvio.
+- Clases en PascalCase y con el nombre exacto de su header (`Display` en `Display.h`, `RFID` en `RFID.h`); variables, parámetros y métodos en `snake_case`.
 - Nombres: `device_id` tipo `sl-0001`; UID de tarjeta `AA:BB:CC:DD` en mayúsculas con `:`.
 - **Nunca** commitear secretos, `.env`, certificados privados ni `credentials.md`.
-- **Nunca** loggear payloads MQTT (contienen `pin_proof` y UIDs). Loggear `id`, `device_id`, tipo y decisión.
+- **Nunca** loggear payloads MQTT (contienen PIN y UIDs). Loggear `id`, `device_id`, tipo y decisión.
 - Cambiar el protocolo = actualizar `docs/protocol.md` + simulador + backend + firmware en el mismo cambio.
-- Tests obligatorios en la capa de decisión (`access_decision`), en el parseo del sobre y en el sync de ACL (commit atómico, hash, partes).
+- Tests obligatorios en `access_decision`, parseo del mensaje y sync de ACL (snapshot completo, commit atómico).
 
 ## Comandos
 
@@ -218,7 +175,7 @@ sudo systemctl restart mosquitto
 | 3 | Sync de ACL + denylist + outbox + apertura remota; enrolamiento por toque |
 | 4 | Retención, rate limits, OTA, elemento seguro (ATECC608A) o cifrado de flash, fallback celular |
 
-**Fase actual: 0.** Firmware ya movido a `firmware/`. Próximo paso concreto: `docs/protocol.md` con los payloads exactos, los tres ADRs y `backend/scripts/simulator.py`.
+**Fase actual: 0.** Próximo paso: `docs/protocol.md` con los payloads exactos, los tres ADRs y `backend/scripts/simulator.py`. Actualizar este archivo al cerrar cada fase.
 
 ## Prohibiciones explícitas
 
