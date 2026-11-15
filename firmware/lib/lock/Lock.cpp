@@ -2,22 +2,28 @@
 #include "pins.h"
 #include "lock_config.h"
 
-bool Lock::read_sense_pin() {
+bool Lock::read_sense_pin() const {
   bool level = digitalRead(LOCK_SENSE_PIN) == HIGH;
 
 #if LOCK_SENSE_ACTIVE_LOW
-  // El contacto cierra a GND: LOW significa cerradura cerrada.
+  // The contact closes to GND: LOW means the lock is closed
   return !level;
 #else
   return level;
 #endif
 }
 
-void Lock::begin() {
-  pinMode(LOCK_IN1, OUTPUT);
-  digitalWrite(LOCK_IN1, LOCK_ACTIVE_LEVEL == HIGH ? LOW : HIGH);
+void Lock::set_coil(bool energized) {
+  digitalWrite(LOCK_IN1, energized ? LOCK_ACTIVE_LEVEL : !LOCK_ACTIVE_LEVEL);
+}
 
-  // GPIO34 no tiene pull-up interno: el 10k externo a 3V3 es obligatorio.
+void Lock::begin() {
+  // Set the idle level before switching to output, so the driver never sees a
+  // pulse at boot
+  set_coil(false);
+  pinMode(LOCK_IN1, OUTPUT);
+
+  // GPIO34 has no internal pull-up: the external 10k to 3V3 is mandatory
   pinMode(LOCK_SENSE_PIN, INPUT);
   sense_stable = read_sense_pin();
   sense_raw = sense_stable;
@@ -29,7 +35,7 @@ void Lock::begin() {
 }
 
 void Lock::unlock() {
-  digitalWrite(LOCK_IN1, LOCK_ACTIVE_LEVEL);
+  set_coil(true);
   active = true;
   activated_millis = millis();
   Serial.println("Lock unlock: energized");
@@ -51,16 +57,16 @@ void Lock::update() {
   if (!active) return;
   if ((now - activated_millis) < LOCK_OPEN_MS) return;
 
-  digitalWrite(LOCK_IN1, LOCK_ACTIVE_LEVEL == HIGH ? LOW : HIGH);
+  set_coil(false);
   active = false;
   Serial.println("Lock unlock: released");
 }
 
-bool Lock::is_active() {
+bool Lock::is_active() const {
   return active;
 }
 
-bool Lock::is_closed() {
+bool Lock::is_closed() const {
   return sense_stable;
 }
 

@@ -12,13 +12,14 @@ class Lock {
     bool sense_event = false;
     unsigned long sense_millis = 0;
 
-    bool read_sense_pin();
+    bool read_sense_pin() const;
+    void set_coil(bool energized);
 
   public:
     void begin();
     void unlock();
     void update();
-    bool is_active();
-    bool is_closed();
+    bool is_active() const;
+    bool is_closed() const;
     bool sense_changed();
 };
