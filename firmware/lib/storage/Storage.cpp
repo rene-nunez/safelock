@@ -7,8 +7,6 @@
 
 #define SD_LOG_FILE "/log.json"
 
-Storage::Storage() {}
-
 bool Storage::begin() {
   if (ready) return true;
 

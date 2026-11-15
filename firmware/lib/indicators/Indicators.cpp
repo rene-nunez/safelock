@@ -3,8 +3,6 @@
 
 #include <Wire.h>
 
-Indicators::Indicators() {}
-
 uint8_t Indicators::find_address() {
   // PCF8574T: 0x20-0x27. PCF8574AT: 0x38-0x3F.
   for (uint8_t addr = 0x20; addr <= 0x27; addr++) {

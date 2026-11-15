@@ -7,8 +7,6 @@ class Storage {
     bool ready = false;
 
   public:
-    Storage();
-
     bool begin();
     void reset();
     bool is_ready();

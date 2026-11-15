@@ -1,8 +1,6 @@
 #include "Clock.h"
 #include "pins.h"
 
-Clock::Clock() {}
-
 bool Clock::begin() {
   Wire.begin(RTC_SDA, RTC_SCL);
 

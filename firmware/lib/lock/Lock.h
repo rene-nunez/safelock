@@ -15,8 +15,6 @@ class Lock {
     bool read_sense_pin();
 
   public:
-    Lock();
-
     void begin();
     void unlock();
     void update();

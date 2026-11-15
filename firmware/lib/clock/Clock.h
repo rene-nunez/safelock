@@ -9,8 +9,6 @@ class Clock {
     bool ready = false;
 
   public:
-    Clock();
-
     bool begin();
     String timestamp();
 };

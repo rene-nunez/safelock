@@ -24,8 +24,6 @@ class Indicators {
     void buzzer_off();
 
   public:
-    Indicators();
-
     bool begin();
     void show_locked();
     void show_unlocked();
