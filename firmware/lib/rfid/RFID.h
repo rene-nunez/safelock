@@ -4,33 +4,32 @@
 #include <SPI.h>
 #include <MFRC522.h>
 
+#include "card_uid.h"
+
 class RFID {
-  private:
-    MFRC522 mfrc522;
-    byte master_uid[4];
-    bool master_set;
-    bool card_present;
-    bool antenna_off_reported;
-    byte current_uid[4];
-
-    bool compare_uids(byte *uid1, byte *uid2);
-    String uid_to_string(byte *uid);
-    bool is_ready();
-    bool antenna_on();
-    void hard_reset();
-    void hold_reset_high();
-    void log_status(const char *tag);
-
   public:
+    enum ScanResult { NO_CARD, CARD, UNHEALTHY };
+
     RFID();
 
     void begin();
-    void recover();
-    void poll();
+    bool recover();
+    ScanResult poll();
+    const CardUid &last_uid() const;
+
+  private:
+    struct Status {
+      uint8_t version;
+      uint8_t tx_control;
+      bool responds;
+      bool antenna_on;
+    };
+
+    MFRC522 mfrc522;
+    CardUid uid;
+
+    void reset_and_init();
+    Status read_status();
     bool healthy();
-    bool is_card_present();
-    bool is_master_set();
-    bool is_authorized();
-    void set_master();
-    String get_uid_string();
+    void log_status(const char *event, const Status &status);
 };

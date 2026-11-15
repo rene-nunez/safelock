@@ -60,33 +60,37 @@ void Tasks::run_rfid_task() {
 
   if (state != ENTERING) return;
 
-  // Recupera el lector aunque el fallo ocurra sin que haya un acceso
-  // (por ejemplo, un reset espurio al arrancar o por ruido).
-  if ((current_millis - last_rfid_health_millis) >= RFID_HEALTH_INTERVAL) {
-    last_rfid_health_millis = current_millis;
+  RFID::ScanResult scan = rfid.poll();
 
-    // No bloquees la lectura del teclado mientras el usuario esta
-    // escribiendo la contrasena.
-    if (!rfid.healthy() && entered_digits == 0) {
-      rfid.recover();
-    }
-  }
+  if (scan == RFID::UNHEALTHY) {
+    // Throttle: a reset blocks up to ~400 ms, so don't retry on every poll.
+    if ((current_millis - last_rfid_recover_millis) < RFID_RECOVER_INTERVAL) return;
+    last_rfid_recover_millis = current_millis;
 
-  rfid.poll();
-
-  if (!rfid.is_card_present()) return;
-
-  Serial.print("RFID card detected: ");
-  Serial.println(rfid.get_uid_string());
-
-  if (!rfid.is_master_set()) {
-    rfid.set_master();
-    Serial.println("RFID first card registered as master");
-    grant_access("rfid");
+    // Don't block the keypad while the user is typing the password.
+    if (entered_digits == 0) rfid.recover();
     return;
   }
 
-  if (rfid.is_authorized()) {
+  if (scan == RFID::NO_CARD) return;
+
+  char uid_text[32];
+  rfid.last_uid().format(uid_text, sizeof(uid_text));
+
+  Serial.print("RFID card detected: ");
+  Serial.println(uid_text);
+
+  const char *allowed[] = ALLOWED_UIDS;
+  bool authorized = false;
+
+  for (uint8_t i = 0; i < ALLOWED_UID_COUNT; i++) {
+    if (strcmp(uid_text, allowed[i]) == 0) {
+      authorized = true;
+      break;
+    }
+  }
+
+  if (authorized) {
     Serial.println("RFID authorized");
     grant_access("rfid");
   } else {

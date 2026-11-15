@@ -1,197 +1,123 @@
 #include "RFID.h"
 #include "pins.h"
 
-RFID::RFID() : mfrc522(RFID_SS, RFID_RST) {
-  master_set = false;
-  card_present = false;
-  antenna_off_reported = false;
-  memset(master_uid, 0, sizeof(master_uid));
-  memset(current_uid, 0, sizeof(current_uid));
+static const uint8_t ANTENNA_MASK = 0x03;
+
+// MFRC522 reports 0x91 or 0x92; anything else is a dead bus
+static bool version_supported(uint8_t version) {
+  return version == 0x91 || version == 0x92;
 }
 
-void RFID::hard_reset() {
+// NRSTPD is driven by reset_and_init(), the library must not touch it
+RFID::RFID() : mfrc522(RFID_SS, MFRC522::UNUSED_PIN) {}
+
+void RFID::reset_and_init() {
+  // NRSTPD is active low: 20 ms in power-down and the rising edge starts the
+  // internal reset. 100 ms cover oscillator startup and bus settling.
   pinMode(RFID_RST, OUTPUT);
   digitalWrite(RFID_RST, LOW);
   delay(20);
   digitalWrite(RFID_RST, HIGH);
   delay(100);
-}
 
-void RFID::hold_reset_high() {
-  // PCD_Init() deja el pin RST como INPUT si lo encuentra en alto, y el
-  // NRSTPD del MFRC522 queda flotando. Con ruido en el cable el chip se
-  // resetea o entra en power-down (MISO en 0xFF). Lo dejamos como salida
-  // alta para que eso no ocurra.
-  pinMode(RFID_RST, OUTPUT);
-  digitalWrite(RFID_RST, HIGH);
+  // The library does not manage RST, so PCD_Init() only performs a soft reset
+  mfrc522.PCD_Init();
+  delay(100);
 }
 
 void RFID::begin() {
   SPI.begin();
-  hard_reset();
-  mfrc522.PCD_Init();
-  hold_reset_high();
-  delay(100);
-
-  byte version = mfrc522.PCD_ReadRegister(MFRC522::VersionReg);
-
-  Serial.print("RFID version: 0x");
-  Serial.println(version, HEX);
-
-  if (version == 0x91 || version == 0x92) {
-    Serial.println("RFID reader initialized");
-  } else {
-    Serial.println("RFID reader not responding");
-    Serial.print("RFID pins: RST=");
-    Serial.print(digitalRead(RFID_RST));
-    Serial.print(" SS=");
-    Serial.print(digitalRead(RFID_SS));
-    Serial.print(" MISO=");
-    Serial.println(digitalRead(RFID_MISO));
-  }
+  reset_and_init();
+  log_status("begin", read_status());
 }
 
-bool RFID::is_ready() {
-  byte version = mfrc522.PCD_ReadRegister(MFRC522::VersionReg);
-  return version == 0x91 || version == 0x92;
-}
+RFID::Status RFID::read_status() {
+  Status status;
+  status.version = mfrc522.PCD_ReadRegister(MFRC522::VersionReg);
+  status.tx_control = mfrc522.PCD_ReadRegister(MFRC522::TxControlReg);
+  status.responds = version_supported(status.version);
 
-bool RFID::antenna_on() {
-  return (mfrc522.PCD_ReadRegister(MFRC522::TxControlReg) & 0x03) == 0x03;
+  status.antenna_on = status.responds && (status.tx_control & ANTENNA_MASK) == ANTENNA_MASK;
+  return status;
 }
 
 bool RFID::healthy() {
-  // 0xFF en VersionReg/TxControlReg tiene los bits 0 y 1 en alto, asi
-  // que hay que validar primero que el chip responde de verdad.
-  if (!is_ready()) return false;
-  return antenna_on();
+  Status status = read_status();
+  return status.responds && status.antenna_on;
 }
 
-void RFID::log_status(const char *tag) {
-  byte version = mfrc522.PCD_ReadRegister(MFRC522::VersionReg);
-  byte tx_control = mfrc522.PCD_ReadRegister(MFRC522::TxControlReg);
-  bool valid = (version == 0x91 || version == 0x92);
+void RFID::log_status(const char *event, const Status &status) {
+  if (!status.responds) {
+    Serial.printf(
+      "RFID %s: no response (version=0x%02X, tx_control=0x%02X)\n",
+      event,
+      static_cast<unsigned>(status.version),
+      static_cast<unsigned>(status.tx_control)
+    );
 
-  Serial.print("[RFID] ");
-  Serial.print(tag);
-  Serial.print(": VersionReg=0x");
-  Serial.print(version, HEX);
-  Serial.print(" TxControlReg=0x");
-  Serial.print(tx_control, HEX);
-  Serial.print(" link=");
-  Serial.print(valid ? "OK" : "NO_RESPONSE");
-  Serial.print(" antenna=");
-
-  if (!valid) {
-    Serial.println("UNKNOWN");
-  } else {
-    Serial.println((tx_control & 0x03) == 0x03 ? "ON" : "OFF");
+    return;
   }
+
+  Serial.printf(
+    "RFID %s: version=0x%02X antenna=%s\n",
+    event,
+    static_cast<unsigned>(status.version),
+    status.antenna_on ? "on" : "off"
+  );
 }
 
-void RFID::recover() {
-  if (healthy()) return;
+bool RFID::recover() {
+  Status status = read_status();
+  if (status.responds && status.antenna_on) return true;
 
-  if (is_ready()) {
-    Serial.println("RFID reader alive but antenna is OFF, reinitializing");
-  } else {
-    Serial.println("RFID reader not responding, attempting hard reset");
-    log_status("recover before");
+  // Re-enabling the antenna costs microseconds, a physical reset ~300 ms
+  if (status.responds) {
+    mfrc522.PCD_AntennaOn();
+
+    if (healthy()) {
+      Serial.println("RFID recover: antenna re-enabled");
+      return true;
+    }
   }
 
-  // El pulso del solenoide puede dejar el MFRC522 bloqueado o
-  // reiniciado. Un reset fisico es mas fiable que solo PCD_Init.
+  // The solenoid pulse can leave the MFRC522 locked or reset,
+  // a physical reset is more reliable than PCD_Init() alone.
   const uint8_t max_attempts = 2;
 
   for (uint8_t attempt = 1; attempt <= max_attempts; attempt++) {
     delay(100);
-    hard_reset();
-    mfrc522.PCD_Init();
-    hold_reset_high();
-    delay(100);
+    reset_and_init();
 
-    if (healthy()) {
-      Serial.print("RFID reader recovered on attempt ");
-      Serial.println(attempt);
-      return;
+    status = read_status();
+    if (status.responds && status.antenna_on) {
+      Serial.printf(
+        "RFID recover: ok on attempt %u/%u\n",
+        static_cast<unsigned>(attempt),
+        static_cast<unsigned>(max_attempts)
+      );
+
+      return true;
     }
-
-    Serial.print("RFID recovery attempt ");
-    Serial.print(attempt);
-    Serial.print("/");
-    Serial.print(max_attempts);
-    Serial.println(" failed");
   }
 
-  Serial.println("RFID reader still not responding");
-  log_status("recover after");
+  log_status("recover failed", status);
+  return false;
 }
 
-void RFID::poll() {
-  card_present = false;
+RFID::ScanResult RFID::poll() {
+  if (!healthy()) return UNHEALTHY;
 
-  if (!healthy()) {
-    if (!antenna_off_reported) {
-      antenna_off_reported = true;
-      Serial.println("[RFID] WARNING: reader not healthy (link down or antenna OFF)");
-      log_status("poll");
-    }
-    return;
-  }
+  if (!mfrc522.PICC_IsNewCardPresent()) return NO_CARD;
+  if (!mfrc522.PICC_ReadCardSerial()) return NO_CARD;
 
-  if (antenna_off_reported) {
-    antenna_off_reported = false;
-    Serial.println("[RFID] reader healthy again");
-  }
+  uid.length = mfrc522.uid.size;
+  if (uid.length > sizeof(uid.bytes)) uid.length = sizeof(uid.bytes);
+  memcpy(uid.bytes, mfrc522.uid.uidByte, uid.length);
 
-  if (!mfrc522.PICC_IsNewCardPresent()) return;
-  if (!mfrc522.PICC_ReadCardSerial()) return;
-
-  card_present = true;
-  memcpy(current_uid, mfrc522.uid.uidByte, 4);
   mfrc522.PICC_HaltA();
+  return CARD;
 }
 
-bool RFID::is_card_present() {
-  return card_present;
-}
-
-bool RFID::is_master_set() {
-  return master_set;
-}
-
-bool RFID::is_authorized() {
-  if (!master_set || !card_present) return false;
-  return compare_uids(master_uid, current_uid);
-}
-
-void RFID::set_master() {
-  if (!card_present) return;
-  memcpy(master_uid, current_uid, 4);
-  master_set = true;
-  Serial.print("RFID master card set: ");
-  Serial.println(uid_to_string(master_uid));
-}
-
-String RFID::get_uid_string() {
-  if (!card_present) return "";
-  return uid_to_string(current_uid);
-}
-
-bool RFID::compare_uids(byte *uid1, byte *uid2) {
-  for (int i = 0; i < 4; i++) {
-    if (uid1[i] != uid2[i]) return false;
-  }
-  return true;
-}
-
-String RFID::uid_to_string(byte *uid) {
-  String result = "";
-  for (int i = 0; i < 4; i++) {
-    if (uid[i] < 0x10) result += "0";
-    result += String(uid[i], HEX);
-    if (i < 3) result += ":";
-  }
-  result.toUpperCase();
-  return result;
+const CardUid &RFID::last_uid() const {
+  return uid;
 }

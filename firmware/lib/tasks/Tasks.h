@@ -13,9 +13,8 @@
 #define RFID_POLL_INTERVAL 200
 #define NUMPAD_POLL_INTERVAL 20
 
-// Intervalo para verificar y recuperar el lector aunque no haya un
-// acceso en curso.
-#define RFID_HEALTH_INTERVAL 2000
+// Throttle for reader recovery: a reset blocks up to ~400 ms.
+#define RFID_RECOVER_INTERVAL 2000
 
 #define LOCK_SPLASH_MS     1500
 #define SUCCESS_HOLD_MS    2000
@@ -49,7 +48,7 @@ class Tasks {
     const char *pending_method = "";
 
     unsigned long previous_rfid_millis = 0;
-    unsigned long last_rfid_health_millis = 0;
+    unsigned long last_rfid_recover_millis = 0;
     unsigned long previous_numpad_millis = 0;
     unsigned long state_millis = 0;
     unsigned long last_blink_millis = 0;
