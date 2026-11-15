@@ -43,8 +43,7 @@ class Tasks {
     uint8_t sd_init_attempts = 0;
     uint8_t sd_log_attempts = 0;
 
-    String pending_date;
-    String pending_time;
+    String pending_timestamp;
     const char *pending_method = "";
 
     unsigned long previous_rfid_millis = 0;

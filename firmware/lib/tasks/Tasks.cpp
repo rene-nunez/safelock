@@ -219,17 +219,12 @@ void Tasks::grant_access(const char *method) {
 
   if (timestamp.isEmpty()) {
     Serial.println("Access granted (RTC unavailable)");
-    current_millis = millis();
-    state = SUCCESS;
-    state_millis = current_millis;
-    return;
+  } else {
+    Serial.print("Access granted at ");
+    Serial.println(timestamp);
   }
 
-  Serial.print("Access granted at ");
-  Serial.println(timestamp);
-
-  pending_date = timestamp.substring(0, 10);
-  pending_time = timestamp.substring(11, 19);
+  pending_timestamp = timestamp;
   pending_method = method;
 
   state = LOGGING;
@@ -253,7 +248,7 @@ bool Tasks::try_log_access() {
   bool saved = false;
 
   if (storage.is_ready() || storage.begin()) {
-    saved = storage.log_access(pending_date, pending_time, pending_method);
+    saved = storage.log_access(pending_timestamp, pending_method);
   }
 
   if (saved) {

@@ -5,30 +5,25 @@
 #include <SPI.h>
 #include <ArduinoJson.h>
 
-#define SD_LOG_FILE "/accesos.json"
+#define SD_LOG_FILE "/log.json"
 
 Storage::Storage() {}
 
 bool Storage::begin() {
   if (ready) return true;
 
-  // Deja el CS en alto y da tiempo a que el modulo estabilice su
-  // alimentacion antes de intentar montar la tarjeta.
+  // Hold CS high and give the module time to stabilize its supply before trying to mount the card
   pinMode(SD_CS, OUTPUT);
   digitalWrite(SD_CS, HIGH);
   delay(20);
 
-  // 1 MHz es mas tolerante con modulos con level shifter y cables
-  // largos; 400 kHz es el respaldo para tarjetas/modulos lentos.
+  // 1 MHz is more tolerant of level shifters and long cables; 400 kHz is the fallback
   const uint32_t frequencies[] = {1000000, 400000};
-  bool mounted = false;
+  uint32_t mounted_hz = 0;
 
   for (uint8_t i = 0; i < sizeof(frequencies) / sizeof(frequencies[0]); i++) {
     if (SD.begin(SD_CS, SPI, frequencies[i])) {
-      mounted = true;
-      Serial.print("microSD initialized at ");
-      Serial.print(frequencies[i]);
-      Serial.println(" Hz");
+      mounted_hz = frequencies[i];
       break;
     }
 
@@ -36,30 +31,37 @@ bool Storage::begin() {
     digitalWrite(SD_CS, HIGH);
   }
 
-  if (!mounted) {
-    Serial.println("microSD initialization failed");
+  if (mounted_hz == 0) {
+    Serial.println("Storage begin: failed");
     ready = false;
     return false;
   }
 
   if (SD.cardType() == CARD_NONE) {
-    Serial.println("microSD card not detected");
+    Serial.println("Storage begin: no card");
     SD.end();
     ready = false;
     return false;
   }
 
-  if (!SD.exists(SD_LOG_FILE) && !create_log_file()) {
+  // Catches a full or read-only card at boot and creates the file on first use
+  File probe = SD.open(SD_LOG_FILE, FILE_APPEND);
+  if (!probe) {
+    Serial.println("Storage begin: log file failed");
     SD.end();
     ready = false;
     return false;
   }
 
+  probe.close();
   ready = true;
-  Serial.print("microSD size: ");
-  Serial.print((uint32_t)(SD.cardSize() / (1024ULL * 1024ULL)));
-  Serial.println(" MB");
-  Serial.println("microSD log file: " SD_LOG_FILE);
+
+  Serial.printf(
+    "Storage begin: ok (%u Hz, %u MB)\n",
+    static_cast<unsigned>(mounted_hz),
+    static_cast<unsigned>(SD.cardSize() / (1024ULL * 1024ULL))
+  );
+
   return true;
 }
 
@@ -74,60 +76,34 @@ void Storage::reset() {
   ready = false;
 }
 
-bool Storage::log_access(const String &date, const String &time, const String &method) {
+bool Storage::log_access(const String &timestamp, const char *source) {
   if (!ready) return false;
 
   JsonDocument document;
-
-  File input = SD.open(SD_LOG_FILE, FILE_READ);
-  if (input) {
-    DeserializationError error = deserializeJson(document, input);
-    input.close();
-
-    if (error) {
-      Serial.print("Access log parse error: ");
-      Serial.println(error.c_str());
-      document.clear();
-    }
+  if (timestamp.isEmpty()) {
+    document["ts"] = nullptr;
+  } else {
+    document["ts"] = timestamp;
   }
+  document["source"] = source;
+  document["decision"] = "granted";
 
-  if (!document.is<JsonObject>()) {
-    document.clear();
-  }
+  File file = SD.open(SD_LOG_FILE, FILE_APPEND);
 
-  JsonArray accesses = document["accesos"].to<JsonArray>();
-  JsonObject entry = accesses.add<JsonObject>();
-  entry["fecha"] = date;
-  entry["hora"] = time;
-  entry["metodo"] = method;
-
-  File output = SD.open(SD_LOG_FILE, FILE_WRITE);
-  if (!output) {
-    Serial.println("Could not open access log for writing");
+  if (!file) {
+    Serial.println("Storage log: open failed");
     return false;
   }
 
-  size_t written = serializeJsonPretty(document, output);
-  output.close();
+  size_t written = serializeJson(document, file);
+  file.println(); // This method adds a line break and keeps one log per line
+
+  file.close();
 
   if (written == 0) {
-    Serial.println("Could not write access log");
+    Serial.println("Storage log: write failed");
     return false;
   }
 
-  return true;
-}
-
-bool Storage::create_log_file() {
-  File file = SD.open(SD_LOG_FILE, FILE_WRITE);
-  if (!file) {
-    Serial.println("Could not create access log");
-    return false;
-  }
-
-  file.println("{");
-  file.println("  \"accesos\": []");
-  file.println("}");
-  file.close();
   return true;
 }
