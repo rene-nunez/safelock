@@ -12,3 +12,8 @@
 // HIGH: IN1 en alto energiza la cerradura (configuracion normal).
 // LOW:  invierte la logica si tu cerradura funciona al reves.
 #define LOCK_ACTIVE_LEVEL HIGH
+
+// El contacto conecta LOCK_SENSOR a GND cuando la cerradura esta cerrada.
+// GPIO34 no tiene pull-up interno: se requiere una resistencia externa a 3.3V.
+#define LOCK_SENSOR_CLOSED_LEVEL LOW
+#define LOCK_SENSOR_DEBOUNCE_MS 50

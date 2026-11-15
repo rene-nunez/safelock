@@ -64,6 +64,40 @@ void oled_display::show_lock() {
   display.display();
 }
 
+void oled_display::show_unlock_frame(uint8_t frame) {
+  if (!ready) return;
+
+  display.clearDisplay();
+
+  const int16_t center_x = SCREEN_WIDTH / 2;
+  const int16_t body_top = 28;
+  const int16_t body_width = 40;
+  const int16_t body_height = 28;
+  const int16_t movement = frame > 5 ? 10 : frame * 2;
+
+  display.drawCircle(center_x + movement, body_top - movement, 12, WHITE);
+  display.drawCircle(center_x + movement, body_top - movement, 13, WHITE);
+
+  display.fillRoundRect(
+    center_x - body_width / 2, body_top, body_width, body_height, 5, WHITE
+  );
+  display.fillCircle(center_x, body_top + 11, 4, BLACK);
+  display.fillRect(center_x - 2, body_top + 11, 4, 9, BLACK);
+
+  display.display();
+}
+
+void oled_display::show_error_frame(uint8_t frame) {
+  if (!ready) return;
+
+  static const int8_t shake_offsets[] = {0, -5, 5, -4, 4, -3, 3, 0};
+  const uint8_t frame_count = sizeof(shake_offsets) / sizeof(shake_offsets[0]);
+
+  display.clearDisplay();
+  draw_lock_icon(shake_offsets[frame % frame_count]);
+  display.display();
+}
+
 void oled_display::show_entry(uint8_t digits) {
   if (!ready) return;
 
@@ -112,8 +146,8 @@ void oled_display::clear() {
   display.display();
 }
 
-void oled_display::draw_lock_icon() {
-  const int16_t center_x = SCREEN_WIDTH / 2;
+void oled_display::draw_lock_icon(int16_t horizontal_offset) {
+  const int16_t center_x = SCREEN_WIDTH / 2 + horizontal_offset;
   const int16_t body_top = 28;
   const int16_t body_width = 40;
   const int16_t body_height = 28;

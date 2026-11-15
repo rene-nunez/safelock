@@ -103,6 +103,24 @@ void millis_tasks::run_lock_task() {
 }
 
 void millis_tasks::run_display_task() {
+  if (unlock_animation_active) {
+    if ((current_millis - last_unlock_animation_millis) <
+        UNLOCK_ANIMATION_INTERVAL_MS) return;
+
+    last_unlock_animation_millis = current_millis;
+    unlock_animation_frame++;
+
+    if (unlock_animation_frame >= UNLOCK_ANIMATION_FRAMES) {
+      unlock_animation_active = false;
+      display.show_success();
+      if (state == SUCCESS) state_millis = current_millis;
+    } else {
+      display.show_unlock_frame(unlock_animation_frame);
+    }
+
+    return;
+  }
+
   switch (state) {
     case WAIT_SD:
       if (!storage.is_ready() && sd_init_attempts < SD_MAX_ATTEMPTS) return;
@@ -133,7 +151,6 @@ void millis_tasks::run_display_task() {
       if ((current_millis - state_millis) >= ERROR_DURATION_MS) {
         state = ENTERING;
         entered_digits = 0;
-        error_icon_visible = true;
         display.show_entry(0);
         return;
       }
@@ -141,13 +158,8 @@ void millis_tasks::run_display_task() {
       if ((current_millis - last_blink_millis) < ERROR_BLINK_MS) return;
 
       last_blink_millis = current_millis;
-      error_icon_visible = !error_icon_visible;
-
-      if (error_icon_visible) {
-        display.show_error();
-      } else {
-        display.clear();
-      }
+      error_animation_frame++;
+      display.show_error_frame(error_animation_frame);
       break;
 
     case ENTERING:
@@ -177,7 +189,10 @@ void millis_tasks::add_digit(char digit) {
 void millis_tasks::grant_access(const char *method) {
   entered_digits = 0;
   entered_password[0] = '\0';
-  display.show_success();
+  unlock_animation_active = true;
+  unlock_animation_frame = 0;
+  last_unlock_animation_millis = current_millis;
+  display.show_unlock_frame(unlock_animation_frame);
   lock.unlock();
 
   String timestamp = rtc.timestamp();
@@ -262,6 +277,6 @@ void millis_tasks::deny_access() {
   state = ERROR;
   state_millis = current_millis;
   last_blink_millis = current_millis;
-  error_icon_visible = true;
-  display.show_error();
+  error_animation_frame = 0;
+  display.show_error_frame(error_animation_frame);
 }

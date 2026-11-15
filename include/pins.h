@@ -38,3 +38,6 @@
 // Driver DRV8871 para la cerradura solenoide de 12V
 // IN2 del DRV8871 va a GND y IN1 al GPIO de control
 #define LOCK_IN1 12
+
+// Sensor de estado: un cable a GND y el otro a GPIO34.
+#define LOCK_SENSOR 34
