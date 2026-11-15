@@ -4,7 +4,7 @@
 
 // MFRC522
 #define RFID_MISO 19
-#define RFID_SS    5 // strapping, 10k pull-up to 3V3
+#define RFID_SS    5 // 10k pull-up to 3V3; must be HIGH at reset (SDIO timing)
 #define RFID_RST  27 // 10k pull-up to 3V3 required
 
 // 4x3 Keypad
@@ -14,14 +14,14 @@
 #define NUMPAD_ROW_4 32
 
 #define NUMPAD_COL_1 17
-#define NUMPAD_COL_2  4 // strapping
+#define NUMPAD_COL_2  4 // must be LOW at reset; no external pull-up
 #define NUMPAD_COL_3 33
 
 // MicroSD (module v474 needs 3V3, and module AMS1117 5V)
 #define SD_MISO 19
 #define SD_MOSI 23
 #define SD_SCK  18
-#define SD_CS    2 // strapping, 10k pull-up to 3V3
+#define SD_CS    2 // 10k pull-up to 3V3; LOW at reset to flash (HIGH blocks the bootloader)
 
 // SSD1306 OLED
 #define OLED_CS 13
@@ -37,12 +37,12 @@
 #define PCF8574_LED_ACTIVE_LOW 1
 
 // Passive Buzzer driven by LEDC
-#define BUZZER_PIN 15 // strapping, 10k pull-down on the transistor base
+#define BUZZER_PIN 15 // 10k pull-down on the transistor base; LOW at reset silences the ROM log
 #define BUZZER_LEDC_CHANNEL 0
 #define BUZZER_PASSIVE 1
 
 // DRV8871 Lock Driver, IN2 tied to GND
-#define LOCK_IN1 12 // strapping, must be low at boot
+#define LOCK_IN1 12 // must be LOW at reset (selects the 3.3V flash voltage)
 
 // Lock State Switch (dry contact to GND)
 #define LOCK_SENSE_PIN 34 // input-only, external 10k pull-up required
