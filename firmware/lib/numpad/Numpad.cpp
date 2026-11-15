@@ -16,8 +16,7 @@ byte Numpad::col_pins[COLS] = {
   NUMPAD_COL_1, NUMPAD_COL_2, NUMPAD_COL_3
 };
 
-Numpad::Numpad()
-  : keypad(makeKeymap(key_map), row_pins, col_pins, ROWS, COLS) {}
+Numpad::Numpad() : keypad(makeKeymap(key_map), row_pins, col_pins, ROWS, COLS) {}
 
 void Numpad::begin() {
   Serial.println("Numpad 4x3 initialized");

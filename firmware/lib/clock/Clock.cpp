@@ -13,18 +13,19 @@ bool Clock::begin() {
   }
 
   if (!rtc.isrunning()) {
-    Serial.println("RTC stopped, setting compile time");
+    Serial.println("Clock stopped, setting the RTC to the compile time");
     rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
   }
 
-  ready = true;
   Serial.println("RTC DS1307 initialized");
+  ready = true;
   return true;
 }
 
 String Clock::timestamp() {
   if (!ready) return "";
 
+  // Returns the current date and time as a String in ISO 8601 format ("YYYY-MM-DDThh:mm:ss").
   DateTime now = rtc.now();
   return now.timestamp(DateTime::TIMESTAMP_FULL);
 }

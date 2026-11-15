@@ -1,7 +1,7 @@
 #include "Device.h"
 #include "pins.h"
 
-Device::Device(): tasks(rfid, numpad, display, clock, storage, lock, indicators) {}
+Device::Device() : tasks(rfid, numpad, display, clock, storage, lock, indicators) {}
 
 void Device::begin() {
   // All SPI devices share the bus: keep every CS high before initializing
