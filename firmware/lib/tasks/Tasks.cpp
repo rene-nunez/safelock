@@ -188,9 +188,10 @@ void Tasks::run_display_task() {
         return;
       }
 
-      if ((current_millis - last_blink_millis) < ERROR_BLINK_MS) return;
+      if ((current_millis - last_error_animation_millis) <
+          ERROR_ANIMATION_MS) return;
 
-      last_blink_millis = current_millis;
+      last_error_animation_millis = current_millis;
       error_animation_frame++;
       display.show_error_frame(error_animation_frame);
       break;
@@ -306,7 +307,7 @@ void Tasks::deny_access() {
   current_millis = millis();
   state = ERROR;
   state_millis = current_millis;
-  last_blink_millis = current_millis;
+  last_error_animation_millis = current_millis;
   error_animation_frame = 0;
   indicators.show_locked();
   indicators.beep_error();

@@ -52,7 +52,7 @@ void Display::show_unlock_frame(uint8_t frame) {
   const int16_t body_top = 28;
   const int16_t body_width = 40;
   const int16_t body_height = 28;
-  const int16_t movement = frame > 5 ? 10 : frame * 2;
+  const int16_t movement = frame * 2;
 
   display.drawCircle(center_x + movement, body_top - movement, 12, WHITE);
   display.drawCircle(center_x + movement, body_top - movement, 13, WHITE);

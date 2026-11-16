@@ -20,7 +20,7 @@
 #define SUCCESS_HOLD_MS    2000
 #define UNLOCK_ANIMATION_FRAMES 6
 #define UNLOCK_ANIMATION_INTERVAL_MS 120
-#define ERROR_BLINK_MS      250
+#define ERROR_ANIMATION_MS 250
 #define ERROR_DURATION_MS  2500
 #define SD_RETRY_MS        1000
 #define SD_MAX_ATTEMPTS       10
@@ -54,7 +54,7 @@ class Tasks {
     unsigned long last_rfid_recover_millis = 0;
     unsigned long previous_numpad_millis = 0;
     unsigned long state_millis = 0;
-    unsigned long last_blink_millis = 0;
+    unsigned long last_error_animation_millis = 0;
     unsigned long last_unlock_animation_millis = 0;
     unsigned long last_sd_attempt = 0;
     unsigned long current_millis = 0;
