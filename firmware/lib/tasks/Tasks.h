@@ -33,7 +33,6 @@ class Tasks {
   private:
     enum lock_state { WAIT_SD, ENTERING, SUCCESS, LOGGING, ERROR };
 
-    // Collaborators
     RFID &rfid;
     Numpad &numpad;
     Display &display;
@@ -103,5 +102,6 @@ class Tasks {
       Lock &lock,
       Indicators &indicators
     );
+
     void run();
 };

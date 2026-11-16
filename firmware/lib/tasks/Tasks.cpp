@@ -28,8 +28,7 @@ void Tasks::run_storage_task() {
   if (state == WAIT_SD) {
     if (storage.is_ready()) return;
     if (sd_init_attempts >= SD_MAX_ATTEMPTS) return;
-    if (sd_init_attempts > 0 &&
-        (current_millis - last_sd_attempt) < SD_RETRY_MS) return;
+    if (sd_init_attempts > 0 && (current_millis - last_sd_attempt) < SD_RETRY_MS) return;
 
     last_sd_attempt = current_millis;
     sd_init_attempts++;
@@ -66,7 +65,7 @@ void Tasks::run_rfid_task() {
     if ((current_millis - last_rfid_recover_millis) < RFID_RECOVER_INTERVAL) return;
     last_rfid_recover_millis = current_millis;
 
-    // Don't block the keypad while the user is typing the password.
+    // Don't block the keypad while the user is typing the password
     if (entered_digits == 0) rfid.recover();
     return;
   }
@@ -135,8 +134,7 @@ void Tasks::run_lock_task() {
 
 void Tasks::run_display_task() {
   if (unlock_animation_active) {
-    if ((current_millis - last_unlock_animation_millis) <
-        UNLOCK_ANIMATION_INTERVAL_MS) return;
+    if ((current_millis - last_unlock_animation_millis) < UNLOCK_ANIMATION_INTERVAL_MS) return;
 
     last_unlock_animation_millis = current_millis;
     unlock_animation_frame++;
@@ -181,8 +179,7 @@ void Tasks::run_display_task() {
         return;
       }
 
-      if ((current_millis - last_error_animation_millis) <
-          ERROR_ANIMATION_MS) return;
+      if ((current_millis - last_error_animation_millis) < ERROR_ANIMATION_MS) return;
 
       last_error_animation_millis = current_millis;
       error_animation_frame++;
