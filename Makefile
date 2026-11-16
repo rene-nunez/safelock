@@ -2,30 +2,30 @@
 
 .PHONY: help firmware monitor simulator test lint frontend typecheck mqtt-restart
 
-help: ## Show this help
+help: ## Help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-14s\033[0m %s\n", $$1, $$2}'
 
-firmware: ## Build the ESP32 firmware
+firmware: ## Build firmware
 	pio run -d firmware
 
-monitor: ## Open the serial monitor
+monitor: ## Serial monitor
 	pio device monitor -d firmware
 
-simulator: ## Run the fake ESP32 (2 devices)
+simulator: ## Run simulator
 	python backend/scripts/simulator.py
 
-test: ## Run the backend tests
+test: ## Backend tests
 	pytest backend/tests -q
 
-lint: ## Lint and type-check the backend
+lint: ## Lint backend
 	ruff check backend
 	mypy backend
 
-frontend: ## Start the frontend dev server
+frontend: ## Frontend dev
 	npm run dev --prefix frontend
 
-typecheck: ## Type-check the frontend
+typecheck: ## Typecheck frontend
 	npm run typecheck --prefix frontend
 
-mqtt-restart: ## Restart the local Mosquitto broker
+mqtt-restart: ## Restart Mosquitto
 	sudo systemctl restart mosquitto
