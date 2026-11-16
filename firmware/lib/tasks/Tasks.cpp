@@ -63,7 +63,6 @@ void Tasks::run_rfid_task() {
   RFID::ScanResult scan = rfid.poll();
 
   if (scan == RFID::UNHEALTHY) {
-    // Throttle: a reset blocks up to ~400 ms, so don't retry on every poll.
     if ((current_millis - last_rfid_recover_millis) < RFID_RECOVER_INTERVAL) return;
     last_rfid_recover_millis = current_millis;
 
@@ -106,11 +105,11 @@ void Tasks::run_numpad_task() {
 
   char key = numpad.read_key();
   if (key == NO_KEY) return;
+  if (state != ENTERING) return;
 
   Serial.print("Numpad key pressed: ");
   Serial.println(key);
 
-  if (state != ENTERING) return;
   if (key < '0' || key > '9') return;
 
   add_digit(key);
@@ -164,27 +163,21 @@ void Tasks::run_display_task() {
         Serial.println(" attempts, continuing without logging");
       }
 
-      state = ENTERING;
-      entered_digits = 0;
-      display.show_entry(0);
+      start_entry();
       break;
 
     case SUCCESS:
       if ((current_millis - state_millis) < SUCCESS_HOLD_MS) return;
       if (lock.is_active()) return;
 
-      state = ENTERING;
-      entered_digits = 0;
       rfid.recover();
       display.recover();
-      display.show_entry(0);
+      start_entry();
       break;
 
     case ERROR:
       if ((current_millis - state_millis) >= ERROR_DURATION_MS) {
-        state = ENTERING;
-        entered_digits = 0;
-        display.show_entry(0);
+        start_entry();
         return;
       }
 
@@ -200,6 +193,12 @@ void Tasks::run_display_task() {
     case LOGGING:
       break;
   }
+}
+
+void Tasks::start_entry() {
+  state = ENTERING;
+  entered_digits = 0;
+  display.show_entry(0);
 }
 
 void Tasks::add_digit(char digit) {
@@ -254,11 +253,6 @@ void Tasks::grant_access(const char *method) {
 }
 
 bool Tasks::try_log_access() {
-  if (sd_log_attempts >= SD_MAX_ATTEMPTS) {
-    finish_log_without_write();
-    return true;
-  }
-
   sd_log_attempts++;
 
   bool saved = false;

@@ -1,13 +1,13 @@
 #pragma once
 
 #include <Arduino.h>
-#include "RFID.h"
-#include "Numpad.h"
-#include "Display.h"
-#include "Clock.h"
-#include "Storage.h"
-#include "Lock.h"
-#include "Indicators.h"
+#include <RFID.h>
+#include <Numpad.h>
+#include <Display.h>
+#include <Clock.h>
+#include <Storage.h>
+#include <Lock.h>
+#include <Indicators.h>
 #include "config.h"
 
 #define RFID_POLL_INTERVAL 200
@@ -68,6 +68,7 @@ class Tasks {
     void add_digit(char digit);
     void grant_access(const char *method);
     void deny_access();
+    void start_entry();
     bool try_log_access();
     void finish_log_without_write();
 
