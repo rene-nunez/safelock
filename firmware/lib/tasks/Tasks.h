@@ -18,6 +18,8 @@
 
 #define LOCK_SPLASH_MS     1500
 #define SUCCESS_HOLD_MS    2000
+#define UNLOCK_ANIMATION_FRAMES 6
+#define UNLOCK_ANIMATION_INTERVAL_MS 120
 #define ERROR_BLINK_MS      250
 #define ERROR_DURATION_MS  2500
 #define SD_RETRY_MS        1000
@@ -38,7 +40,9 @@ class Tasks {
     lock_state state = WAIT_SD;
     char entered_password[PASSWORD_LENGTH + 1] = "";
     uint8_t entered_digits = 0;
-    bool error_icon_visible = true;
+    bool unlock_animation_active = false;
+    uint8_t unlock_animation_frame = 0;
+    uint8_t error_animation_frame = 0;
 
     uint8_t sd_init_attempts = 0;
     uint8_t sd_log_attempts = 0;
@@ -51,6 +55,7 @@ class Tasks {
     unsigned long previous_numpad_millis = 0;
     unsigned long state_millis = 0;
     unsigned long last_blink_millis = 0;
+    unsigned long last_unlock_animation_millis = 0;
     unsigned long last_sd_attempt = 0;
     unsigned long current_millis = 0;
 

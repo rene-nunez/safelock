@@ -12,7 +12,7 @@ class Display {
     Adafruit_SSD1306 display;
     bool ready = false;
 
-    void draw_lock_icon();
+    void draw_lock_icon(int16_t horizontal_offset = 0);
     void draw_check_icon();
     void draw_cross_icon();
 
@@ -22,6 +22,8 @@ class Display {
     void begin();
     void recover();
     void show_lock();
+    void show_unlock_frame(uint8_t frame);
+    void show_error_frame(uint8_t frame);
     void show_entry(uint8_t digits);
     void show_success();
     void show_error();
