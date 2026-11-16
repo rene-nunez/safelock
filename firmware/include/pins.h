@@ -4,8 +4,8 @@
 
 // MFRC522
 #define RFID_MISO 19
-#define RFID_SS    5 // 10k pull-up to 3V3; must be HIGH at reset
-#define RFID_RST  27 // 10k pull-up to 3V3 required
+#define RFID_SS    5 // 10k pull-up to 3V3
+#define RFID_RST  27
 
 // 4x3 keypad
 #define NUMPAD_ROW_1 16
@@ -14,34 +14,32 @@
 #define NUMPAD_ROW_4 32
 
 #define NUMPAD_COL_1 17
-#define NUMPAD_COL_2  4 // Must be LOW at reset; no external pull-up
+#define NUMPAD_COL_2  4 // LOW at boot
 #define NUMPAD_COL_3 33
 
-// microSD (module v474 needs 3V3, and module AMS1117 5V)
+// microSD
 #define SD_MISO 19
 #define SD_MOSI 23
 #define SD_SCK  18
-#define SD_CS    2 // 10k pull-up to 3V3; LOW at reset to flash
+#define SD_CS    2 // 10k pull-up to 3V3
 
-// SSD1306 OLED
-// Pin RES goes straight to 3V3
+// SSD1306 OLED, RES pin tied to 3V3
 #define OLED_CS 13
 #define OLED_DC 14
 
-// I2C: DS1307 RTC + PCF8574T expander
+// I2C: DS1307 + PCF8574T
 #define RTC_SDA 21
 #define RTC_SCL 22
 
-// PCF8574T status LEDs
+// PCF8574T LEDs
 #define PCF8574_RED_BIT   0
 #define PCF8574_GREEN_BIT 1
 
-// Passive buzzer driven by LEDC
-#define BUZZER_PIN 15 // 10k pull-down on the transistor base
+// Buzzer
+#define BUZZER_PIN 15
 
-// DRV8871 lock driver
-// Pin IN2 tied to GND
-#define LOCK_IN1 12 // Must be LOW at reset
+// DRV8871, IN2 pin tied to GND
+#define LOCK_IN1 12 // LOW at boot
 
-// Lock state switch (dry contact to GND)
-#define LOCK_SENSE_PIN 34 // Input-only, external 10k pull-up required
+// Lock dry contacts, the other wire goes to GND
+#define LOCK_SENSE_PIN 34 // external 10k pull-up to 3V3

@@ -6,7 +6,7 @@ Memoria del proyecto para agentes. Si algo de este documento contradice una supo
 
 SafeLock: sistema embebido de control de acceso por RFID (MFRC522) + teclado numérico + OLED + RTC, con backend FastAPI, frontend React y MongoDB Atlas. Monorepo.
 
-Hardware: ESP32 dev board, MFRC522 por SPI, teclado 4x3, SSD1306 por SPI, DS1307 por I2C. **Falta el actuador**: relé, sensor de puerta y pulsador de salida. El diseño usa cerradura *fail-secure* con retención, UPS en el controlador y llave mecánica.
+Hardware: ESP32 dev board, MFRC522 por SPI, teclado 4x3, SSD1306 por SPI, DS1307 por I2C, LEDs por PCF8574T y buzzer pasivo. Actuador: cerradura electromagnética de 12 V (genérica, sin modelo de referencia) movida por un DRV8871, *fail-secure*: sin energía queda cerrada y solo se libera energizando la bobina. Su contacto seco va a `LOCK_SENSE_PIN` (GPIO34, solo entrada, pull-up externo 10k a 3V3) y **se usa para saber si el pestillo está cerrado o abierto**, con antirrebote en firmware; no mide si la puerta está abierta. El diseño contempla además sensor de puerta, pulsador de salida, UPS en el controlador y llave mecánica, todavía sin implementar.
 
 - `firmware/` es PlatformIO (`src/`, `lib/`, `include/`, `platformio.ini`) y compila con `pio run -d firmware`. Clases en PascalCase con el nombre exacto de su header, `Device` como fachada de arranque y lector RFID que solo identifica (UID de 4–10 bytes); la allowlist temporal vive en `include/config.h`.
 - `backend/` y `frontend/` existen pero están vacíos. No hay `Makefile` todavía: los comandos viven en este documento.
@@ -118,7 +118,7 @@ Pendientes, en este orden:
 3. `settings` — credenciales en NVS (`Preferences`), provisión por SoftAP o serie.
 4. `outbox` — cola persistente en LittleFS, replay al reconectar, `seq` monotónico.
 5. `acl` — lista blanca + versión, cargada desde un snapshot completo con commit atómico en LittleFS.
-6. `lock` — relé, sensor de puerta, pulsador, watchdog, tope de 5 s de apertura.
+6. `lock` — ya están el DRV8871 (`LOCK_IN1`) y el contacto de pestillo (`LOCK_SENSE_PIN`). Faltan sensor de puerta, pulsador de salida, watchdog y tope duro de 5 s: el pulso normal es `LOCK_OPEN_MS` (3 s) y el tope de 5 s es solo la red de seguridad por si el `loop()` se bloquea.
 7. `Tasks` → máquina de estados **no bloqueante** (el handshake TLS bloquea segundos).
 
 Arranque: NVS → ¿RTC válido? → WiFi → SNTP → MQTT (LWT) → `state` retenido → suscribir `cmd/#` → sync si `acl_version` está atrasada → `ENTERING`. Sin ACL cargada no hay acceso (fail closed); el dispositivo nace sin reclamar, así que eso no bloquea la instalación.
