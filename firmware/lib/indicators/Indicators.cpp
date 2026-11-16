@@ -126,7 +126,6 @@ void Indicators::beep_error() {
 }
 
 void Indicators::beep_alert() {
-  // Lower and longer than the error beep, so the two are distinguishable
   start_beep(500, 250, 100, 3);
 }
 

@@ -49,8 +49,7 @@ void Lock::update() {
 
     // A bolt that opens without a recent command was released by hand
     if (!sense_stable) {
-      bool commanded =
-        has_command && (now - command_millis) <= (LOCK_OPEN_MS + LOCK_CMD_GRACE_MS);
+      bool commanded = has_command && (now - command_millis) <= (LOCK_OPEN_MS + LOCK_CMD_GRACE_MS);
       manual_open = !commanded;
     }
   }

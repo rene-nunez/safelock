@@ -21,7 +21,7 @@
 #define LOCK_OPEN_MS 3000
 
 // Window after the command where an open is still attributed to it, not to a manual release
-#define LOCK_CMD_GRACE_MS 3000
+#define LOCK_CMD_GRACE_MS 2000
 
 // Stable time before a new sense level is accepted
 #define LOCK_SENSE_DEBOUNCE_MS 100
