@@ -2,10 +2,6 @@
 #include "pins.h"
 #include "config.h"
 
-#ifndef LOCK_SENSE_CLOSED_LEVEL
-#error "LOCK_SENSE_CLOSED_LEVEL must be defined in config.h"
-#endif
-
 bool Lock::read_sense_pin() const {
   // The contact closes to GND: LOW means the lock is closed
   return digitalRead(LOCK_SENSE_PIN) == LOCK_SENSE_CLOSED_LEVEL;

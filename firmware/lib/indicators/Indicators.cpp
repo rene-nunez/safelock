@@ -2,14 +2,6 @@
 #include "pins.h"
 #include "config.h"
 
-#ifndef BUZZER_PASSIVE
-#error "BUZZER_PASSIVE must be defined in config.h"
-#endif
-
-#ifndef PCF8574_LED_ACTIVE_LOW
-#error "PCF8574_LED_ACTIVE_LOW must be defined in config.h"
-#endif
-
 #include <Wire.h>
 
 uint8_t Indicators::find_address() {
