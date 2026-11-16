@@ -14,7 +14,6 @@ class Display {
 
     void draw_lock_icon(int16_t horizontal_offset = 0);
     void draw_check_icon();
-    void draw_cross_icon();
 
   public:
     Display();
@@ -26,6 +25,4 @@ class Display {
     void show_error_frame(uint8_t frame);
     void show_entry(uint8_t digits);
     void show_success();
-    void show_error();
-    void clear();
 };

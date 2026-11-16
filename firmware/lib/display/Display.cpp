@@ -110,21 +110,6 @@ void Display::show_success() {
   display.display();
 }
 
-void Display::show_error() {
-  if (!ready) return;
-
-  display.clearDisplay();
-  draw_cross_icon();
-  display.display();
-}
-
-void Display::clear() {
-  if (!ready) return;
-
-  display.clearDisplay();
-  display.display();
-}
-
 void Display::draw_lock_icon(int16_t horizontal_offset) {
   const int16_t center_x = SCREEN_WIDTH / 2 + horizontal_offset;
   const int16_t body_top = 28;
@@ -146,12 +131,5 @@ void Display::draw_check_icon() {
   for (int8_t offset = -2; offset <= 2; offset++) {
     display.drawLine(44 + offset, 32, 56 + offset, 44, WHITE);
     display.drawLine(56 + offset, 44, 84 + offset, 18, WHITE);
-  }
-}
-
-void Display::draw_cross_icon() {
-  for (int8_t offset = -2; offset <= 2; offset++) {
-    display.drawLine(46 + offset, 18, 82 + offset, 54, WHITE);
-    display.drawLine(82 + offset, 18, 46 + offset, 54, WHITE);
   }
 }
