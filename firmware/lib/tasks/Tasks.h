@@ -10,20 +10,17 @@
 #include <Indicators.h>
 #include "config.h"
 
-#define RFID_POLL_INTERVAL 200
-#define NUMPAD_POLL_INTERVAL 20
-
-// Throttle for reader recovery: a reset blocks up to ~400 ms.
-#define RFID_RECOVER_INTERVAL 2000
-
-#define LOCK_SPLASH_MS     1500
-#define SUCCESS_HOLD_MS    2000
-#define UNLOCK_ANIMATION_FRAMES 6
+#define RFID_POLL_INTERVAL           200
+#define NUMPAD_POLL_INTERVAL          20
+#define RFID_RECOVER_INTERVAL       2000 // A reset blocks up to ~400 ms
+#define LOCK_SPLASH_MS              1500
+#define SUCCESS_HOLD_MS             2000
+#define UNLOCK_ANIMATION_FRAMES        6
 #define UNLOCK_ANIMATION_INTERVAL_MS 120
-#define ERROR_ANIMATION_MS 250
-#define ERROR_DURATION_MS  2500
-#define SD_RETRY_MS        1000
-#define SD_MAX_ATTEMPTS       10
+#define ERROR_ANIMATION_MS           250
+#define ERROR_DURATION_MS           2500
+#define SD_RETRY_MS                 1000
+#define SD_MAX_ATTEMPTS               10
 
 class Tasks {
   private:
@@ -74,13 +71,13 @@ class Tasks {
 
   public:
     Tasks(
-      RFID &reader,
-      Numpad &pad,
-      Display &screen,
-      Clock &clock_device,
-      Storage &sd,
-      Lock &lock_device,
-      Indicators &indicators_device
+      RFID &rfid,
+      Numpad &numpad,
+      Display &display,
+      Clock &clock,
+      Storage &storage,
+      Lock &lock,
+      Indicators &indicators
     );
     void run();
 };

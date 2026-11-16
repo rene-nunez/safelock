@@ -1,14 +1,14 @@
 #include "Tasks.h"
 
 Tasks::Tasks(
-  RFID &reader,
-  Numpad &pad,
-  Display &screen,
-  Clock &clock_device,
-  Storage &sd,
-  Lock &lock_device,
-  Indicators &indicators_device
-) : rfid(reader), numpad(pad), display(screen), clock(clock_device), storage(sd), lock(lock_device), indicators(indicators_device) {
+  RFID &rfid,
+  Numpad &numpad,
+  Display &display,
+  Clock &clock,
+  Storage &storage,
+  Lock &lock,
+  Indicators &indicators
+) : rfid(rfid), numpad(numpad), display(display), clock(clock), storage(storage), lock(lock), indicators(indicators) {
   state_millis = millis();
   last_sd_attempt = state_millis;
 }
