@@ -201,24 +201,6 @@ void Tasks::start_entry() {
   display.show_entry(0);
 }
 
-void Tasks::add_digit(char digit) {
-  if (entered_digits >= PASSWORD_LENGTH) return;
-
-  entered_password[entered_digits] = digit;
-  entered_digits++;
-  entered_password[entered_digits] = '\0';
-
-  display.show_entry(entered_digits);
-
-  if (entered_digits < PASSWORD_LENGTH) return;
-
-  if (strcmp(entered_password, DEFAULT_PASSWORD) == 0) {
-    grant_access("password");
-  } else {
-    deny_access();
-  }
-}
-
 void Tasks::grant_access(const char *method) {
   entered_digits = 0;
   entered_password[0] = '\0';
@@ -250,6 +232,17 @@ void Tasks::grant_access(const char *method) {
   if (!try_log_access()) {
     Serial.println("Access log pending, retrying...");
   }
+}
+
+void Tasks::deny_access() {
+  current_millis = millis();
+  state = ERROR;
+  state_millis = current_millis;
+  last_error_animation_millis = current_millis;
+  error_animation_frame = 0;
+  indicators.show_locked();
+  indicators.beep_error();
+  display.show_error_frame(error_animation_frame);
 }
 
 bool Tasks::try_log_access() {
@@ -297,13 +290,20 @@ void Tasks::finish_log_without_write() {
   display.show_success();
 }
 
-void Tasks::deny_access() {
-  current_millis = millis();
-  state = ERROR;
-  state_millis = current_millis;
-  last_error_animation_millis = current_millis;
-  error_animation_frame = 0;
-  indicators.show_locked();
-  indicators.beep_error();
-  display.show_error_frame(error_animation_frame);
+void Tasks::add_digit(char digit) {
+  if (entered_digits >= PASSWORD_LENGTH) return;
+
+  entered_password[entered_digits] = digit;
+  entered_digits++;
+  entered_password[entered_digits] = '\0';
+
+  display.show_entry(entered_digits);
+
+  if (entered_digits < PASSWORD_LENGTH) return;
+
+  if (strcmp(entered_password, DEFAULT_PASSWORD) == 0) {
+    grant_access("password");
+  } else {
+    deny_access();
+  }
 }
