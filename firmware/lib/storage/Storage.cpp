@@ -74,7 +74,7 @@ void Storage::reset() {
   ready = false;
 }
 
-bool Storage::log_access(const String &timestamp, const char *source) {
+bool Storage::log_access(const String &timestamp, const char *source, const char *decision) {
   if (!ready) return false;
 
   JsonDocument document;
@@ -84,7 +84,7 @@ bool Storage::log_access(const String &timestamp, const char *source) {
     document["ts"] = timestamp;
   }
   document["source"] = source;
-  document["decision"] = "granted";
+  document["decision"] = decision;
 
   File file = SD.open(SD_LOG_FILE, FILE_APPEND);
 

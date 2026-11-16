@@ -30,6 +30,9 @@ void Lock::unlock() {
   set_coil(true);
   active = true;
   activated_millis = millis();
+  has_command = true;
+  command_millis = activated_millis;
+  manual_open = false;
   Serial.println("Lock unlock: energized");
 }
 
@@ -43,6 +46,13 @@ void Lock::update() {
   } else if (raw != sense_stable && (now - sense_millis) >= LOCK_SENSE_DEBOUNCE_MS) {
     sense_stable = raw;
     sense_event = true;
+
+    // A bolt that opens without a recent command was released by hand
+    if (!sense_stable) {
+      bool commanded =
+        has_command && (now - command_millis) <= (LOCK_OPEN_MS + LOCK_CMD_GRACE_MS);
+      manual_open = !commanded;
+    }
   }
 
   if (!active) return;
@@ -65,4 +75,10 @@ bool Lock::sense_changed() {
   bool changed = sense_event;
   sense_event = false;
   return changed;
+}
+
+bool Lock::take_manual_open() {
+  bool value = manual_open;
+  manual_open = false;
+  return value;
 }

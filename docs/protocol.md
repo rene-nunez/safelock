@@ -62,7 +62,7 @@ El `request_id` es nuevo (lo genera el dispositivo) y el backend lo devuelve en 
 
 ### `evt/decision`
 
-La publica el dispositivo **siempre** que aplica una decisión, incluida la tarjeta desconocida (`decision: "unknown"`).
+La publica el dispositivo **siempre** que aplica una decisión de acceso, y también en la apertura manual (que no es una decisión de acceso).
 
 ```json
 {
@@ -76,9 +76,21 @@ La publica el dispositivo **siempre** que aplica una decisión, incluida la tarj
 }
 ```
 
-- `source`: `card` (solo tarjeta), `pin` (tarjeta + PIN), `remote` (apertura remota).
-- `credential_id` es opcional: solo si la tarjeta está en la ACL.
+- `decision` es el resultado: `granted`, `denied` o `unknown`.
+- `reason` dice **por qué** y va siempre. En los `granted` se deduce de `source`, pero se mantiene por uniformidad; en los `denied` es la única forma de saber la causa.
+- `source` es qué se presentó: `card` (solo tarjeta), `pin` (tarjeta + PIN), `remote` (apertura remota) o `manual` (apertura manual).
+- `uid` y `credential_id` solo aparecen si hubo tarjeta, y `credential_id` solo si además está en la ACL.
 - `acl_age_s` es la antigüedad de la ACL aplicada, en segundos.
+
+Tarjeta fuera de la ACL (desconocida o revocada, el dispositivo no puede distinguirlas): `decision: "denied"`, `reason: "acl_absent"`.
+
+Apertura manual (llave o switch del pestillo): el dispositivo ve el pestillo abrirse sin haber energizado la bobina, avisa en la OLED y el buzzer, y publica:
+
+```json
+{ "decision": "unknown", "reason": "manual_open", "source": "manual" }
+```
+
+`unknown` significa "no se aplicó ninguna decisión de acceso"; por eso no lleva `uid` ni `credential_id`.
 
 ### `state`
 
@@ -168,9 +180,9 @@ Snapshot **completo** de la configuración del dispositivo y su ACL. Un solo men
 
 | Campo | Valores |
 |---|---|
-| `decision` | `granted`, `denied`, `unknown` |
-| `source` | `card`, `pin`, `remote` |
-| `reason` | `acl_match`, `acl_absent`, `acl_stale`, `expired`, `not_yet_valid`, `offline_no_pin`, `door_locked`, `pin_ok`, `pin_bad`, `pin_locked`, `no_pin_set`, `rtc_invalid`, `backend_unreachable`, `remote` |
+| `decision` | `granted`, `denied`, `unknown` (`unknown` = no se aplicó ninguna decisión de acceso) |
+| `source` | `card`, `pin`, `remote`, `manual` |
+| `reason` | `acl_match`, `acl_absent`, `acl_stale`, `expired`, `not_yet_valid`, `offline_no_pin`, `door_locked`, `pin_ok`, `pin_bad`, `pin_locked`, `no_pin_set`, `rtc_invalid`, `backend_unreachable`, `remote`, `manual_open` |
 | `lock` | `locked`, `unlocked` |
 | `ack.result` | `ok`, `error`, `expired` |
 | `offline_policy` | `allow`, `deny` |
@@ -181,7 +193,8 @@ Snapshot **completo** de la configuración del dispositivo y su ACL. Un solo men
 - **PIN** lo decide el backend. El dispositivo nunca valida el PIN.
 - Las **puertas con `requires_pin`** son **online-only**: si el backend no responde, deniegan (`offline_no_pin`). No hay respaldo "solo UID", porque cortar la red sería un bypass del segundo factor.
 - Con el backend inalcanzable, las puertas de solo tarjeta aplican `offline_policy` y `stale_acl_hours`.
-- Tarjeta desconocida: se deniega localmente **pero se publica** (`decision: "unknown"`).
+- Tarjeta fuera de la ACL: se deniega localmente (`decision: "denied"`, `reason: "acl_absent"`) **pero se publica**.
+- Apertura manual (llave o switch del pestillo): el pestillo se abre sin que el dispositivo energice la bobina. Se avisa localmente (OLED + buzzer) y se publica `decision: "unknown"`, `source: "manual"`, `reason: "manual_open"`. Sin energía no se registra.
 - Bloqueo remoto (`locked: true`): deniega todo el acceso.
 - RTC inválido: no se evalúan vigencias ni se intenta TLS; alerta en el `hb`.
 

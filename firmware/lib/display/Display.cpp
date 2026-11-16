@@ -110,6 +110,27 @@ void Display::show_success() {
   display.display();
 }
 
+void Display::show_manual_open() {
+  if (!ready) return;
+
+  display.clearDisplay();
+  draw_lock_icon();
+
+  const char *text = "MANUAL OPEN";
+  int16_t x1 = 0;
+  int16_t y1 = 0;
+  uint16_t width = 0;
+  uint16_t height = 0;
+
+  display.setTextSize(1);
+  display.setTextColor(WHITE);
+  display.getTextBounds(text, 0, 0, &x1, &y1, &width, &height);
+  display.setCursor((SCREEN_WIDTH - width) / 2, 2);
+  display.print(text);
+
+  display.display();
+}
+
 void Display::draw_lock_icon(int16_t horizontal_offset) {
   const int16_t center_x = SCREEN_WIDTH / 2 + horizontal_offset;
   const int16_t body_top = 28;

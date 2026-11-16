@@ -18,7 +18,10 @@
 #define LOCK_SENSE_CLOSED_LEVEL LOW
 
 // Coil pulse per unlock; keep it as short as the latch reliably needs
-#define LOCK_OPEN_MS 2000
+#define LOCK_OPEN_MS 3000
+
+// Window after the command where an open is still attributed to it, not to a manual release
+#define LOCK_CMD_GRACE_MS 3000
 
 // Stable time before a new sense level is accepted
 #define LOCK_SENSE_DEBOUNCE_MS 100

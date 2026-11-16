@@ -118,6 +118,10 @@ void Tasks::run_lock_task() {
   bool was_active = lock.is_active();
   lock.update();
 
+  if (lock.take_manual_open()) {
+    alert_manual_open();
+  }
+
   if (lock.sense_changed()) {
     Serial.print("Lock sensor: ");
     Serial.println(lock.is_closed() ? "closed" : "open");
@@ -186,6 +190,12 @@ void Tasks::run_display_task() {
       display.show_error_frame(error_animation_frame);
       break;
 
+    case ALERT:
+      if ((current_millis - state_millis) >= ALERT_HOLD_MS) {
+        start_entry();
+      }
+      break;
+
     case ENTERING:
     case LOGGING:
       break;
@@ -242,13 +252,37 @@ void Tasks::deny_access() {
   display.show_error_frame(error_animation_frame);
 }
 
+void Tasks::alert_manual_open() {
+  current_millis = millis();
+  state = ALERT;
+  state_millis = current_millis;
+
+  indicators.show_locked();
+  indicators.beep_alert();
+  display.show_manual_open();
+
+  String timestamp = clock.timestamp();
+
+  if (timestamp.isEmpty()) {
+    Serial.println("Manual open (RTC unavailable)");
+  } else {
+    Serial.print("Manual open at ");
+    Serial.println(timestamp);
+  }
+
+  // Best effort: the backend owns the audit trail, this is the local copy
+  if (storage.is_ready() || storage.begin()) {
+    storage.log_access(timestamp, "manual", "unknown");
+  }
+}
+
 bool Tasks::try_log_access() {
   sd_log_attempts++;
 
   bool saved = false;
 
   if (storage.is_ready() || storage.begin()) {
-    saved = storage.log_access(pending_timestamp, pending_method);
+    saved = storage.log_access(pending_timestamp, pending_method, "granted");
   }
 
   if (saved) {

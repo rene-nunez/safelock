@@ -12,6 +12,10 @@ class Lock {
     bool sense_event = false;
     unsigned long sense_millis = 0;
 
+    bool has_command = false;
+    unsigned long command_millis = 0;
+    bool manual_open = false;
+
     bool read_sense_pin() const;
     void set_coil(bool energized);
 
@@ -22,4 +26,5 @@ class Lock {
     bool is_active() const;
     bool is_closed() const;
     bool sense_changed();
+    bool take_manual_open();
 };

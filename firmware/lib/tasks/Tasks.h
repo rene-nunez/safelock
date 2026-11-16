@@ -19,6 +19,7 @@
 #define LOCK_SPLASH_MS 1500
 #define SUCCESS_HOLD_MS 2000
 #define ERROR_DURATION_MS 2500
+#define ALERT_HOLD_MS 4000
 
 // Animations
 #define UNLOCK_ANIMATION_FRAMES 6
@@ -31,7 +32,7 @@
 
 class Tasks {
   private:
-    enum lock_state { WAIT_SD, ENTERING, SUCCESS, LOGGING, ERROR };
+    enum lock_state { WAIT_SD, ENTERING, SUCCESS, LOGGING, ERROR, ALERT };
 
     RFID &rfid;
     Numpad &numpad;
@@ -84,6 +85,7 @@ class Tasks {
     void start_entry();
     void grant_access(const char *method);
     void deny_access();
+    void alert_manual_open();
 
     // Access log
     bool try_log_access();

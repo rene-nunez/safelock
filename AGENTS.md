@@ -37,7 +37,8 @@ La variable relevante no es "hay internet" sino **"¿el dispositivo puede hablar
 - **Decide el dispositivo** la tarjeta (en ACL, activa, vigente según RTC). **Decide el backend** el PIN, la revocación y la apertura remota. Offline no se enrola, revoca ni cambia PIN.
 - El PIN es **por tarjeta** y opcional; `requires_pin` es por dispositivo y se configura desde la web. Una puerta con PIN es **online-only**: sin backend deniega, sin respaldo "solo UID".
 - Bloqueo remoto (`locked`): mientras esté activo el dispositivo deniega **todo** el acceso.
-- Tarjeta desconocida: se deniega localmente **pero se publica** (`decision: "unknown"`) para la auditoría.
+- Tarjeta fuera de la ACL (desconocida o revocada): se deniega localmente (`decision: "denied"`, `reason: "acl_absent"`) **pero se publica** para la auditoría. El snapshot no tiene tombstones, así que el dispositivo no las distingue.
+- Apertura manual (llave o switch del pestillo): el pestillo se abre sin energizar la bobina → alerta local (OLED + buzzer) y evento `decision: "unknown"`, `source: "manual"`, `reason: "manual_open"`. Sin energía no se registra.
 - Salud del backend = timeout de `ack` (3 s) + `hb`. Estar conectado al broker no implica que el backend esté vivo.
 - RTC inválido (pila del DS1307 muerta) → no evaluar vigencias, no intentar TLS, alerta crítica en el siguiente `hb`.
 
@@ -123,7 +124,7 @@ Pendientes, en este orden:
 3. `settings` — credenciales en NVS (`Preferences`), provisión por **serie/USB** una vez (device_id + WiFi + credenciales MQTT).
 4. `outbox` — cola persistente en LittleFS, replay al reconectar, `seq` monotónico.
 5. `acl` — lista blanca + versión, cargada desde un snapshot completo (config + ACL) con commit atómico en LittleFS.
-6. `lock` — ya están el DRV8871 (`LOCK_IN1`) y el contacto de pestillo (`LOCK_SENSE_PIN`). Faltan sensor de puerta, pulsador de salida, watchdog y tope duro: el pulso normal es `LOCK_OPEN_MS` (3 s) y el tope de 5 s va con un `esp_timer` independiente del `loop()`, para que no falle si el `loop()` se bloquea.
+6. `lock` — ya están el DRV8871 (`LOCK_IN1`) y el contacto de pestillo (`LOCK_SENSE_PIN`). Faltan sensor de puerta, pulsador de salida, watchdog y tope duro: el pulso normal es `LOCK_OPEN_MS` (3 s) y el tope de 5 s va con un `esp_timer` independiente del `loop()`, para que no falle si el `loop()` se bloquea. La apertura manual se detecta con el mismo contacto: si el pestillo abre sin que el dispositivo haya energizado la bobina (ventana `LOCK_CMD_GRACE_MS`), se avisa en la OLED y el buzzer y se publica `reason: "manual_open"`.
 7. `display` — logo SafeLock (bitmap) al arrancar, prompt de tarjeta y entrada de PIN **sin revelar la longitud** (sin marco de `_`).
 8. `Tasks` → máquina de estados **no bloqueante** (el handshake TLS bloquea segundos).
 

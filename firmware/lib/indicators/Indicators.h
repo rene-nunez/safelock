@@ -29,5 +29,6 @@ class Indicators {
     void show_unlocked();
     void beep_ok();
     void beep_error();
+    void beep_alert();
     void update();
 };
