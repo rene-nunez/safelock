@@ -26,7 +26,8 @@ Active levels, hardware variants, and lock timings are configured in [`firmware/
 
 ## Security
 
-> **Warning: MIFARE Classic only validates the card UID, which is clonable.**
+> [!WARNING]
+> **MIFARE Classic only validates the card UID, which is clonable.**
 > A UID is not a secret: it can be read and copied with cheap hardware, so card-only
 > validation is not a strong authentication factor. This is a hardware limitation of
 > MIFARE Classic and is acceptable only for low-risk doors. For anything that matters,
