@@ -3,7 +3,6 @@
 // Shared SPI bus: SCK 18, MOSI 23, MISO 19
 
 // MFRC522
-#define RFID_MISO 19
 #define RFID_SS    5 // 10k pull-up to 3V3
 #define RFID_RST  27
 
@@ -18,9 +17,6 @@
 #define NUMPAD_COL_3 33
 
 // microSD
-#define SD_MISO 19
-#define SD_MOSI 23
-#define SD_SCK  18
 #define SD_CS    2 // 10k pull-up to 3V3
 
 // SSD1306 OLED, RES pin tied to 3V3
