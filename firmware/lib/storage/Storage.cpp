@@ -94,7 +94,7 @@ bool Storage::log_access(const String &timestamp, const char *source) {
   }
 
   size_t written = serializeJson(document, file);
-  file.println(); // This method adds a line break and keeps one log per line
+  file.println(); // One log per line
 
   file.close();
 

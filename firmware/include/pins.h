@@ -37,5 +37,5 @@
 // DRV8871, IN2 pin tied to GND
 #define LOCK_IN1 12 // LOW at boot
 
-// Lock dry contacts, the another wire goes to GND
+// Lock dry contacts, the other wire goes to GND
 #define LOCK_SENSE_PIN 34 // external 10k pull-up to 3V3
