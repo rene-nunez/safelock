@@ -12,13 +12,11 @@ void Lock::set_coil(bool energized) {
 }
 
 void Lock::begin() {
-  // Set the idle level before switching to output, so the driver never sees a
-  // pulse at boot
+  // Set the idle level before switching to output, so the driver never sees a pulse at boot
   set_coil(false);
   pinMode(LOCK_IN1, OUTPUT);
-
-  // GPIO34 has no internal pull-up: the external 10k to 3V3 is mandatory
   pinMode(LOCK_SENSE_PIN, INPUT);
+
   sense_stable = read_sense_pin();
   sense_raw = sense_stable;
   sense_millis = millis();
@@ -42,8 +40,7 @@ void Lock::update() {
   if (raw != sense_raw) {
     sense_raw = raw;
     sense_millis = now;
-  } else if (raw != sense_stable &&
-             (now - sense_millis) >= LOCK_SENSE_DEBOUNCE_MS) {
+  } else if (raw != sense_stable && (now - sense_millis) >= LOCK_SENSE_DEBOUNCE_MS) {
     sense_stable = raw;
     sense_event = true;
   }

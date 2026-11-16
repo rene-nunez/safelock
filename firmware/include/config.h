@@ -21,7 +21,7 @@
 #define LOCK_OPEN_MS 2000
 
 // Stable time before a new sense level is accepted
-#define LOCK_SENSE_DEBOUNCE_MS 50
+#define LOCK_SENSE_DEBOUNCE_MS 100
 
 // Temporary until the backend owns the PIN and the ACL
 #define PASSWORD_LENGTH   5
