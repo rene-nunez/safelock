@@ -3,8 +3,8 @@
 // Shared SPI bus: SCK 18, MOSI 23, MISO 19
 
 // MFRC522
-#define RFID_SS    5 // 10k pull-up to 3V3
-#define RFID_RST  27
+#define RFID_SS   5 // 10k pull-up to 3V3
+#define RFID_RST 27
 
 // 4x3 keypad
 #define NUMPAD_ROW_1 16
@@ -17,7 +17,7 @@
 #define NUMPAD_COL_3 33
 
 // microSD
-#define SD_CS    2 // 10k pull-up to 3V3
+#define SD_CS 2 // 10k pull-up to 3V3
 
 // SSD1306 OLED, RES pin tied to 3V3
 #define OLED_CS 13
@@ -37,5 +37,5 @@
 // DRV8871, IN2 pin tied to GND
 #define LOCK_IN1 12 // LOW at boot
 
-// Lock dry contacts, the other wire goes to GND
+// Lock dry contacts, the another wire goes to GND
 #define LOCK_SENSE_PIN 34 // external 10k pull-up to 3V3
