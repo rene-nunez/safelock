@@ -23,3 +23,12 @@ MFRC522, microSD, and SSD1306 OLED share SPI; the DS1307 RTC and PCF8574T share 
 ### Configuration
 
 Active levels, hardware variants, and lock timings are configured in [`firmware/include/config.h`](firmware/include/config.h). This covers the PCF8574 LED polarity, buzzer type, DRV8871 coil level, pulse length, sensor debounce, etc.
+
+## Security
+
+> **Warning: MIFARE Classic only validates the card UID, which is clonable.**
+> A UID is not a secret: it can be read and copied with cheap hardware, so card-only
+> validation is not a strong authentication factor. This is a hardware limitation of
+> MIFARE Classic and is acceptable only for low-risk doors. For anything that matters,
+> use cards with encrypted authentication (MIFARE DESFire EV2/EV3) or a secure element,
+> and keep a PIN as a second factor on the doors that need it.
