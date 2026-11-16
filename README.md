@@ -26,10 +26,16 @@ Active levels, hardware variants, and lock timings are configured in [`firmware/
 
 ## Security
 
+Please take all of the following into consideration before attempting to implement this software:
+
 > [!WARNING]
-> **MIFARE Classic only validates the card UID, which is clonable.**
-> A UID is not a secret: it can be read and copied with cheap hardware, so card-only
-> validation is not a strong authentication factor. This is a hardware limitation of
-> MIFARE Classic and is acceptable only for low-risk doors. For anything that matters,
-> use cards with encrypted authentication (MIFARE DESFire EV2/EV3) or a secure element,
-> and keep a PIN as a second factor on the doors that need it.
+> **This is a prototype: its card authentication is not secure and must not be used as-is in a real deployment.**
+
+Safelock validates cards by UID only. The device decides access on its own from the cached UID list, so on a card-only door the UID is the entire credential, and a UID can be read and cloned with cheap hardware.
+
+MIFARE Classic offers no fix for this. Safelock does not even authenticate against the card (it just reads the UID), and the cipher MIFARE Classic does provide, Crypto-1, has been broken since 2008: keys can be recovered from a card in seconds, so the card's own authentication cannot be trusted either.
+
+A real system would need a different design:
+
+- Cards with proper mutual authentication (MIFARE DESFire EV2/EV3 with AES) or a secure element doing challenge-response.
+- A second factor. Doors configured with `requires_pin` already add one: the PIN is validated in the backend and never stored on the device, but those doors are online-only and deny access without a connection.
