@@ -14,9 +14,8 @@
 // Level on the DRV8871 IN1 that energizes the coil
 #define LOCK_ACTIVE_LEVEL HIGH
 
-// 1 = the contact shorts the sense pin to GND when the bolt is closed
-// 0 = the contact closes to 3V3
-#define LOCK_SENSE_ACTIVE_LOW 1
+// Pin level read on LOCK_SENSE_PIN when the bolt is closed
+#define LOCK_SENSE_CLOSED_LEVEL LOW
 
 // Coil pulse per unlock; keep it as short as the latch reliably needs
 #define LOCK_OPEN_MS 2000

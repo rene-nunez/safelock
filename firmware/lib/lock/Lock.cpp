@@ -2,15 +2,13 @@
 #include "pins.h"
 #include "config.h"
 
-bool Lock::read_sense_pin() const {
-  bool level = digitalRead(LOCK_SENSE_PIN) == HIGH;
-
-#if LOCK_SENSE_ACTIVE_LOW
-  // The contact closes to GND: LOW means the lock is closed
-  return !level;
-#else
-  return level;
+#ifndef LOCK_SENSE_CLOSED_LEVEL
+#error "LOCK_SENSE_CLOSED_LEVEL must be defined in config.h"
 #endif
+
+bool Lock::read_sense_pin() const {
+  // The contact closes to GND: LOW means the lock is closed
+  return digitalRead(LOCK_SENSE_PIN) == LOCK_SENSE_CLOSED_LEVEL;
 }
 
 void Lock::set_coil(bool energized) {
