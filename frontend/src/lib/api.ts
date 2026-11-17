@@ -18,6 +18,81 @@ export type TokenResponse = {
   expires_in: number
 }
 
+export type CardholderStatus = 'active' | 'inactive'
+
+export type Cardholder = {
+  id: string
+  name: string
+  email: string | null
+  unit: string | null
+  status: CardholderStatus
+  created_at: string
+  updated_at: string
+}
+
+export type CredentialStatus = 'active' | 'revoked'
+
+export type Credential = {
+  id: string
+  holder_id: string
+  uid: string
+  status: CredentialStatus
+  valid_from: string | null
+  valid_to: string | null
+  revoked_at: string | null
+  has_pin: boolean
+  pin_locked_until: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type OfflinePolicy = 'allow' | 'deny'
+export type DeviceStatus = 'active' | 'retired'
+
+export type Device = {
+  id: string
+  device_id: string
+  name: string
+  site: string | null
+  fw: string | null
+  online: boolean
+  last_seen: string | null
+  acl_version: number
+  last_sync_at: string | null
+  offline_policy: OfflinePolicy
+  stale_acl_hours: number
+  unlock_ms: number
+  requires_pin: boolean
+  locked: boolean
+  status: DeviceStatus
+  location: DeviceLocation | null
+  created_at: string
+  updated_at: string
+}
+
+export type DeviceLocation = {
+  lat: number
+  lng: number
+}
+
+export type AuditLog = {
+  id: string
+  actor_id: string | null
+  action: string
+  target: string
+  before: Record<string, unknown> | null
+  after: Record<string, unknown> | null
+  ip: string | null
+  ts: string
+}
+
+export type AuditLogPage = {
+  items: AuditLog[]
+  total: number
+  limit: number
+  offset: number
+}
+
 export class ApiError extends Error {
   readonly status: number
 
@@ -35,7 +110,9 @@ type ErrorBody = {
 async function readErrorDetail(response: Response): Promise<string | null> {
   try {
     const body = (await response.json()) as ErrorBody
-    return typeof body.detail === 'string' ? body.detail : null
+    if (typeof body.detail === 'string') return body.detail
+    if (Array.isArray(body.detail)) return 'The request contains invalid fields'
+    return null
   } catch {
     return null
   }
@@ -65,6 +142,10 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
       (await readErrorDetail(response)) ?? response.statusText,
       response.status,
     )
+  }
+
+  if (response.status === 204) {
+    return undefined as T
   }
 
   return (await response.json()) as T
@@ -111,4 +192,157 @@ export function updateUser(id: string, input: UpdateUserInput): Promise<User> {
     method: 'PATCH',
     body: JSON.stringify(input),
   })
+}
+
+export type CreateCardholderInput = {
+  name: string
+  email?: string | null
+  unit?: string | null
+}
+
+export type UpdateCardholderInput = Partial<CreateCardholderInput> & {
+  status?: CardholderStatus
+}
+
+export function listCardholders(): Promise<Cardholder[]> {
+  return request<Cardholder[]>('/cardholders')
+}
+
+export function createCardholder(
+  input: CreateCardholderInput,
+): Promise<Cardholder> {
+  return request<Cardholder>('/cardholders', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  })
+}
+
+export function updateCardholder(
+  id: string,
+  input: UpdateCardholderInput,
+): Promise<Cardholder> {
+  return request<Cardholder>(`/cardholders/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(input),
+  })
+}
+
+export type CreateCredentialInput = {
+  uid: string
+  valid_from?: string | null
+  valid_to?: string | null
+  pin?: string
+}
+
+export type UpdateCredentialInput = {
+  valid_from?: string | null
+  valid_to?: string | null
+  pin?: string
+  clear_pin?: boolean
+}
+
+export function listHolderCredentials(holderId: string): Promise<Credential[]> {
+  return request<Credential[]>(`/cardholders/${holderId}/credentials`)
+}
+
+export function createCredential(
+  holderId: string,
+  input: CreateCredentialInput,
+): Promise<Credential> {
+  return request<Credential>(`/cardholders/${holderId}/credentials`, {
+    method: 'POST',
+    body: JSON.stringify(input),
+  })
+}
+
+export function updateCredential(
+  id: string,
+  input: UpdateCredentialInput,
+): Promise<Credential> {
+  return request<Credential>(`/credentials/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(input),
+  })
+}
+
+export function revokeCredential(id: string): Promise<Credential> {
+  return request<Credential>(`/credentials/${id}/revoke`, { method: 'POST' })
+}
+
+export function restoreCredential(id: string): Promise<Credential> {
+  return request<Credential>(`/credentials/${id}/restore`, { method: 'POST' })
+}
+
+export function revokeAllCredentials(holderId: string): Promise<Credential[]> {
+  return request<Credential[]>(
+    `/cardholders/${holderId}/credentials/revoke-all`,
+    { method: 'POST' },
+  )
+}
+
+export function deleteCredential(id: string): Promise<void> {
+  return request<void>(`/credentials/${id}`, { method: 'DELETE' })
+}
+
+export type CreateDeviceInput = {
+  device_id: string
+  name: string
+  site?: string | null
+  location?: DeviceLocation | null
+  offline_policy?: OfflinePolicy
+  stale_acl_hours?: number
+  unlock_ms?: number
+  requires_pin?: boolean
+}
+
+export type UpdateDeviceInput = {
+  name?: string
+  site?: string | null
+  location?: DeviceLocation | null
+  offline_policy?: OfflinePolicy
+  stale_acl_hours?: number
+  unlock_ms?: number
+  requires_pin?: boolean
+  locked?: boolean
+  status?: DeviceStatus
+}
+
+export function listDevices(): Promise<Device[]> {
+  return request<Device[]>('/devices')
+}
+
+export function createDevice(input: CreateDeviceInput): Promise<Device> {
+  return request<Device>('/devices', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  })
+}
+
+export function updateDevice(
+  id: string,
+  input: UpdateDeviceInput,
+): Promise<Device> {
+  return request<Device>(`/devices/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(input),
+  })
+}
+
+export function deleteDevice(id: string): Promise<void> {
+  return request<void>(`/devices/${id}`, { method: 'DELETE' })
+}
+
+export type AuditLogQuery = {
+  limit?: number
+  offset?: number
+  action?: string
+}
+
+export function listAuditLogs(query: AuditLogQuery = {}): Promise<AuditLogPage> {
+  const params = new URLSearchParams()
+  if (query.limit !== undefined) params.set('limit', String(query.limit))
+  if (query.offset !== undefined) params.set('offset', String(query.offset))
+  if (query.action) params.set('action', query.action)
+  const suffix = params.size > 0 ? `?${params.toString()}` : ''
+  return request<AuditLogPage>(`/audit-logs${suffix}`)
 }

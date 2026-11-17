@@ -1,4 +1,5 @@
 import { lazy, Suspense, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import {
   Activity,
   Cpu,
@@ -16,10 +17,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
-import type { Device } from '@/types/device'
-
-// TODO: replace with GET /api/v1/devices once the devices endpoint exists.
-const DEVICES: Device[] = []
+import { listDevices } from '@/lib/api'
 
 const DeviceMap = lazy(async () => {
   const module = await import('@/components/map/device-map')
@@ -52,7 +50,10 @@ function StatCard({ label, value, hint, icon: Icon }: StatCardProps) {
 
 export function DashboardPage() {
   const [fitRequest, setFitRequest] = useState(0)
-  const devices = DEVICES
+  const devicesQuery = useQuery({ queryKey: ['devices'], queryFn: listDevices })
+  const devices = (devicesQuery.data ?? []).filter(
+    (device) => device.status === 'active',
+  )
   const online = devices.filter((device) => device.online).length
   const locked = devices.filter((device) => device.locked).length
   const hasLocations = devices.some((device) => device.location !== null)

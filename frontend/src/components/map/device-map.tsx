@@ -6,6 +6,7 @@ import { MapContainer, Marker, Popup, TileLayer, useMap } from 'react-leaflet'
 
 import { Badge } from '@/components/ui/badge'
 import { buttonVariants } from '@/components/ui/button-variants'
+import { formatDateTime } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import type { Device } from '@/types/device'
 
@@ -92,26 +93,26 @@ export function DeviceMap({ devices, fitRequest }: DeviceMapProps) {
                 <div className="space-y-2">
                   <div>
                     <p className="text-sm font-medium">{device.name}</p>
-                    <p className="text-xs text-muted-foreground">{device.id}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {device.device_id} · {device.site ?? 'No site'}
+                    </p>
                   </div>
                   <div className="flex flex-wrap items-center gap-1.5">
                     <Badge variant={device.online ? 'success' : 'muted'}>
                       {device.online ? 'Online' : 'Offline'}
                     </Badge>
-                    <Badge
-                      variant={
-                        device.locked
-                          ? 'danger'
-                          : device.lock === 'unlocked'
-                            ? 'success'
-                            : 'outline'
-                      }
-                    >
-                      {device.locked ? 'Locked (remote)' : device.lock}
+                    <Badge variant={device.locked ? 'danger' : 'outline'}>
+                      {device.locked ? 'Locked (remote)' : 'Unlocked'}
                     </Badge>
+                    {device.requires_pin ? (
+                      <Badge variant="secondary">PIN</Badge>
+                    ) : null}
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Last seen {device.lastSeen}
+                    Last seen{' '}
+                    {device.last_seen
+                      ? formatDateTime(device.last_seen)
+                      : 'Never'}
                   </p>
                   <Link
                     to="/devices"
