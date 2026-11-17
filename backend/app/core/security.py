@@ -19,18 +19,21 @@ def verify_password(password: str, password_hash: str) -> bool:
     return _password_hash.verify(password, password_hash)
 
 
-def create_access_token(user_id: str, settings: Settings) -> tuple[str, int]:
+def create_access_token(
+    user_id: str, token_version: int, settings: Settings
+) -> tuple[str, int]:
     expires_in = settings.access_token_ttl_minutes * 60
     now = datetime.now(UTC)
     payload: dict[str, Any] = {
         "sub": user_id,
+        "ver": token_version,
         "iat": now,
         "exp": now + timedelta(seconds=expires_in),
     }
     return jwt.encode(payload, settings.jwt_secret, algorithm=ALGORITHM), expires_in
 
 
-def decode_access_token(token: str, settings: Settings) -> str | None:
+def decode_access_token(token: str, settings: Settings) -> tuple[str, int] | None:
     try:
         payload: dict[str, Any] = jwt.decode(
             token,
@@ -42,4 +45,7 @@ def decode_access_token(token: str, settings: Settings) -> str | None:
         return None
 
     subject = payload.get("sub")
-    return subject if isinstance(subject, str) else None
+    version = payload.get("ver", 0)
+    if not isinstance(subject, str) or not isinstance(version, int):
+        return None
+    return subject, version

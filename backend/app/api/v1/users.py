@@ -95,6 +95,7 @@ async def update_user_endpoint(
         updates["password_hash"] = await run_in_threadpool(
             hash_password, payload.password
         )
+        updates["token_version"] = target.get("token_version", 0) + 1
 
     removing_admin = (
         target["role"] == "admin"

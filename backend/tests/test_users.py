@@ -1,3 +1,5 @@
+import pytest
+from bson import ObjectId
 from httpx import AsyncClient
 
 from app.db.mongo import Database
@@ -167,6 +169,48 @@ async def test_admin_resets_password(
     assert new_login["Authorization"].startswith("Bearer ")
 
 
+async def test_password_reset_invalidates_existing_sessions(
+    api: AsyncClient,
+    operator: UserDocument,
+    admin_headers: dict[str, str],
+) -> None:
+    old_session = await login_headers(api, OPERATOR_EMAIL, OPERATOR_PASSWORD)
+
+    reset = await api.patch(
+        f"/api/v1/users/{operator['_id']}",
+        headers=admin_headers,
+        json={"password": NEW_PASSWORD},
+    )
+    assert reset.status_code == 200
+
+    old_me = await api.get("/api/v1/auth/me", headers=old_session)
+    new_session = await login_headers(api, OPERATOR_EMAIL, NEW_PASSWORD)
+    new_me = await api.get("/api/v1/auth/me", headers=new_session)
+
+    assert old_me.status_code == 401
+    assert new_me.status_code == 200
+
+
+async def test_deactivation_invalidates_existing_sessions(
+    api: AsyncClient,
+    operator: UserDocument,
+    admin_headers: dict[str, str],
+) -> None:
+    session = await login_headers(api, OPERATOR_EMAIL, OPERATOR_PASSWORD)
+
+    deactivated = await api.patch(
+        f"/api/v1/users/{operator['_id']}",
+        headers=admin_headers,
+        json={"active": False},
+    )
+    assert deactivated.status_code == 200
+
+    me = await api.get("/api/v1/auth/me", headers=session)
+
+    assert me.status_code == 401
+    assert me.json()["detail"] == "User is not active"
+
+
 async def test_admin_cannot_change_own_role(
     api: AsyncClient,
     admin: UserDocument,
@@ -194,6 +238,39 @@ async def test_admin_cannot_deactivate_self(
     )
 
     assert response.status_code == 400
+
+
+async def test_last_admin_guard_blocks_removing_final_admin(
+    api: AsyncClient,
+    operator: UserDocument,
+    admin_headers: dict[str, str],
+    db: Database,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    promoted = await api.patch(
+        f"/api/v1/users/{operator['_id']}",
+        headers=admin_headers,
+        json={"role": "admin"},
+    )
+    assert promoted.status_code == 200
+
+    async def no_other_admins(_: Database, exclude_id: ObjectId | None = None) -> int:
+        return 0
+
+    monkeypatch.setattr("app.api.v1.users.count_active_admins", no_other_admins)
+
+    response = await api.patch(
+        f"/api/v1/users/{operator['_id']}",
+        headers=admin_headers,
+        json={"role": "operator"},
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "At least one active administrator is required"
+
+    stored = await db.users.find_one({"_id": operator["_id"]})
+    assert stored is not None
+    assert stored["role"] == "admin"
 
 
 async def test_update_rejects_empty_payload(

@@ -38,13 +38,16 @@ async def get_current_user(
     if credentials is None:
         raise _unauthorized("Missing bearer token")
 
-    user_id = decode_access_token(credentials.credentials, settings)
-    if user_id is None:
+    claims = decode_access_token(credentials.credentials, settings)
+    if claims is None:
         raise _unauthorized("Invalid or expired token")
+    user_id, token_version = claims
 
     user = await get_user_by_id(db, user_id)
     if user is None or not user.get("active", False):
         raise _unauthorized("User is not active")
+    if user.get("token_version", 0) != token_version:
+        raise _unauthorized("Session is no longer valid")
 
     return user_to_out(user)
 

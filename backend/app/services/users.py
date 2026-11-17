@@ -52,6 +52,7 @@ async def create_user(
         "password_hash": await run_in_threadpool(hash_password, password),
         "role": role,
         "active": True,
+        "token_version": 0,
         "last_login_at": None,
         "created_at": datetime.now(UTC),
     }

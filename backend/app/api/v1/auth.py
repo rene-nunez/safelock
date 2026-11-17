@@ -26,7 +26,9 @@ async def login(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    token, expires_in = create_access_token(str(user["_id"]), settings)
+    token, expires_in = create_access_token(
+        str(user["_id"]), user.get("token_version", 0), settings
+    )
     return TokenResponse(access_token=token, expires_in=expires_in)
 
 

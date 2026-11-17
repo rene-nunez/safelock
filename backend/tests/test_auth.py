@@ -5,6 +5,7 @@ import pytest
 from httpx import AsyncClient, Response
 
 from app.core.config import Settings
+from app.core.security import hash_password
 from app.db.mongo import Database
 from app.services.users import UserAlreadyExistsError, UserDocument, create_user
 from tests.conftest import ADMIN_EMAIL, ADMIN_PASSWORD
@@ -124,6 +125,33 @@ async def test_me_rejects_deleted_user(
     me = await api.get("/api/v1/auth/me", headers={"Authorization": f"Bearer {token}"})
 
     assert me.status_code == 401
+
+
+async def test_me_accepts_legacy_user_without_token_version(
+    api: AsyncClient, db: Database, test_settings: Settings
+) -> None:
+    inserted = await db.users.insert_one(
+        {
+            "email": "legacy@example.com",
+            "password_hash": hash_password("legacy password long enough"),
+            "role": "admin",
+            "active": True,
+            "last_login_at": None,
+        }
+    )
+    token = jwt.encode(
+        {
+            "sub": str(inserted.inserted_id),
+            "exp": datetime.now(UTC) + timedelta(minutes=5),
+        },
+        test_settings.jwt_secret,
+        algorithm="HS256",
+    )
+
+    me = await api.get("/api/v1/auth/me", headers={"Authorization": f"Bearer {token}"})
+
+    assert me.status_code == 200
+    assert me.json()["email"] == "legacy@example.com"
 
 
 async def test_create_user_rejects_duplicate_email(

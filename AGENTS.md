@@ -101,6 +101,7 @@ Reglas:
 - Toda acción administrativa se registra en `audit_logs`. `access_events` solo se agrega (append-only).
 - Roles `admin`/`operator` aplicados en el backend. Sin autorregistro. Primer admin por CLI (`python -m app.cli create-admin`).
 - Nadie puede cambiar su propio rol ni desactivarse. No se puede desactivar ni degradar al último `admin` activo.
+- Resetear una contraseña o desactivar una cuenta invalida sus tokens (`token_version` y `active` se validan en cada request).
 - `online` se calcula con `last_seen`. El frontend usa **polling** (~3 s), no WebSocket.
 - No guardar secretos reversibles. No correr múltiples workers de uvicorn (el consumidor MQTT vive en el `lifespan`).
 
