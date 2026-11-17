@@ -21,6 +21,7 @@ class Settings(BaseSettings):
     mongodb_uri: str = "mongodb://127.0.0.1:27017"
     mongodb_db: str = "safelock_dev"
     jwt_secret: str = "dev-only-change-me"
+    access_token_ttl_minutes: int = 30
 
 
 @lru_cache

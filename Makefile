@@ -6,7 +6,7 @@ PYTEST := $(if $(wildcard $(VENV)/bin/pytest),$(VENV)/bin/pytest,pytest)
 RUFF := $(if $(wildcard $(VENV)/bin/ruff),$(VENV)/bin/ruff,ruff)
 MYPY := $(if $(wildcard $(VENV)/bin/mypy),$(VENV)/bin/mypy,mypy)
 
-.PHONY: help venv api firmware monitor simulator test lint format frontend typecheck mqtt-restart
+.PHONY: help venv api create-admin firmware monitor simulator test lint format frontend typecheck mqtt-restart
 
 help: ## Help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-14s\033[0m %s\n", $$1, $$2}'
@@ -17,6 +17,9 @@ venv: ## Create backend venv
 
 api: ## Run backend API
 	$(PYTHON) -m uvicorn app.main:app --reload --app-dir backend
+
+create-admin: ## Create an admin account
+	PYTHONPATH=backend $(PYTHON) -m app.cli create-admin
 
 firmware: ## Build firmware
 	pio run -d firmware

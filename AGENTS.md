@@ -159,6 +159,7 @@ Variables de entorno del backend: `MQTT_URL`, `MQTT_TLS`, `MQTT_CA_PATH`, `MQTT_
 ```bash
 make venv          # crear venv e instalar deps
 make api           # API en desarrollo
+make create-admin  # crear una cuenta admin
 make firmware      # compilar firmware
 make monitor       # monitor serial
 make simulator     # simulador

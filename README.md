@@ -49,6 +49,17 @@ make venv
 make api
 ```
 
+Create an administrator before signing in:
+
+```bash
+make create-admin
+```
+
+You are prompted for the password and it is hashed with Argon2id. Accounts
+created this way are recorded in `audit_logs`. The `users` collection requires a
+unique `email`; existing accounts are rejected. Access tokens are JWTs valid for
+30 minutes (`ACCESS_TOKEN_TTL_MINUTES`).
+
 Install the frontend dependencies and start the dev server:
 
 ```bash
