@@ -1,68 +1,73 @@
-# Protocolo SafeLock v1
+# SafeLock Protocol
 
-Contrato MQTT entre los dispositivos (ESP32) y el backend. **Este documento es la fuente de verdad**: cambiar el protocolo implica actualizar este archivo, el simulador, el backend y el firmware en el mismo cambio.
+This is the contract between the ESP32 devices and the backend. If you change the protocol, update this file, the simulator, the backend, and the firmware together.
 
-## Transporte
+## Transport
 
-- MQTT **3.1.1** (PubSubClient no soporta 5), **QoS 1**, **TLS 8883** con la CA fijada en el dispositivo. Prohibido `setInsecure()`.
-- `state` se publica **retenido** y el dispositivo registra un **LWT**, para que el broker lo marque offline al desconectarse.
-- El dispositivo se autentica en el broker con **usuario == `device_id`** y su contraseña. No hay firma en el payload: TLS + credenciales del broker + ACL de topics dan confidencialidad, integridad y autenticación.
+- MQTT **3.1.1**, **QoS 1** for most messages, **TLS** on port 8883 with a fixed CA on the device. Do not use `setInsecure()`.
+- The device keeps a **retained** `status` message and sets a **Last Will** (LWT), so the broker can mark it offline if it disconnects.
+- The device signs in to the broker with **username = `device_id`** and its MQTT password. There is no signature inside the message: TLS, broker credentials, and topic permissions provide security.
 
-## Sobre de mensaje
+## Message format
 
-Todos los topics usan el mismo sobre:
+Every topic uses the same envelope:
 
 ```json
-{ "v": 1, "id": "<uuid4>", "ts": 1761000000, "device_id": "sl-0001", "data": {} }
+{
+  "v": 1,
+  "id": "<uuid4>",
+  "ts": 1761000000,
+  "device_id": "sl-0001",
+  "data": {}
+}
 ```
 
-| Campo | Tipo | Notas |
+| Field | Type | Meaning |
 |---|---|---|
-| `v` | int | Versión del protocolo. Hoy `1`. |
-| `id` | string | UUID4 único. Un `id` duplicado se descarta (índice único + TTL en el backend). |
-| `ts` | int | Epoch en **segundos** (UTC). Si el RTC del dispositivo no es válido se usa la hora de recepción y el evento se marca `degraded`. |
-| `device_id` | string | Formato `sl-0001`. Debe coincidir con el usuario MQTT. |
-| `data` | object | Específico del topic. |
+| `v` | number | Protocol version. Now `1`. |
+| `id` | string | Unique UUID4. The backend ignores a repeated `id`. |
+| `ts` | number | Event time in **seconds** (UTC). If the device clock is not valid, the backend uses receive time and marks the event as `degraded`. |
+| `device_id` | string | Device ID, like `sl-0001`. Must match the MQTT username. |
+| `data` | object | Message content for that topic. |
 
 ## Topics
 
-| Topic | Dirección | QoS | Retain | Contenido |
+Base path: `safelock/v1/devices/{device_id}`
+
+| Topic | Direction | QoS | Retained | Purpose |
 |---|---|---|---|---|
-| `safelock/v1/dev/{id}/evt/scan` | dev→be | 1 | no | UID leído en modo enrolamiento |
-| `safelock/v1/dev/{id}/evt/pin` | dev→be | 1 | no | PIN tecleado (dentro de TLS) |
-| `safelock/v1/dev/{id}/evt/decision` | dev→be | 1 | no | Decisión aplicada por el dispositivo |
-| `safelock/v1/dev/{id}/state` | dev→be | 1 | **sí** | Estado retenido: fw, ACL, política, cerradura |
-| `safelock/v1/dev/{id}/hb` | dev→be | 0 | no | Heartbeat |
-| `safelock/v1/dev/{id}/cmd/enroll` | be→dev | 1 | no | Entrar en modo enrolamiento |
-| `safelock/v1/dev/{id}/cmd/unlock` | be→dev | 1 | no | Apertura remota o tras validar el PIN |
-| `safelock/v1/dev/{id}/cmd/sync` | be→dev | 1 | no | Snapshot **completo** de configuración + ACL |
-| `safelock/v1/dev/{id}/ack` | dev→be | 1 | no | Resultado de un comando |
+| `.../events/card-scan` | device → backend | 1 | no | Card UID read during enrollment |
+| `.../events/pin-entry` | device → backend | 1 | no | PIN entered by the user |
+| `.../events/access-decision` | device → backend | 1 | no | Access decision made by the device |
+| `.../status` | device → backend | 1 | **yes** | Current device status (also used by LWT) |
+| `.../heartbeat` | device → backend | 0 | no | Periodic health message |
+| `.../commands/start-enrollment` | backend → device | 1 | no | Start enrollment mode |
+| `.../commands/unlock` | backend → device | 1 | no | Open the lock remotely or after PIN check |
+| `.../commands/synchronize-access-list` | backend → device | 1 | no | Full configuration and access list snapshot |
+| `.../acknowledgment` | device → backend | 1 | no | Result of a command |
 
-## Payloads
+## Messages
 
-### `evt/scan`
-
-Se publica **solo** en modo enrolamiento, cuando el dispositivo lee una tarjeta tras un `cmd/enroll`. Esa lectura **no abre la puerta**.
+### `events/card-scan`
+Sent **only** during enrollment, after `commands/start-enrollment`. This scan does **not** open the door.
 
 ```json
 { "uid": "AA:BB:CC:DD", "request_id": "<uuid4>" }
 ```
 
-`request_id` es el del `cmd/enroll` que abrió el modo. El backend lo usa para asociar la lectura con el enrolamiento pendiente.
+- `request_id`: the same ID sent in `commands/start-enrollment`.
 
-### `evt/pin`
-
-Se publica cuando el portador termina de teclear el PIN en una puerta con `requires_pin`.
+### `events/pin-entry`
+Sent when the user finishes entering a PIN on a door that requires it.
 
 ```json
 { "uid": "AA:BB:CC:DD", "pin": "123456", "request_id": "<uuid4>" }
 ```
 
-El `request_id` es nuevo (lo genera el dispositivo) y el backend lo devuelve en el `cmd/unlock` para correlacionar la respuesta.
+- `request_id`: created by the device; the backend sends it back in `commands/unlock` to match the result.
 
-### `evt/decision`
-
-La publica el dispositivo **siempre** que aplica una decisión de acceso, y también en la apertura manual (que no es una decisión de acceso).
+### `events/access-decision`
+Sent whenever the device makes an access decision. Also sent for a manual opening (which is not an access decision).
 
 ```json
 {
@@ -76,25 +81,24 @@ La publica el dispositivo **siempre** que aplica una decisión de acceso, y tamb
 }
 ```
 
-- `decision` es el resultado: `granted`, `denied` o `unknown`.
-- `reason` dice **por qué** y va siempre. En los `granted` se deduce de `source`, pero se mantiene por uniformidad; en los `denied` es la única forma de saber la causa.
-- `source` es qué se presentó: `card` (solo tarjeta), `pin` (tarjeta + PIN), `remote` (apertura remota) o `manual` (apertura manual).
-- `uid` y `credential_id` solo aparecen si hubo tarjeta, y `credential_id` solo si además está en la ACL.
-- `acl_age_s` es la antigüedad de la ACL aplicada, en segundos.
+- `decision`: `granted`, `denied`, or `unknown`.
+- `reason`: why this result happened (see Values).
+- `source`: `card`, `pin`, `remote`, or `manual`.
+- `uid` and `credential_id` appear only when a card was used. `credential_id` appears only if the card is in the access list.
+- `acl_age_s`: how old the applied access list is, in seconds.
 
-Tarjeta fuera de la ACL (desconocida o revocada, el dispositivo no puede distinguirlas): `decision: "denied"`, `reason: "acl_absent"`.
+Unknown card (not in the access list): `decision: "denied"`, `reason: "acl_absent"`.
 
-Apertura manual (llave o switch del pestillo): el dispositivo ve el pestillo abrirse sin haber energizado la bobina, avisa en la OLED y el buzzer, y publica:
+Manual opening (key or lock switch, without powering the coil): the device shows a local alert and sends:
 
 ```json
 { "decision": "unknown", "reason": "manual_open", "source": "manual" }
 ```
 
-`unknown` significa "no se aplicó ninguna decisión de acceso"; por eso no lleva `uid` ni `credential_id`.
+`unknown` means no access decision was made, so it has no `uid` or `credential_id`.
 
-### `state`
-
-Retenido. El dispositivo lo republica al conectar y cuando cambia algo relevante. El **LWT** publica el mismo topic con `online: false`.
+### `status`
+Retained. The device publishes it on connect and when something important changes. The LWT publishes to the same topic with `online: false`.
 
 ```json
 {
@@ -107,38 +111,38 @@ Retenido. El dispositivo lo republica al conectar y cuando cambia algo relevante
 }
 ```
 
-- `locked` es el bloqueo remoto (lockdown): con `true` el dispositivo deniega todo el acceso.
-- `lock` es el estado físico del pestillo: `locked` o `unlocked`.
+- `locked`: remote lockdown. If `true`, the device denies all access.
+- `lock`: physical lock state, `locked` or `unlocked`.
 
-### `hb`
-
-Heartbeat cada 30–60 s, QoS 0 (si se pierde uno, no importa).
+### `heartbeat`
+Sent every 30–60 seconds, QoS 0.
 
 ```json
 { "uptime_s": 1234, "rssi": -58, "rtc_valid": true, "free_heap": 180000 }
 ```
 
-`rtc_valid: false` es la alerta crítica: sin reloj no se evalúan vigencias ni se intenta TLS.
+- `rtc_valid: false` means the device clock is not valid (important problem).
 
-### `cmd/enroll`
-
-Abre el modo enrolamiento en el dispositivo por `ttl_s` segundos.
+### `commands/start-enrollment`
+Starts enrollment mode on the device for `ttl_s` seconds.
 
 ```json
 { "request_id": "<uuid4>", "ttl_s": 60, "expires_at": 1761000060 }
 ```
 
-### `cmd/unlock`
+### `commands/unlock`
+Opens the lock.
 
 ```json
 { "request_id": "<uuid4>", "duration_ms": 3000, "expires_at": 1761000030 }
 ```
 
-`request_id` correlaciona con el `ack`. `duration_ms` es el pulso de la cerradura; `expires_at` es el vencimiento del comando (30 s).
+- `request_id`: used to match the `acknowledgment`.
+- `duration_ms`: how long to power the lock.
+- `expires_at`: command expiration time (seconds, UTC).
 
-### `cmd/sync`
-
-Snapshot **completo** de la configuración del dispositivo y su ACL. Un solo mensaje, commit atómico.
+### `commands/synchronize-access-list`
+Full snapshot of device configuration and access list in one message.
 
 ```json
 {
@@ -161,57 +165,56 @@ Snapshot **completo** de la configuración del dispositivo y su ACL. Un solo men
 }
 ```
 
-- `entries` es la lista **completa**: un UID que no aparece está revocado (no hay tombstones).
-- `requires_pin` y `locked` son la política de esa puerta; el dispositivo las aplica.
-- `offline_policy`: `allow` o `deny`.
-- `stale_acl_hours`: a partir de cuántas horas sin sincronizar la ACL deja de considerarse válida.
-- `valid_from` / `valid_to`: epoch en segundos, o `null`.
+- `entries` is the complete list. If a UID is not there, it is not allowed.
+- `requires_pin`, `locked`, `offline_policy`, `stale_acl_hours`, and `unlock_ms` are the device settings in this snapshot.
+- `offline_policy`: `allow` or `deny`.
+- `valid_from` / `valid_to`: seconds (UTC) or `null`.
 
-### `ack`
+The device saves this snapshot atomically: write to a temporary file, then rename it. It never applies a partial snapshot.
+
+### `acknowledgment`
+Result of a command.
 
 ```json
 { "request_id": "<uuid4>", "result": "ok", "reason": null }
 ```
 
-- `result`: `ok`, `error` o `expired`.
-- `reason` es opcional (p. ej. `acl_write_failed`).
+- `result`: `ok`, `error`, or `expired`.
+- `reason`: optional detail, for example `acl_write_failed`.
 
-## Enumeraciones
+## Values
 
-| Campo | Valores |
+| Field | Values |
 |---|---|
-| `decision` | `granted`, `denied`, `unknown` (`unknown` = no se aplicó ninguna decisión de acceso) |
+| `decision` | `granted`, `denied`, `unknown` |
 | `source` | `card`, `pin`, `remote`, `manual` |
 | `reason` | `acl_match`, `acl_absent`, `acl_stale`, `expired`, `not_yet_valid`, `offline_no_pin`, `door_locked`, `pin_ok`, `pin_bad`, `pin_locked`, `no_pin_set`, `rtc_invalid`, `backend_unreachable`, `remote`, `manual_open` |
 | `lock` | `locked`, `unlocked` |
-| `ack.result` | `ok`, `error`, `expired` |
+| `result` | `ok`, `error`, `expired` |
 | `offline_policy` | `allow`, `deny` |
 
-## Decisiones y offline
+## Rules
 
-- **Tarjeta** la decide el dispositivo con la ACL en caché (activa y vigente según RTC). Es la ruta crítica y no depende del backend.
-- **PIN** lo decide el backend. El dispositivo nunca valida el PIN.
-- Las **puertas con `requires_pin`** son **online-only**: si el backend no responde, deniegan (`offline_no_pin`). No hay respaldo "solo UID", porque cortar la red sería un bypass del segundo factor.
-- Con el backend inalcanzable, las puertas de solo tarjeta aplican `offline_policy` y `stale_acl_hours`.
-- Tarjeta fuera de la ACL: se deniega localmente (`decision: "denied"`, `reason: "acl_absent"`) **pero se publica**.
-- Apertura manual (llave o switch del pestillo): el pestillo se abre sin que el dispositivo energice la bobina. Se avisa localmente (OLED + buzzer) y se publica `decision: "unknown"`, `source: "manual"`, `reason: "manual_open"`. Sin energía no se registra.
-- Bloqueo remoto (`locked: true`): deniega todo el acceso.
-- RTC inválido: no se evalúan vigencias ni se intenta TLS; alerta en el `hb`.
+### Access and offline behavior
+- **Card access** is decided by the device using its local access list. This must work even without the backend.
+- **PIN** is checked only by the backend. The device never checks or stores the PIN.
+- Doors with `requires_pin` need the backend. If the backend is not available, access is denied (`offline_no_pin`). There is no "card only" fallback for these doors.
+- For card-only doors, when the backend is not available the device follows `offline_policy` and `stale_acl_hours`.
+- A card not in the access list is denied locally (`acl_absent`) but the event is still sent.
+- Manual opening (key or switch): local alert and an `access-decision` event with `decision: "unknown"`, `source: "manual"`, `reason: "manual_open"`. If there is no power, it is not recorded.
+- Remote lockdown (`locked: true`): deny all access.
+- If the device clock is not valid: do not check date validity and do not try TLS; report it in `heartbeat`.
 
-## Encolado de eventos
+### Event queue
+- `events/*` and `acknowledgment` are saved on the device and sent again after reconnecting. Retries are safe because the backend ignores repeated `id` values.
+- `heartbeat` and `status` are not queued.
 
-Los mensajes `evt/*` y `ack` se encolan de forma **persistente** en LittleFS y se reintentan al reconectar, con un `seq` monotónico. Si la cola se llena se descartan los más viejos. `hb` y `state` **no** se encolan. El backend deduplica por `id`, así que los reintentos son seguros.
+### Limits
+- `commands/synchronize-access-list` must fit in one message (about 8 KB). If it grows too much, split `entries` into pages.
+- Commands are sent only when the device is considered online, include `expires_at`, and are not retried after reconnect. If no `acknowledgment` arrives, the UI marks it as failed.
 
-## Límites
-
-- Buffer de `cmd/sync` ≈ 8 KB en PubSubClient. Si no alcanza, se pagina `entries` (no hay `parts` ni `acl_hash`).
-- ~10 mensajes/s por dispositivo (límite de EMQX Serverless).
-- Comandos: solo se publican si el dispositivo está online (`last_seen` < 90 s), llevan `expires_at` (30 s) y no se reintentan al reconectar. Si no llega `ack`, la UI lo marca como fallido.
-
-## Seguridad
-
-- TLS con CA fijada; sin `setInsecure()`.
-- PIN verificado **solo en el backend**: `Argon2id`, longitud variable (≥6), rate limit por tarjeta y por dispositivo, bloqueo temporal tras 5 fallos.
-- PIN de longitud variable; la OLED **no revela** cuántos dígitos tiene.
-- El dispositivo no guarda secretos reversibles: solo la ACL y su configuración.
-- **MIFARE Classic solo valida el UID, que es clonable.** No es una validación recomendada; para producción usar tarjetas con autenticación cifrada (DESFire EV2/EV3) o un elemento seguro.
+### Security
+- Use TLS with a fixed CA. Never use `setInsecure()`.
+- PIN is checked only on the backend (Argon2id hash, rate limits, temporary lock after repeated failures).
+- The device must not store reversible secrets, only its configuration and access list.
+- MIFARE Classic card UID can be copied. For stronger security, use cards with encrypted authentication.
