@@ -61,7 +61,7 @@ type DeviceMapProps = {
 
 export function DeviceMap({ devices, fitRequest }: DeviceMapProps) {
   return (
-    <div className="relative h-full w-full">
+    <div className="relative isolate h-full w-full">
       <MapContainer
         center={[20, 0]}
         zoom={2}

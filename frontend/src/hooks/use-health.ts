@@ -15,6 +15,8 @@ export function useHealth() {
       return (await response.json()) as HealthResponse
     },
     refetchInterval: 10_000,
+    refetchIntervalInBackground: true,
+    refetchOnWindowFocus: true,
     retry: false,
   })
 }

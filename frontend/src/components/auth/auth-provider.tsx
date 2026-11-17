@@ -1,6 +1,14 @@
-import { useCallback, useMemo, useState, type ReactNode } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 
+import { useHealth } from '@/hooks/use-health'
 import { ApiError, getCurrentUser, signIn as signInRequest } from '@/lib/api'
 import { AuthContext } from '@/lib/auth-context'
 import { clearToken, getToken, setToken } from '@/lib/token'
@@ -28,6 +36,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     staleTime: Infinity,
     gcTime: Infinity,
   })
+
+  const health = useHealth()
+  const wasOnline = useRef<boolean | null>(null)
+  const healthPending = health.isPending
+  const healthOnline = health.isSuccess && health.data?.status === 'ok'
+
+  useEffect(() => {
+    if (healthPending) return
+    if (healthOnline && wasOnline.current === false) {
+      void queryClient.invalidateQueries({ queryKey: ['auth', 'me'] })
+    }
+    wasOnline.current = healthOnline
+  }, [healthOnline, healthPending, queryClient])
 
   const signIn = useCallback(
     async (email: string, password: string) => {

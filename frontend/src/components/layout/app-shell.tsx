@@ -19,9 +19,10 @@ const PAGE_TITLES: Record<string, string> = {
 }
 
 function ApiStatus() {
-  const { data, status } = useHealth()
-  const online = data?.status === 'ok'
-  const label = online ? 'Online' : status === 'pending' ? 'Checking' : 'Offline'
+  const { data, status, isFetching } = useHealth()
+  const online = status === 'success' && data?.status === 'ok'
+  const checking = isFetching && !online
+  const label = online ? 'Online' : checking ? 'Checking' : 'Offline'
 
   return (
     <span
@@ -33,7 +34,7 @@ function ApiStatus() {
           'size-2 rounded-full',
           online
             ? 'bg-emerald-500'
-            : status === 'pending'
+            : checking
               ? 'bg-amber-500'
               : 'bg-red-500',
         )}
@@ -130,7 +131,7 @@ export function AppShell() {
       ) : null}
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-border bg-background/80 px-4 backdrop-blur lg:px-6">
+        <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-border bg-background px-4 lg:px-6">
           <Button
             variant="ghost"
             size="icon"

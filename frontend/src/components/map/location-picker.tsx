@@ -81,7 +81,7 @@ export function LocationPicker({
 }: LocationPickerProps) {
   return (
     <div
-      className={`relative w-full overflow-hidden rounded-lg border border-border ${className}`}
+      className={`relative isolate w-full overflow-hidden rounded-lg border border-border ${className}`}
     >
       <MapContainer
         center={value ? [value.lat, value.lng] : DEFAULT_CENTER}
