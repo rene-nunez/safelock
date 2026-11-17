@@ -38,7 +38,7 @@ def _prompt_password() -> str:
     return password
 
 
-async def _create_admin(
+async def _create_user(
     settings: Settings, email: str, password: str, role: Role
 ) -> None:
     client = create_client(settings.mongodb_uri)
@@ -65,7 +65,7 @@ async def _create_admin(
     print(f"Created {role} {email}")
 
 
-def _run_create_admin(args: argparse.Namespace) -> None:
+def _run_create_user(args: argparse.Namespace) -> None:
     email = _validate_email(args.email or input("Email: "))
     password = args.password or _prompt_password()
     if len(password) < MIN_PASSWORD_LENGTH:
@@ -73,29 +73,34 @@ def _run_create_admin(args: argparse.Namespace) -> None:
             f"Password must be at least {MIN_PASSWORD_LENGTH} characters long"
         )
 
-    asyncio.run(_create_admin(get_settings(), email, password, args.role))
+    asyncio.run(_create_user(get_settings(), email, password, args.role))
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="python -m app.cli")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
-    create_admin = subparsers.add_parser(
-        "create-admin", help="Create an administrator or operator account"
+    create_user = subparsers.add_parser(
+        "create-user", help="Create an account (administrator by default)"
     )
-    create_admin.add_argument("--email", help="Account email (prompted if omitted)")
-    create_admin.add_argument(
+    create_user.add_argument("--email", help="Account email (prompted if omitted)")
+    create_user.add_argument(
         "--password", help="Account password (prompted if omitted)"
     )
-    create_admin.add_argument("--role", choices=("admin", "operator"), default="admin")
+    create_user.add_argument(
+        "--role",
+        choices=("admin", "operator"),
+        default="admin",
+        help="Account role (default: admin)",
+    )
 
     return parser
 
 
 def main(argv: Sequence[str] | None = None) -> None:
     args = build_parser().parse_args(argv)
-    if args.command == "create-admin":
-        _run_create_admin(args)
+    if args.command == "create-user":
+        _run_create_user(args)
 
 
 if __name__ == "__main__":

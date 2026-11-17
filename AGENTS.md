@@ -99,7 +99,7 @@ Estructura prevista en `backend/app/`: `main.py`, `core/`, `api/v1/`, `schemas/`
 
 Reglas:
 - Toda acción administrativa se registra en `audit_logs`. `access_events` solo se agrega (append-only).
-- Roles `admin`/`operator` aplicados en el backend. Sin autorregistro. Primer admin por CLI (`python -m app.cli create-admin`).
+- Roles `admin`/`operator` aplicados en el backend. Sin autorregistro. Primer admin por CLI (`python -m app.cli create-user`).
 - Nadie puede cambiar su propio rol ni desactivarse. No se puede desactivar ni degradar al último `admin` activo.
 - Resetear una contraseña o desactivar una cuenta invalida sus tokens (`token_version` y `active` se validan en cada request).
 - `online` se calcula con `last_seen`. El frontend usa **polling** (~3 s), no WebSocket.
@@ -173,7 +173,7 @@ Variables de entorno del backend: `MQTT_URL`, `MQTT_TLS`, `MQTT_CA_PATH`, `MQTT_
 ```bash
 make venv          # crear venv e instalar deps
 make api           # API en desarrollo
-make create-admin  # crear una cuenta admin
+make create-user   # crear una cuenta (admin por defecto)
 make firmware      # compilar firmware
 make monitor       # monitor serial
 make simulator     # simulador
@@ -195,7 +195,7 @@ Hitos verticales. Un hito se cierra cuando funciona de punta a punta.
 
 | Hito | Entregable |
 |---|---|
-| 1. Admin y datos | Base de datos, auth, CLI `create-admin`, CRUD de portadores, dispositivos y credenciales, auditoría; scaffold frontend con Login |
+| 1. Admin y datos | Base de datos, auth, CLI `create-user`, CRUD de portadores, dispositivos y credenciales, auditoría; scaffold frontend con Login |
 | 2. Primer dispositivo en línea | Firmware: NVS, WiFi, hora y MQTT con `status`/`heartbeat`; backend: gateway MQTT que ingiere eventos y los muestra con polling |
 | 3. Acceso local-first | Snapshot de ACL con guardado atómico, outbox, decisión local y `access-decision` (el simulador ya permite probarlo) |
 | 4. Operación remota | `unlock`, enrolamiento por toque y PIN validado en el backend |
