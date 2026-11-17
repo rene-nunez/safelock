@@ -4,7 +4,7 @@ Memoria del proyecto para agentes. Si algo aquí contradice una suposición, est
 
 ## Proyecto y estado
 
-SafeLock es un sistema de control de acceso con RFID (MFRC522), teclado, pantalla OLED y reloj RTC. Tiene backend (FastAPI), frontend (React) y base de datos (MongoDB Atlas). Es un monorepo.
+Safelock es un sistema de control de acceso con RFID (MFRC522), teclado, pantalla OLED y reloj RTC. Tiene backend (FastAPI), frontend (React) y base de datos (MongoDB Atlas). Es un monorepo.
 
 **Hardware:** ESP32, MFRC522 (SPI), teclado 4x3, SSD1306 (SPI), DS1307 (I2C), LEDs por PCF8574T y buzzer pasivo. La cerradura es electromagnética de 12 V controlada por un DRV8871, *fail-secure* (sin energía queda cerrada). Su contacto va a `LOCK_SENSE_PIN` (GPIO34) y se usa para saber si el pestillo está cerrado o abierto (con antirrebote). No mide si la puerta está abierta. Sensor de puerta, botón de salida, UPS y llave mecánica están contemplados pero aún no implementados.
 
@@ -147,6 +147,7 @@ Variables de entorno del backend: `MQTT_URL`, `MQTT_TLS`, `MQTT_CA_PATH`, `MQTT_
 - Código e identificadores en inglés. Comentarios solo cuando el "por qué" no sea obvio.
 - Clases en PascalCase con el nombre de su header. Variables y funciones en `snake_case`.
 - `device_id`: formato `sl-0001`. UID de tarjeta: `AA:BB:CC:DD` en mayúsculas.
+- El nombre del proyecto se escribe **Safelock**, no `SafeLock`.
 - **Nunca** commitear secretos, `.env`, certificados privados ni `credentials.md`.
 - **Nunca** loggear payloads MQTT (pueden contener PIN y UIDs). Loggear `id`, `device_id`, tipo y decisión.
 - Cambiar el protocolo = actualizar `docs/protocol.md` + simulador + backend + firmware en el mismo cambio.
@@ -155,11 +156,14 @@ Variables de entorno del backend: `MQTT_URL`, `MQTT_TLS`, `MQTT_CA_PATH`, `MQTT_
 ## Comandos
 
 ```bash
+make venv          # crear venv e instalar deps
+make api           # API en desarrollo
 make firmware      # compilar firmware
 make monitor       # monitor serial
 make simulator     # simulador
 make test          # pruebas backend
 make lint          # lint backend
+make format        # formatear backend
 make frontend      # frontend en desarrollo
 make typecheck     # tipos frontend
 make mqtt-restart  # reiniciar Mosquitto

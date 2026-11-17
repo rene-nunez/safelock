@@ -1,9 +1,22 @@
 .DEFAULT_GOAL := help
 
-.PHONY: help firmware monitor simulator test lint frontend typecheck mqtt-restart
+VENV := backend/.venv
+PYTHON := $(if $(wildcard $(VENV)/bin/python),$(VENV)/bin/python,python3)
+PYTEST := $(if $(wildcard $(VENV)/bin/pytest),$(VENV)/bin/pytest,pytest)
+RUFF := $(if $(wildcard $(VENV)/bin/ruff),$(VENV)/bin/ruff,ruff)
+MYPY := $(if $(wildcard $(VENV)/bin/mypy),$(VENV)/bin/mypy,mypy)
+
+.PHONY: help venv api firmware monitor simulator test lint format frontend typecheck mqtt-restart
 
 help: ## Help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-14s\033[0m %s\n", $$1, $$2}'
+
+venv: ## Create backend venv
+	python3 -m venv $(VENV)
+	$(VENV)/bin/pip install -e 'backend[dev]'
+
+api: ## Run backend API
+	$(PYTHON) -m uvicorn app.main:app --reload --app-dir backend
 
 firmware: ## Build firmware
 	pio run -d firmware
@@ -12,14 +25,17 @@ monitor: ## Serial monitor
 	pio device monitor -d firmware
 
 simulator: ## Run simulator
-	python backend/scripts/simulator.py
+	$(PYTHON) backend/scripts/simulator.py
 
 test: ## Backend tests
-	pytest backend/tests -q
+	$(PYTEST) backend/tests -q
 
 lint: ## Lint backend
-	ruff check backend
-	mypy backend
+	$(RUFF) check backend
+	$(MYPY) --config-file backend/pyproject.toml backend
+
+format: ## Format backend
+	$(RUFF) format backend
 
 frontend: ## Frontend dev
 	npm run dev --prefix frontend
