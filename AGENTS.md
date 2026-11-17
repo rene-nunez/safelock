@@ -25,6 +25,7 @@ Safelock es un sistema de control de acceso con RFID (MFRC522), teclado, pantall
 | Bloqueo remoto | `locked: true` en la configuración: el dispositivo niega todo acceso |
 | Enrolamiento | **Por toque**: el backend inicia el modo, el dispositivo envía el UID leído y el admin confirma en la web |
 | Instalación | Credenciales iniciales por **serie/USB** una sola vez (device_id, WiFi, MQTT). Sin credencial de fábrica |
+| Mapa | Leaflet + Stadia Maps (Alidade Smooth Dark). UI solo en modo oscuro. Ubicación manual por dispositivo |
 
 ## Cómo se decide el acceso
 
@@ -79,7 +80,7 @@ Formato de mensaje (todos los topics):
 
 | Colección | Campos clave | Índices |
 |---|---|---|
-| `devices` | `device_id`, `name`, `site`, `fw`, `last_seen`, `acl_version`, `last_sync_at`, `offline_policy`, `stale_acl_hours`, `unlock_ms`, `requires_pin`, `locked` | `device_id` único |
+| `devices` | `device_id`, `name`, `site`, `fw`, `last_seen`, `acl_version`, `last_sync_at`, `offline_policy`, `stale_acl_hours`, `unlock_ms`, `requires_pin`, `locked`, `location` (lat/lng) | `device_id` único |
 | `cardholders` | `name`, `email`, `unit`, `status` | `email` |
 | `credentials` | `holder_id`, `uid`, `status`, `valid_from/to`, `revoked_at`, `pin_hash` (Argon2id, opcional), `pin_fails`, `pin_locked_until` | `uid` único, `holder_id` |
 | `enrollments` | `device_id`, `request_id`, `requested_by`, `created_at` | TTL 60 s |
@@ -103,9 +104,9 @@ Reglas:
 
 ## Frontend
 
-Vite + TypeScript + React Router + TanStack Query + React Hook Form + Zod + Tailwind + shadcn/ui. Cliente API generado desde OpenAPI.
+Vite + TypeScript + React Router + TanStack Query + React Hook Form + Zod + Tailwind + shadcn/ui. Cliente API generado desde OpenAPI. UI solo en modo oscuro y en inglés. El dashboard incluye un mapa Leaflet + Stadia Maps (Alidade Smooth Dark); Stadia usa domain auth, sin API key en el repo.
 
-Páginas previstas: Login, Dashboard, Portadores, Dispositivos, Bitácora, Auditoría, Usuarios.
+Páginas previstas: Login, Dashboard, Cardholders, Devices, Activity, Audit, Users.
 
 Enrolamiento: `POST /enrollments` (TTL 60 s) → el dispositivo envía `events/card-scan` → la UI lo muestra por polling → el admin confirma → se crea la credencial y se sincroniza la lista.
 
@@ -171,8 +172,7 @@ make mqtt-restart  # reiniciar Mosquitto
 
 ## Estado
 
-- Fase 0 cerrada: `docs/protocol.md`, ADRs, `Makefile`, scaffold del backend y simulador MQTT.
-- Pendiente de fase 0: scaffold del frontend.
+- Fase 0 cerrada: `docs/protocol.md`, ADRs, `Makefile`, scaffold del backend y del frontend, simulador MQTT.
 
 ## Roadmap
 

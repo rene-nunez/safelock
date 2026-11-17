@@ -49,6 +49,15 @@ make venv
 make api
 ```
 
+Install the frontend dependencies and start the dev server:
+
+```bash
+npm install --prefix frontend
+make frontend
+```
+
+The Vite dev server proxies `/api` and `/healthz` to `127.0.0.1:8000`.
+
 The simulator publishes the MQTT contract from [`docs/protocol.md`](docs/protocol.md) for fake devices:
 
 ```bash
@@ -72,11 +81,14 @@ quit               Exit
 
 `scan` only works after a `commands/enroll` command opens enrollment. Environment variables: `SIM_MQTT_URL`, `SIM_PASSWORD`, `SIM_DEVICES`, `SIM_HEARTBEAT`.
 
+The dashboard map uses Leaflet with Stadia Maps (Alidade Smooth Dark). Stadia allows keyless requests from localhost; production domains authenticate through Stadia's domain authentication, so no API key is stored in the repository. Device locations are set manually with latitude and longitude.
+
 Run the checks:
 
 ```bash
 make lint
 make test
+make typecheck
 ```
 
 ## Security
