@@ -58,22 +58,22 @@ Base: `safelock/devices/{device_id}`
 | `.../events/access-decision` | dispositivo → backend | 1 | no | Decisión aplicada |
 | `.../status` | dispositivo → backend | 1 | **sí** | Estado (firmware, lista, política, cerradura) |
 | `.../heartbeat` | dispositivo → backend | 0 | no | Estado periódico (cada 30–60 s) |
-| `.../commands/start-enrollment` | backend → dispositivo | 1 | no | Iniciar modo enrolamiento |
+| `.../commands/enroll` | backend → dispositivo | 1 | no | Iniciar modo enrolamiento |
 | `.../commands/unlock` | backend → dispositivo | 1 | no | Abrir cerradura |
 | `.../commands/synchronize-access-list` | backend → dispositivo | 1 | no | Snapshot completo de configuración + lista de acceso |
-| `.../acknowledgment` | dispositivo → backend | 1 | no | Resultado de un comando |
+| `.../response` | dispositivo → backend | 1 | no | Resultado de un comando |
 
 Formato de mensaje (todos los topics):
 
 ```json
-{ "v": 1, "id": "<uuid4>", "ts": 1761000000, "device_id": "sl-0001", "data": {} }
+{ "id": "<uuid4>", "ts": 1761000000, "device_id": "sl-0001", "data": {} }
 ```
 
 - `id` duplicado se descarta. `ts` en segundos (UTC); si el reloj no es válido se marca `degraded`.
 - **PIN**: viaja en `events/pin-entry` dentro de TLS. El backend guarda `Argon2id(pin)` y aplica límites de intentos (bloqueo temporal tras 5 fallos).
 - **Sincronización**: snapshot completo (configuración + lista). El dispositivo lo guarda de forma atómica (archivo temporal en LittleFS y renombre). Si un UID no está en la lista, no tiene acceso.
-- **Cola local (outbox)**: `events/*` y `acknowledgment` se guardan en LittleFS y se reenvían al reconectar (se descartan los más viejos si se llena). `heartbeat` y `status` no se encolan. El backend ignora `id` repetidos.
-- **Comandos**: se envían solo si el dispositivo está online (`last_seen` < 90 s), llevan `expires_at` y no se reintentan. Sin `acknowledgment`, la UI lo marca como fallido.
+- **Cola local (outbox)**: `events/*` y `response` se guardan en LittleFS y se reenvían al reconectar (se descartan los más viejos si se llena). `heartbeat` y `status` no se encolan. El backend ignora `id` repetidos.
+- **Comandos**: se envían solo si el dispositivo está online (`last_seen` < 90 s), llevan `expires_at` y no se reintentan. Sin `response`, la UI lo marca como fallido.
 
 ## Datos (MongoDB)
 

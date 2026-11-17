@@ -14,7 +14,6 @@ Every topic uses the same envelope:
 
 ```json
 {
-  "v": 1,
   "id": "<uuid4>",
   "ts": 1761000000,
   "device_id": "sl-0001",
@@ -24,7 +23,6 @@ Every topic uses the same envelope:
 
 | Field | Type | Meaning |
 |---|---|---|
-| `v` | number | Protocol version. Now `1`. |
 | `id` | string | Unique UUID4. The backend ignores a repeated `id`. |
 | `ts` | number | Event time in **seconds** (UTC). If the device clock is not valid, the backend uses receive time and marks the event as `degraded`. |
 | `device_id` | string | Device ID, like `sl-0001`. Must match the MQTT username. |
@@ -41,21 +39,21 @@ Base path: `safelock/devices/{device_id}`
 | `.../events/access-decision` | device → backend | 1 | no | Access decision made by the device |
 | `.../status` | device → backend | 1 | **yes** | Current device status (also used by LWT) |
 | `.../heartbeat` | device → backend | 0 | no | Periodic health message |
-| `.../commands/start-enrollment` | backend → device | 1 | no | Start enrollment mode |
+| `.../commands/enroll` | backend → device | 1 | no | Start enrollment mode |
 | `.../commands/unlock` | backend → device | 1 | no | Open the lock remotely or after PIN check |
 | `.../commands/synchronize-access-list` | backend → device | 1 | no | Full configuration and access list snapshot |
-| `.../acknowledgment` | device → backend | 1 | no | Result of a command |
+| `.../response` | device → backend | 1 | no | Result of a command |
 
 ## Messages
 
 ### `events/card-scan`
-Sent **only** during enrollment, after `commands/start-enrollment`. This scan does **not** open the door.
+Sent **only** during enrollment, after `commands/enroll`. This scan does **not** open the door.
 
 ```json
 { "uid": "AA:BB:CC:DD", "request_id": "<uuid4>" }
 ```
 
-- `request_id`: the same ID sent in `commands/start-enrollment`.
+- `request_id`: the same ID sent in `commands/enroll`.
 
 ### `events/pin-entry`
 Sent when the user finishes entering a PIN on a door that requires it.
@@ -123,7 +121,7 @@ Sent every 30–60 seconds, QoS 0.
 
 - `rtc_valid: false` means the device clock is not valid (important problem).
 
-### `commands/start-enrollment`
+### `commands/enroll`
 Starts enrollment mode on the device for `ttl_s` seconds.
 
 ```json
@@ -137,7 +135,7 @@ Opens the lock.
 { "request_id": "<uuid4>", "duration_ms": 3000, "expires_at": 1761000030 }
 ```
 
-- `request_id`: used to match the `acknowledgment`.
+- `request_id`: used to match the `response`.
 - `duration_ms`: how long to power the lock.
 - `expires_at`: command expiration time (seconds, UTC).
 
@@ -172,7 +170,7 @@ Full snapshot of device configuration and access list in one message.
 
 The device saves this snapshot atomically: write to a temporary file, then rename it. It never applies a partial snapshot.
 
-### `acknowledgment`
+### `response`
 Result of a command.
 
 ```json
@@ -206,12 +204,12 @@ Result of a command.
 - If the device clock is not valid: do not check date validity and do not try TLS; report it in `heartbeat`.
 
 ### Event queue
-- `events/*` and `acknowledgment` are saved on the device and sent again after reconnecting. Retries are safe because the backend ignores repeated `id` values.
+- `events/*` and `response` are saved on the device and sent again after reconnecting. Retries are safe because the backend ignores repeated `id` values.
 - `heartbeat` and `status` are not queued.
 
 ### Limits
 - `commands/synchronize-access-list` must fit in one message (about 8 KB). If it grows too much, split `entries` into pages.
-- Commands are sent only when the device is considered online, include `expires_at`, and are not retried after reconnect. If no `acknowledgment` arrives, the UI marks it as failed.
+- Commands are sent only when the device is considered online, include `expires_at`, and are not retried after reconnect. If no `response` arrives, the UI marks it as failed.
 
 ### Security
 - Use TLS with a fixed CA. Never use `setInsecure()`.
