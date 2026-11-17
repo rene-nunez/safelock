@@ -62,6 +62,17 @@ collection requires a unique `email`; existing accounts are rejected. Access
 tokens are JWTs valid for 30 minutes (`ACCESS_TOKEN_TTL_MINUTES`); resetting a
 password or deactivating the account invalidates the existing ones.
 
+To populate the development UI with cardholders, credentials, devices and audit
+entries:
+
+```bash
+make seed-demo
+make seed-demo-reset
+```
+
+The seed only runs against `safelock_dev` or `safelock_test_*` databases. One of
+the demo credentials uses PIN `135790` and another has no PIN.
+
 Install the frontend dependencies and start the dev server:
 
 ```bash

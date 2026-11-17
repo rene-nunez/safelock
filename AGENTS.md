@@ -176,6 +176,8 @@ Variables de entorno del backend: `MQTT_URL`, `MQTT_TLS`, `MQTT_CA_PATH`, `MQTT_
 make venv          # crear venv e instalar deps
 make api           # API en desarrollo
 make create-user   # crear una cuenta (admin por defecto)
+make seed-demo     # sembrar datos de demo (solo dev)
+make seed-demo-reset # eliminar datos de demo
 make firmware      # compilar firmware
 make monitor       # monitor serial
 make simulator     # simulador
