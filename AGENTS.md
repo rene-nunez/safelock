@@ -49,7 +49,7 @@ La fuente de verdad es `docs/protocol.md`. Si cambia el protocolo, se actualizan
 - MQTT **3.1.1**, QoS 1, TLS 8883. `status` retenido + LWT.
 - **Usuario MQTT = `device_id`**. Sin firma en el mensaje (TLS + credenciales del broker + permisos de topics).
 
-Base: `safelock/v1/devices/{device_id}`
+Base: `safelock/devices/{device_id}`
 
 | Topic | Dirección | QoS | Retenido | Contenido |
 |---|---|---|---|---|
@@ -131,11 +131,11 @@ Ejemplo de permisos (`safelock.acl`, coherente con la plantilla de EMQX):
 
 ```
 user svc-backend
-topic read  safelock/v1/#
-topic write safelock/v1/devices/+/commands/#
+topic read  safelock/#
+topic write safelock/devices/+/commands/#
 
-pattern write safelock/v1/devices/%u/#
-pattern read  safelock/v1/devices/%u/commands/#
+pattern write safelock/devices/%u/#
+pattern read  safelock/devices/%u/commands/#
 ```
 
 Variables de entorno del backend: `MQTT_URL`, `MQTT_TLS`, `MQTT_CA_PATH`, `MQTT_USERNAME`, `MQTT_PASSWORD`, `MONGODB_URI`, `MONGODB_DB`, `JWT_SECRET`. Usar `.env` + `.env.example` (`.env` en `.gitignore`).

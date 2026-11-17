@@ -32,7 +32,7 @@ Every topic uses the same envelope:
 
 ## Topics
 
-Base path: `safelock/v1/devices/{device_id}`
+Base path: `safelock/devices/{device_id}`
 
 | Topic | Direction | QoS | Retained | Purpose |
 |---|---|---|---|---|
