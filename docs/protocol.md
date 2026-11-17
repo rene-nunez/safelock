@@ -1,14 +1,14 @@
-# SafeLock Protocol
+# Safelock Protocol
 
 This is the contract between the ESP32 devices and the backend. If you change the protocol, update this file, the simulator, the backend, and the firmware together.
 
 ## Transport
 
 - MQTT **3.1.1**, **QoS 1** for most messages, **TLS** on port 8883 with a fixed CA on the device. Do not use `setInsecure()`.
-- The device keeps a **retained** `status` message and sets a **Last Will** (LWT), so the broker can mark it offline if it disconnects.
-- The device signs in to the broker with **username = `device_id`** and its MQTT password. There is no signature inside the message: TLS, broker credentials, and topic permissions provide security.
+- The device keeps a retained `status` message and sets a Last Will (LWT), so the broker can mark it offline if it disconnects.
+- The device signs in to the broker with username = `device_id` and its MQTT password. There is no signature inside the message: TLS, broker credentials, and topic permissions provide security.
 
-## Message format
+## Message Format
 
 Every topic uses the same envelope:
 
@@ -24,7 +24,7 @@ Every topic uses the same envelope:
 | Field | Type | Meaning |
 |---|---|---|
 | `id` | string | Unique UUID4. The backend ignores a repeated `id`. |
-| `ts` | number | Event time in **seconds** (UTC). If the device clock is not valid, the backend uses receive time and marks the event as `degraded`. |
+| `ts` | number | Event time in seconds (UTC). If the device clock is not valid, the backend uses receive time and marks the event as `degraded`. |
 | `device_id` | string | Device ID, like `sl-0001`. Must match the MQTT username. |
 | `data` | object | Message content for that topic. |
 
@@ -34,20 +34,21 @@ Base path: `safelock/devices/{device_id}`
 
 | Topic | Direction | QoS | Retained | Purpose |
 |---|---|---|---|---|
-| `.../events/card-scan` | device → backend | 1 | no | Card UID read during enrollment |
-| `.../events/pin-entry` | device → backend | 1 | no | PIN entered by the user |
-| `.../events/access-decision` | device → backend | 1 | no | Access decision made by the device |
-| `.../status` | device → backend | 1 | **yes** | Current device status (also used by LWT) |
-| `.../heartbeat` | device → backend | 0 | no | Periodic health message |
-| `.../commands/enroll` | backend → device | 1 | no | Start enrollment mode |
-| `.../commands/unlock` | backend → device | 1 | no | Open the lock remotely or after PIN check |
-| `.../commands/synchronize-access-list` | backend → device | 1 | no | Full configuration and access list snapshot |
-| `.../response` | device → backend | 1 | no | Result of a command |
+| `.../events/card-scan` | device → backend | 1 | no | Card UID read during enrollment. |
+| `.../events/pin-entry` | device → backend | 1 | no | PIN entered by the user. |
+| `.../events/access-decision` | device → backend | 1 | no | Access decision made by the device. |
+| `.../status` | device → backend | 1 | yes | Current device status (also used by LWT). |
+| `.../heartbeat` | device → backend | 0 | no | Periodic health message. |
+| `.../commands/enroll` | backend → device | 1 | no | Start enrollment mode. |
+| `.../commands/unlock` | backend → device | 1 | no | Open the lock remotely or after PIN check. |
+| `.../commands/synchronize-access-list` | backend → device | 1 | no | Full configuration and access list snapshot. |
+| `.../response` | device → backend | 1 | no | Result of a command. |
 
-## Messages
+## Messages Data
 
 ### `events/card-scan`
-Sent **only** during enrollment, after `commands/enroll`. This scan does **not** open the door.
+
+Sent only during enrollment, after `commands/enroll`. This scan does not open the door.
 
 ```json
 { "uid": "AA:BB:CC:DD", "request_id": "<uuid4>" }
@@ -56,6 +57,7 @@ Sent **only** during enrollment, after `commands/enroll`. This scan does **not**
 - `request_id`: the same ID sent in `commands/enroll`.
 
 ### `events/pin-entry`
+
 Sent when the user finishes entering a PIN on a door that requires it.
 
 ```json
@@ -65,6 +67,7 @@ Sent when the user finishes entering a PIN on a door that requires it.
 - `request_id`: created by the device; the backend sends it back in `commands/unlock` to match the result.
 
 ### `events/access-decision`
+
 Sent whenever the device makes an access decision. Also sent for a manual opening (which is not an access decision).
 
 ```json
@@ -80,13 +83,12 @@ Sent whenever the device makes an access decision. Also sent for a manual openin
 ```
 
 - `decision`: `granted`, `denied`, or `unknown`.
-- `reason`: why this result happened (see Values).
+- `reason`: why this result happened (see Values section).
 - `source`: `card`, `pin`, `remote`, or `manual`.
 - `uid` and `credential_id` appear only when a card was used. `credential_id` appears only if the card is in the access list.
 - `acl_age_s`: how old the applied access list is, in seconds.
 
-Unknown card (not in the access list): `decision: "denied"`, `reason: "acl_absent"`.
-
+Unknown card (not in the access list): `decision: "denied"`, `reason: "acl_absent"`.  
 Manual opening (key or lock switch, without powering the coil): the device shows a local alert and sends:
 
 ```json
@@ -96,6 +98,7 @@ Manual opening (key or lock switch, without powering the coil): the device shows
 `unknown` means no access decision was made, so it has no `uid` or `credential_id`.
 
 ### `status`
+
 Retained. The device publishes it on connect and when something important changes. The LWT publishes to the same topic with `online: false`.
 
 ```json
@@ -113,6 +116,7 @@ Retained. The device publishes it on connect and when something important change
 - `lock`: physical lock state, `locked` or `unlocked`.
 
 ### `heartbeat`
+
 Sent every 30–60 seconds, QoS 0.
 
 ```json
@@ -122,6 +126,7 @@ Sent every 30–60 seconds, QoS 0.
 - `rtc_valid: false` means the device clock is not valid (important problem).
 
 ### `commands/enroll`
+
 Starts enrollment mode on the device for `ttl_s` seconds.
 
 ```json
@@ -129,6 +134,7 @@ Starts enrollment mode on the device for `ttl_s` seconds.
 ```
 
 ### `commands/unlock`
+
 Opens the lock.
 
 ```json
@@ -140,6 +146,7 @@ Opens the lock.
 - `expires_at`: command expiration time (seconds, UTC).
 
 ### `commands/synchronize-access-list`
+
 Full snapshot of device configuration and access list in one message.
 
 ```json
@@ -171,6 +178,7 @@ Full snapshot of device configuration and access list in one message.
 The device saves this snapshot atomically: write to a temporary file, then rename it. It never applies a partial snapshot.
 
 ### `response`
+
 Result of a command.
 
 ```json
@@ -193,7 +201,8 @@ Result of a command.
 
 ## Rules
 
-### Access and offline behavior
+### Access and Offline Behavior
+
 - **Card access** is decided by the device using its local access list. This must work even without the backend.
 - **PIN** is checked only by the backend. The device never checks or stores the PIN.
 - Doors with `requires_pin` need the backend. If the backend is not available, access is denied (`offline_no_pin`). There is no "card only" fallback for these doors.
@@ -203,16 +212,19 @@ Result of a command.
 - Remote lockdown (`locked: true`): deny all access.
 - If the device clock is not valid: do not check date validity and do not try TLS; report it in `heartbeat`.
 
-### Event queue
+### Event Queue
+
 - `events/*` and `response` are saved on the device and sent again after reconnecting. Retries are safe because the backend ignores repeated `id` values.
 - `heartbeat` and `status` are not queued.
 
 ### Limits
+
 - `commands/synchronize-access-list` must fit in one message (about 8 KB). If it grows too much, split `entries` into pages.
 - Commands are sent only when the device is considered online, include `expires_at`, and are not retried after reconnect. If no `response` arrives, the UI marks it as failed.
 
 ### Security
+
 - Use TLS with a fixed CA. Never use `setInsecure()`.
 - PIN is checked only on the backend (Argon2id hash, rate limits, temporary lock after repeated failures).
 - The device must not store reversible secrets, only its configuration and access list.
-- MIFARE Classic card UID can be copied. For stronger security, use cards with encrypted authentication.
+- MIFARE Classic card UID can be copied. For stronger security, please use cards with encrypted authentication.

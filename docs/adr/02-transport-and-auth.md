@@ -10,10 +10,10 @@ We need a simple and secure way for devices and the backend to communicate. The 
 ## Decision
 
 - Use **MQTT 3.1.1** over **TLS (port 8883)** with a fixed CA on the device. Do not use `setInsecure()`.
-- Each device signs in with **username = `device_id`** and its MQTT password.
+- Each device signs in with username = `device_id` and its MQTT password.
 - Do not add message signatures or extra security fields inside the payload. TLS, broker credentials, and topic permissions are enough for this design.
-- Use a retained **`status`** message and a **Last Will** (LWT) to know if a device is online.
-- Set up device credentials once over **serial/USB** during installation. There is no factory credential and no network provisioning flow.
+- Use a retained `status` message and a Last Will (LWT) to know if a device is online.
+- Set up device credentials once over serial/USB during installation. There is no factory credential and no network provisioning flow.
 
 ## Consequences
 

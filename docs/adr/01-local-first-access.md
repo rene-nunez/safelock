@@ -9,10 +9,10 @@ Card access must work even if the network or backend is down. At the same time, 
 
 ## Decision
 
-- **Card access** is decided by the **device** using its local access list and the device clock.
-- **PIN** is checked only by the **backend** over TLS. The device never checks or stores the PIN.
+- **Card access** is decided by the device using its local access list and the device clock.
+- **PIN** is checked only by the backend over TLS. The device never checks or stores the PIN.
 - Doors with `requires_pin` need the backend. If the backend is not available, access is denied. There is no "card only" fallback.
-- **Revocation** and **remote unlock** are also handled by the backend.
+- Revocation and remote unlock are also handled by the backend.
 
 ## Consequences
 
