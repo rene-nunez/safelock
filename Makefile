@@ -6,7 +6,7 @@ PYTEST := $(if $(wildcard $(VENV)/bin/pytest),$(VENV)/bin/pytest,pytest)
 RUFF := $(if $(wildcard $(VENV)/bin/ruff),$(VENV)/bin/ruff,ruff)
 MYPY := $(if $(wildcard $(VENV)/bin/mypy),$(VENV)/bin/mypy,mypy)
 
-.PHONY: help venv api create-user firmware monitor simulator test lint format frontend typecheck mqtt-restart
+.PHONY: help venv api create-user seed-demo seed-demo-reset firmware monitor simulator test lint format frontend typecheck mqtt-restart
 
 help: ## Help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-14s\033[0m %s\n", $$1, $$2}'
@@ -20,6 +20,12 @@ api: ## Run backend API
 
 create-user: ## Create an account (admin by default)
 	PYTHONPATH=backend $(PYTHON) -m app.cli create-user $(CLI_ARGS)
+
+seed-demo: ## Seed demo data (development databases only)
+	PYTHONPATH=backend $(PYTHON) -m app.cli seed-demo
+
+seed-demo-reset: ## Remove demo data
+	PYTHONPATH=backend $(PYTHON) -m app.cli seed-demo --reset
 
 firmware: ## Build firmware
 	pio run -d firmware
