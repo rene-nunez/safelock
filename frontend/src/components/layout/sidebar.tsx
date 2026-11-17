@@ -10,7 +10,9 @@ import {
 } from 'lucide-react'
 import { Link, NavLink } from 'react-router-dom'
 
+import { useAuth } from '@/hooks/use-auth'
 import { cn } from '@/lib/utils'
+import { roleLabel, userInitials } from '@/lib/user'
 
 const NAV_ITEMS = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
@@ -26,6 +28,8 @@ type SidebarProps = {
 }
 
 export function Sidebar({ onNavigate }: SidebarProps) {
+  const { user, signOut } = useAuth()
+
   return (
     <div className="flex h-full flex-col gap-6 px-3 py-4">
       <Link
@@ -62,23 +66,28 @@ export function Sidebar({ onNavigate }: SidebarProps) {
       <div className="border-t border-border pt-3">
         <div className="flex items-center gap-2.5 px-2 pb-3">
           <span className="grid size-8 place-items-center rounded-full bg-secondary text-xs font-medium">
-            AD
+            {user ? userInitials(user.email) : '?'}
           </span>
           <span className="min-w-0">
-            <span className="block truncate text-sm font-medium">admin</span>
+            <span className="block truncate text-sm font-medium">
+              {user?.email ?? 'Signed out'}
+            </span>
             <span className="block truncate text-xs text-muted-foreground">
-              Administrator
+              {user ? roleLabel(user.role) : '—'}
             </span>
           </span>
         </div>
-        <Link
-          to="/login"
-          onClick={onNavigate}
-          className="flex items-center gap-3 rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+        <button
+          type="button"
+          onClick={() => {
+            signOut()
+            onNavigate?.()
+          }}
+          className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
         >
           <LogOut className="size-4" />
           Sign out
-        </Link>
+        </button>
       </div>
     </div>
   )

@@ -4,8 +4,10 @@ import { Outlet, useLocation } from 'react-router-dom'
 
 import { Sidebar } from '@/components/layout/sidebar'
 import { Button } from '@/components/ui/button'
+import { useAuth } from '@/hooks/use-auth'
 import { useHealth } from '@/hooks/use-health'
 import { cn } from '@/lib/utils'
+import { userInitials } from '@/lib/user'
 
 const PAGE_TITLES: Record<string, string> = {
   '/': 'Dashboard',
@@ -40,6 +42,7 @@ function ApiStatus() {
 export function AppShell() {
   const [menuOpen, setMenuOpen] = useState(false)
   const location = useLocation()
+  const { user } = useAuth()
   const title = PAGE_TITLES[location.pathname] ?? 'Safelock'
 
   return (
@@ -76,8 +79,11 @@ export function AppShell() {
           <h1 className="text-sm font-medium">{title}</h1>
           <div className="ml-auto flex items-center gap-3">
             <ApiStatus />
-            <span className="hidden size-8 place-items-center rounded-full bg-secondary text-xs font-medium sm:grid">
-              AD
+            <span
+              className="hidden size-8 place-items-center rounded-full bg-secondary text-xs font-medium sm:grid"
+              title={user?.email}
+            >
+              {user ? userInitials(user.email) : '?'}
             </span>
           </div>
         </header>

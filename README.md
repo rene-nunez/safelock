@@ -68,6 +68,8 @@ make frontend
 ```
 
 The Vite dev server proxies `/api` and `/healthz` to `127.0.0.1:8000`.
+Open http://localhost:5173 and sign in with the account created above. The
+session token is kept in `sessionStorage` and cleared on sign out.
 
 The simulator publishes the MQTT contract from [`docs/protocol.md`](docs/protocol.md) for fake devices:
 

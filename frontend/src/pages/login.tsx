@@ -1,12 +1,16 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { LockKeyhole } from 'lucide-react'
+import { LoaderCircle, LockKeyhole } from 'lucide-react'
 import { useForm } from 'react-hook-form'
+import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { z } from 'zod'
 
+import { SessionLoader } from '@/components/auth/session-loader'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { useAuth } from '@/hooks/use-auth'
+import { ApiError } from '@/lib/api'
 
 const loginSchema = z.object({
   email: z.email('Enter a valid email address'),
@@ -15,17 +19,42 @@ const loginSchema = z.object({
 
 type LoginValues = z.infer<typeof loginSchema>
 
+type LoginLocationState = {
+  from?: string
+}
+
 export function LoginPage() {
+  const { user, isLoading, signIn } = useAuth()
+  const navigate = useNavigate()
+  const location = useLocation()
+  const from = (location.state as LoginLocationState | null)?.from ?? '/'
+
   const form = useForm<LoginValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: { email: '', password: '' },
   })
 
-  function onSubmit() {
-    // TODO: call POST /api/v1/auth/login and store the JWT in sessionStorage.
-    form.setError('root', {
-      message: 'Authentication is not available yet.',
-    })
+  async function onSubmit(values: LoginValues) {
+    form.clearErrors('root')
+    try {
+      await signIn(values.email, values.password)
+      navigate(from, { replace: true })
+    } catch (error) {
+      form.setError('root', {
+        message:
+          error instanceof ApiError
+            ? error.message
+            : 'Could not sign in. Try again.',
+      })
+    }
+  }
+
+  if (isLoading) {
+    return <SessionLoader />
+  }
+
+  if (user !== null) {
+    return <Navigate to={from} replace />
   }
 
   return (
@@ -89,8 +118,19 @@ export function LoginPage() {
                 </p>
               ) : null}
 
-              <Button type="submit" className="mt-1 w-full">
-                Sign in
+              <Button
+                type="submit"
+                className="mt-1 w-full"
+                disabled={form.formState.isSubmitting}
+              >
+                {form.formState.isSubmitting ? (
+                  <>
+                    <LoaderCircle className="size-4 animate-spin" />
+                    Signing in
+                  </>
+                ) : (
+                  'Sign in'
+                )}
               </Button>
             </form>
           </CardContent>
