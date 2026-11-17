@@ -17,8 +17,8 @@ const PAGE_TITLES: Record<string, string> = {
 }
 
 function ApiStatus() {
-  const { status } = useHealth()
-  const online = status === 'success'
+  const { data, status } = useHealth()
+  const online = data?.status === 'ok'
 
   return (
     <span className="inline-flex items-center gap-2 rounded-full border border-border px-3 py-1 text-xs text-muted-foreground">
