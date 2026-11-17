@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import L from 'leaflet'
 import {
   AttributionControl,
@@ -20,13 +20,15 @@ function roundCoordinate(value: number): number {
   return Math.round(value * 1_000_000) / 1_000_000
 }
 
-type LocationHandlerProps = {
+function LocationHandler({
+  value,
+  onChange,
+  disabled,
+}: {
   value: DeviceLocation | null
   onChange: (value: DeviceLocation) => void
   disabled: boolean
-}
-
-function LocationHandler({ value, onChange, disabled }: LocationHandlerProps) {
+}) {
   const map = useMap()
   const lat = value?.lat
   const lng = value?.lng
@@ -66,6 +68,41 @@ function LocationHandler({ value, onChange, disabled }: LocationHandlerProps) {
   )
 }
 
+function ScrollZoomToggle({
+  enabled,
+  onToggle,
+}: {
+  enabled: boolean
+  onToggle: () => void
+}) {
+  const map = useMap()
+
+  useEffect(() => {
+    if (enabled) {
+      map.scrollWheelZoom.enable()
+    } else {
+      map.scrollWheelZoom.disable()
+    }
+  }, [enabled, map])
+
+  return (
+    <div
+      className="absolute right-2 top-2 z-[1000]"
+      onPointerDown={(event) => event.stopPropagation()}
+      onClick={(event) => event.stopPropagation()}
+    >
+      <button
+        type="button"
+        aria-pressed={enabled}
+        onClick={onToggle}
+        className="rounded-md border border-border bg-zinc-950/90 px-2 py-1 text-[11px] text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+      >
+        Scroll zoom {enabled ? 'on' : 'off'}
+      </button>
+    </div>
+  )
+}
+
 type LocationPickerProps = {
   value: DeviceLocation | null
   onChange: (value: DeviceLocation | null) => void
@@ -79,6 +116,8 @@ export function LocationPicker({
   disabled = false,
   className = 'h-64',
 }: LocationPickerProps) {
+  const [scrollZoom, setScrollZoom] = useState(false)
+
   return (
     <div
       className={`relative isolate w-full overflow-hidden rounded-lg border border-border ${className}`}
@@ -88,13 +127,17 @@ export function LocationPicker({
         zoom={value ? PICKED_ZOOM : DEFAULT_ZOOM}
         minZoom={2}
         maxZoom={18}
-        scrollWheelZoom
+        scrollWheelZoom={false}
         worldCopyJump
         attributionControl={false}
         className="h-full w-full"
       >
         <TileLayer url={TILE_URL} attribution={ATTRIBUTION} />
         <AttributionControl position="bottomright" prefix={false} />
+        <ScrollZoomToggle
+          enabled={scrollZoom}
+          onToggle={() => setScrollZoom((current) => !current)}
+        />
         <LocationHandler
           value={value}
           onChange={onChange}

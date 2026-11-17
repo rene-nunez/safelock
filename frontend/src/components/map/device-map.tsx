@@ -108,10 +108,10 @@ export function DeviceMap({ devices, fitRequest }: DeviceMapProps) {
                       : 'Never'}
                   </p>
                   <Link
-                    to="/devices"
+                    to={`/devices?device=${encodeURIComponent(device.device_id)}`}
                     className="text-xs underline underline-offset-4"
                   >
-                    Open device
+                    Manage device
                   </Link>
                 </div>
               </Popup>
