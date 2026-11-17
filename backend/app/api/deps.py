@@ -47,3 +47,14 @@ async def get_current_user(
         raise _unauthorized("User is not active")
 
     return user_to_out(user)
+
+
+async def get_current_admin(
+    user: Annotated[UserOut, Depends(get_current_user)],
+) -> UserOut:
+    if user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Administrator role required",
+        )
+    return user

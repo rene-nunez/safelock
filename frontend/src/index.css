@@ -59,6 +59,7 @@
   body,
   #root {
     height: 100%;
+    color-scheme: dark;
   }
 
   body {

@@ -1,12 +1,14 @@
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
 
 import { AuthProvider } from '@/components/auth/auth-provider'
+import { RequireAdmin } from '@/components/auth/require-admin'
 import { RequireAuth } from '@/components/auth/require-auth'
 import { AppShell } from '@/components/layout/app-shell'
 import { DashboardPage } from '@/pages/dashboard'
 import { LoginPage } from '@/pages/login'
 import { NotFoundPage } from '@/pages/not-found'
 import { PlaceholderPage } from '@/pages/placeholder'
+import { UsersPage } from '@/pages/users'
 
 export default function App() {
   return (
@@ -47,19 +49,20 @@ export default function App() {
               <Route
                 path="audit"
                 element={
-                  <PlaceholderPage
-                    title="Audit"
-                    description="Administrative actions recorded by the backend."
-                  />
+                  <RequireAdmin>
+                    <PlaceholderPage
+                      title="Audit"
+                      description="Administrative actions recorded by the backend."
+                    />
+                  </RequireAdmin>
                 }
               />
               <Route
                 path="users"
                 element={
-                  <PlaceholderPage
-                    title="Users"
-                    description="Administrators and operators with access to Safelock."
-                  />
+                  <RequireAdmin>
+                    <UsersPage />
+                  </RequireAdmin>
                 }
               />
               <Route path="*" element={<NotFoundPage />} />

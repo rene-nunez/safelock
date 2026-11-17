@@ -80,3 +80,35 @@ export function signIn(email: string, password: string): Promise<TokenResponse> 
 export function getCurrentUser(): Promise<User> {
   return request<User>('/auth/me')
 }
+
+export type CreateUserInput = {
+  email: string
+  password: string
+  role?: Role
+}
+
+export type UpdateUserInput = {
+  role?: Role
+  active?: boolean
+  password?: string
+}
+
+export const PASSWORD_MIN_LENGTH = 12
+
+export function listUsers(): Promise<User[]> {
+  return request<User[]>('/users')
+}
+
+export function createUser(input: CreateUserInput): Promise<User> {
+  return request<User>('/users', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  })
+}
+
+export function updateUser(id: string, input: UpdateUserInput): Promise<User> {
+  return request<User>(`/users/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(input),
+  })
+}

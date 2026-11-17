@@ -13,6 +13,8 @@ from app.services.users import UserDocument, create_user
 
 ADMIN_EMAIL = "admin@example.com"
 ADMIN_PASSWORD = "correct horse battery"
+OPERATOR_EMAIL = "operator@example.com"
+OPERATOR_PASSWORD = "another correct battery"
 
 
 @pytest.fixture
@@ -58,3 +60,26 @@ async def api(db: Database, test_settings: Settings) -> AsyncIterator[AsyncClien
 @pytest.fixture
 async def admin(db: Database) -> UserDocument:
     return await create_user(db, ADMIN_EMAIL, ADMIN_PASSWORD, "admin")
+
+
+@pytest.fixture
+async def operator(db: Database) -> UserDocument:
+    return await create_user(db, OPERATOR_EMAIL, OPERATOR_PASSWORD, "operator")
+
+
+async def login_headers(api: AsyncClient, email: str, password: str) -> dict[str, str]:
+    response = await api.post(
+        "/api/v1/auth/login", json={"email": email, "password": password}
+    )
+    assert response.status_code == 200
+    return {"Authorization": f"Bearer {response.json()['access_token']}"}
+
+
+@pytest.fixture
+async def admin_headers(api: AsyncClient, admin: UserDocument) -> dict[str, str]:
+    return await login_headers(api, ADMIN_EMAIL, ADMIN_PASSWORD)
+
+
+@pytest.fixture
+async def operator_headers(api: AsyncClient, operator: UserDocument) -> dict[str, str]:
+    return await login_headers(api, OPERATOR_EMAIL, OPERATOR_PASSWORD)

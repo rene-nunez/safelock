@@ -19,8 +19,8 @@ const NAV_ITEMS = [
   { to: '/cardholders', label: 'Cardholders', icon: Contact },
   { to: '/devices', label: 'Devices', icon: Cpu },
   { to: '/activity', label: 'Activity', icon: Activity },
-  { to: '/audit', label: 'Audit', icon: ClipboardList },
-  { to: '/users', label: 'Users', icon: Users },
+  { to: '/audit', label: 'Audit', icon: ClipboardList, adminOnly: true },
+  { to: '/users', label: 'Users', icon: Users, adminOnly: true },
 ]
 
 type SidebarProps = {
@@ -29,6 +29,9 @@ type SidebarProps = {
 
 export function Sidebar({ onNavigate }: SidebarProps) {
   const { user, signOut } = useAuth()
+  const items = NAV_ITEMS.filter(
+    (item) => !item.adminOnly || user?.role === 'admin',
+  )
 
   return (
     <div className="flex h-full flex-col gap-6 px-3 py-4">
@@ -44,7 +47,7 @@ export function Sidebar({ onNavigate }: SidebarProps) {
       </Link>
 
       <nav className="flex flex-1 flex-col gap-1">
-        {NAV_ITEMS.map((item) => (
+        {items.map((item) => (
           <NavLink
             key={item.to}
             to={item.to}

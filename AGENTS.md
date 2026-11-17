@@ -25,6 +25,7 @@ Safelock es un sistema de control de acceso con RFID (MFRC522), teclado, pantall
 | Bloqueo remoto | `locked: true` en la configuración: el dispositivo niega todo acceso |
 | Enrolamiento | **Por toque**: el backend inicia el modo, el dispositivo envía el UID leído y el admin confirma en la web |
 | Instalación | Credenciales iniciales por **serie/USB** una sola vez (device_id, WiFi, MQTT). Sin credencial de fábrica |
+| Roles | `admin`: usuarios, configuración de dispositivos y auditoría. `operator`: operación diaria (ver, abrir, portadores, credenciales, enrolamiento) |
 | Mapa | Leaflet + Stadia Maps (Alidade Smooth Dark). UI solo en modo oscuro. Ubicación manual por dispositivo |
 
 ## Cómo se decide el acceso
@@ -98,13 +99,25 @@ Estructura prevista en `backend/app/`: `main.py`, `core/`, `api/v1/`, `schemas/`
 
 Reglas:
 - Toda acción administrativa se registra en `audit_logs`. `access_events` solo se agrega (append-only).
-- Roles `admin`/`operator` validados en el backend. Sin autorregistro. Primer admin por CLI (`python -m app.cli create-admin`).
+- Roles `admin`/`operator` aplicados en el backend. Sin autorregistro. Primer admin por CLI (`python -m app.cli create-admin`).
+- Nadie puede cambiar su propio rol ni desactivarse. No se puede desactivar ni degradar al último `admin` activo.
 - `online` se calcula con `last_seen`. El frontend usa **polling** (~3 s), no WebSocket.
 - No guardar secretos reversibles. No correr múltiples workers de uvicorn (el consumidor MQTT vive en el `lifespan`).
 
+| Capacidad | admin | operator |
+|---|---|---|
+| Ver dashboard, mapa y actividad | sí | sí |
+| Abrir cerradura / bloqueo remoto | sí | sí |
+| Portadores, credenciales y enrolamiento | sí | sí |
+| Configurar dispositivos (políticas, PIN, ubicación, sync) | sí | no |
+| Añadir o eliminar dispositivos | sí | no |
+| Gestionar usuarios y roles | sí | no |
+| Ver auditoría | sí | no |
+
+
 ## Frontend
 
-Vite + TypeScript + React Router + TanStack Query + React Hook Form + Zod + Tailwind + shadcn/ui. Cliente API generado desde OpenAPI. UI solo en modo oscuro y en inglés. El dashboard incluye un mapa Leaflet + Stadia Maps (Alidade Smooth Dark); Stadia usa domain auth, sin API key en el repo.
+Vite + TypeScript + React Router + TanStack Query + React Hook Form + Zod + Tailwind + shadcn/ui. UI solo en modo oscuro y en inglés. El dashboard incluye un mapa Leaflet + Stadia Maps (Alidade Smooth Dark); Stadia usa domain auth, sin API key en el repo. El JWT se guarda en `sessionStorage` y las rutas se protegen validando `/auth/me` al cargar. El cliente API vive en `src/lib/api.ts`; la generación desde OpenAPI queda pendiente porque `openapi-typescript` aún exige TypeScript 5 y el proyecto usa TypeScript 7.
 
 Páginas previstas: Login, Dashboard, Cardholders, Devices, Activity, Audit, Users.
 

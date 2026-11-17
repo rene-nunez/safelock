@@ -3,6 +3,7 @@ from typing import Any
 
 from bson import ObjectId
 from fastapi.concurrency import run_in_threadpool
+from pymongo import ASCENDING, ReturnDocument
 from pymongo.errors import DuplicateKeyError
 
 from app.core.security import hash_password
@@ -61,3 +62,25 @@ async def create_user(
 
     document["_id"] = result.inserted_id
     return document
+
+
+async def list_users(db: Database) -> list[UserDocument]:
+    cursor = db.users.find({}, {"password_hash": 0}).sort("email", ASCENDING)
+    return [document async for document in cursor]
+
+
+async def count_active_admins(db: Database, exclude_id: ObjectId | None = None) -> int:
+    query: dict[str, Any] = {"role": "admin", "active": True}
+    if exclude_id is not None:
+        query["_id"] = {"$ne": exclude_id}
+    return await db.users.count_documents(query)
+
+
+async def update_user(
+    db: Database, user_id: ObjectId, updates: dict[str, Any]
+) -> UserDocument | None:
+    return await db.users.find_one_and_update(
+        {"_id": user_id},
+        {"$set": updates},
+        return_document=ReturnDocument.AFTER,
+    )

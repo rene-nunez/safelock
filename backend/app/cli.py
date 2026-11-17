@@ -4,7 +4,6 @@ import argparse
 import asyncio
 import getpass
 from collections.abc import Sequence
-from datetime import UTC, datetime
 
 from pydantic import EmailStr, TypeAdapter, ValidationError
 from pymongo.errors import PyMongoError
@@ -12,6 +11,7 @@ from pymongo.errors import PyMongoError
 from app.core.config import Settings, get_settings
 from app.db.mongo import create_client, ensure_indexes, get_database
 from app.schemas.auth import Role
+from app.services.audit import record_audit
 from app.services.users import UserAlreadyExistsError, create_user, normalize_email
 
 MIN_PASSWORD_LENGTH = 12
@@ -52,16 +52,12 @@ async def _create_admin(
         except PyMongoError as error:
             raise SystemExit(f"Could not reach MongoDB: {error}") from error
 
-        await db.audit_logs.insert_one(
-            {
-                "actor_id": None,
-                "action": "user.create",
-                "target": email,
-                "before": None,
-                "after": {"email": email, "role": role},
-                "ip": None,
-                "ts": datetime.now(UTC),
-            }
+        await record_audit(
+            db,
+            actor_id=None,
+            action="user.create",
+            target=email,
+            after={"email": email, "role": role, "active": True},
         )
     finally:
         await client.close()

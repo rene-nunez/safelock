@@ -1,6 +1,6 @@
 from typing import Any
 
-from pymongo import ASCENDING, IndexModel
+from pymongo import ASCENDING, DESCENDING, IndexModel
 from pymongo.asynchronous.database import AsyncDatabase
 from pymongo.asynchronous.mongo_client import AsyncMongoClient
 
@@ -20,3 +20,4 @@ async def ensure_indexes(db: Database) -> None:
     await db.users.create_indexes(
         [IndexModel([("email", ASCENDING)], unique=True, name="email_unique")]
     )
+    await db.audit_logs.create_index([("ts", DESCENDING)], name="ts")
