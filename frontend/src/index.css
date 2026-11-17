@@ -97,6 +97,11 @@
   color: #d4d4d8 !important;
 }
 
+/* Leaflet adds a 10px inset to bottom controls; keep the credits flush. */
+.leaflet-bottom.leaflet-right .leaflet-control-attribution {
+  margin: 0;
+}
+
 .leaflet-popup-content-wrapper,
 .leaflet-popup-tip {
   border: 1px solid var(--border);

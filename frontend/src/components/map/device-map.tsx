@@ -2,7 +2,14 @@ import { useEffect } from 'react'
 import L from 'leaflet'
 import { MapPin } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import { MapContainer, Marker, Popup, TileLayer, useMap } from 'react-leaflet'
+import {
+  AttributionControl,
+  MapContainer,
+  Marker,
+  Popup,
+  TileLayer,
+  useMap,
+} from 'react-leaflet'
 
 import { Badge } from '@/components/ui/badge'
 import { buttonVariants } from '@/components/ui/button-variants'
@@ -62,9 +69,11 @@ export function DeviceMap({ devices, fitRequest }: DeviceMapProps) {
         maxZoom={18}
         scrollWheelZoom={false}
         worldCopyJump
+        attributionControl={false}
         className="h-full w-full"
       >
         <TileLayer url={TILE_URL} attribution={ATTRIBUTION} />
+        <AttributionControl position="bottomright" prefix={false} />
         <FitDevices devices={devices} fitRequest={fitRequest} />
         {devices.map((device) =>
           device.location ? (

@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import L from 'leaflet'
 import {
+  AttributionControl,
   MapContainer,
   Marker,
   TileLayer,
@@ -89,9 +90,11 @@ export function LocationPicker({
         maxZoom={18}
         scrollWheelZoom
         worldCopyJump
+        attributionControl={false}
         className="h-full w-full"
       >
         <TileLayer url={TILE_URL} attribution={ATTRIBUTION} />
+        <AttributionControl position="bottomright" prefix={false} />
         <LocationHandler
           value={value}
           onChange={onChange}

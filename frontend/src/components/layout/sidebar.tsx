@@ -5,14 +5,12 @@ import {
   Cpu,
   LayoutDashboard,
   LockKeyhole,
-  LogOut,
   Users,
 } from 'lucide-react'
 import { Link, NavLink } from 'react-router-dom'
 
 import { useAuth } from '@/hooks/use-auth'
 import { cn } from '@/lib/utils'
-import { roleLabel, userInitials } from '@/lib/user'
 
 const NAV_ITEMS = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
@@ -28,7 +26,7 @@ type SidebarProps = {
 }
 
 export function Sidebar({ onNavigate }: SidebarProps) {
-  const { user, signOut } = useAuth()
+  const { user } = useAuth()
   const items = NAV_ITEMS.filter(
     (item) => !item.adminOnly || user?.role === 'admin',
   )
@@ -65,33 +63,6 @@ export function Sidebar({ onNavigate }: SidebarProps) {
           </NavLink>
         ))}
       </nav>
-
-      <div className="border-t border-border pt-3">
-        <div className="flex items-center gap-2.5 px-2 pb-3">
-          <span className="grid size-8 place-items-center rounded-full bg-secondary text-xs font-medium">
-            {user ? userInitials(user.email) : '?'}
-          </span>
-          <span className="min-w-0">
-            <span className="block truncate text-sm font-medium">
-              {user?.email ?? 'Signed out'}
-            </span>
-            <span className="block truncate text-xs text-muted-foreground">
-              {user ? roleLabel(user.role) : '—'}
-            </span>
-          </span>
-        </div>
-        <button
-          type="button"
-          onClick={() => {
-            signOut()
-            onNavigate?.()
-          }}
-          className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
-        >
-          <LogOut className="size-4" />
-          Sign out
-        </button>
-      </div>
     </div>
   )
 }
