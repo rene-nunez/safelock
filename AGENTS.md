@@ -20,7 +20,8 @@ Safelock es un sistema de control de acceso con RFID (MFRC522), teclado, pantall
 | Alcance | Un solo sitio, N dispositivos, 1 puerta por dispositivo. `site` va embebido, sin multi-tenant |
 | Acceso por tarjeta | **Local-first**: el dispositivo decide con su lista de acceso local. El backend no está en la ruta crítica |
 | Credenciales | El UID identifica la tarjeta. El PIN es un segundo factor **por tarjeta** (opcional) |
-| PIN | Lo verifica **solo el backend**, por TLS. Largo variable (≥ 6; `#` envía, `*` borra). El dispositivo nunca lo valida ni lo guarda |
+| PIN | Lo verifica **solo el backend**, por TLS. Largo variable (≥ 6; `#` envía, `*` borra). El dispositivo nunca lo valida ni lo guarda. El `operator` puede fijar o resetear el PIN de una credencial; solo el `admin` cambia `requires_pin` del dispositivo |
+| Bajas | Credenciales y dispositivos se **revocan o retiran**; el borrado duro solo se permite sin historial (credencial sin `access_events`, dispositivo que nunca se conectó). Baja del portador revoca todas sus credenciales |
 | Sin conexión | Tarjetas: según `offline_policy` y `stale_acl_hours` (72 h). PIN: siempre denegado sin backend |
 | Bloqueo remoto | `locked: true` en la configuración: el dispositivo niega todo acceso |
 | Enrolamiento | **Por toque**: el backend inicia el modo, el dispositivo envía el UID leído y el admin confirma en la web |
@@ -83,7 +84,7 @@ Formato de mensaje (todos los topics):
 |---|---|---|
 | `devices` | `device_id`, `name`, `site`, `fw`, `last_seen`, `acl_version`, `last_sync_at`, `offline_policy`, `stale_acl_hours`, `unlock_ms`, `requires_pin`, `locked`, `location` (lat/lng) | `device_id` único |
 | `cardholders` | `name`, `email`, `unit`, `status` | `email` |
-| `credentials` | `holder_id`, `uid`, `status`, `valid_from/to`, `revoked_at`, `pin_hash` (Argon2id, opcional), `pin_fails`, `pin_locked_until` | `uid` único, `holder_id` |
+| `credentials` | `holder_id`, `uid`, `status`, `valid_from/to`, `revoked_at`, `pin_hash` (Argon2id, opcional), `pin_fails`, `pin_locked_until` | `uid` único entre vigentes (`partialFilterExpression: {status: "active"}`), `holder_id` |
 | `enrollments` | `device_id`, `request_id`, `requested_by`, `created_at` | TTL 60 s |
 | `access_events` | `device_id`, `ts`, `uid`, `credential_id?`, `decision`, `reason`, `source`, `request_id`, `mqtt_id`, `degraded`, `acl_age_s` | `(device_id, ts)`, TTL 2 años, `mqtt_id` único |
 | `audit_logs` | `actor_id`, `action`, `target`, `before/after`, `ip`, `ts` | `ts` |
@@ -111,6 +112,7 @@ Reglas:
 | Abrir cerradura / bloqueo remoto | sí | sí |
 | Portadores, credenciales y enrolamiento | sí | sí |
 | Configurar dispositivos (políticas, PIN, ubicación, sync) | sí | no |
+| Fijar o resetear el PIN de una credencial | sí | sí |
 | Añadir o eliminar dispositivos | sí | no |
 | Gestionar usuarios y roles | sí | no |
 | Ver auditoría | sí | no |
@@ -188,6 +190,7 @@ make mqtt-restart  # reiniciar Mosquitto
 ## Estado
 
 - Fase 0 cerrada: `docs/protocol.md`, ADRs, `Makefile`, scaffold del backend y del frontend, simulador MQTT.
+- Hito 1 cerrado: auth JWT, CLI `create-user`, CRUD de portadores, credenciales y dispositivos, auditoría con endpoint de lectura, y frontend de Login, Cardholders, Devices, Audit y Users.
 
 ## Roadmap
 
