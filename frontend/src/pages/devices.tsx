@@ -103,7 +103,7 @@ const LocationPicker = lazy(async () => {
   return { default: module.LocationPicker }
 })
 
-function MapPicker(props: ComponentProps<typeof LocationPicker>) {
+function LazyMapPicker(props: ComponentProps<typeof LocationPicker>) {
   return (
     <Suspense
       fallback={
@@ -112,7 +112,7 @@ function MapPicker(props: ComponentProps<typeof LocationPicker>) {
         />
       }
     >
-      <MapPicker {...props} />
+      <LocationPicker {...props} />
     </Suspense>
   )
 }
@@ -362,7 +362,7 @@ export function DevicesPage() {
                     </Button>
                   ) : null}
                 </div>
-                <MapPicker
+                <LazyMapPicker
                   value={createLocation}
                   onChange={applyCreateLocation}
                   className="h-56"
@@ -607,7 +607,7 @@ export function DevicesPage() {
                           </Button>
                         ) : null}
                       </div>
-                      <MapPicker
+                      <LazyMapPicker
                         value={settingsLocation}
                         onChange={applySettingsLocation}
                         className="h-64"
@@ -665,7 +665,7 @@ export function DevicesPage() {
                   </form>
                 ) : (
                   <div className="grid gap-3 text-sm text-muted-foreground">
-                    <MapPicker
+                    <LazyMapPicker
                       value={selected.location}
                       onChange={() => undefined}
                       disabled
