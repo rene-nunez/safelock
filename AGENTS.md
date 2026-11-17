@@ -125,7 +125,7 @@ Arranque: NVS → reloj válido → WiFi → hora → MQTT + LWT → publicar `s
 
 ## Infra local (sin Docker)
 
-Mosquitto en `127.0.0.1:1883` sin TLS para desarrollo. TLS solo contra EMQX.
+Mosquitto en `127.0.0.1:1883` sin TLS para desarrollo. TLS solo contra EMQX. El simulador usa `mqtt://` y rechaza `mqtts://` a propósito.
 
 Ejemplo de permisos (`safelock.acl`, coherente con la plantilla de EMQX):
 
@@ -169,24 +169,28 @@ make typecheck     # tipos frontend
 make mqtt-restart  # reiniciar Mosquitto
 ```
 
-## Fases
+## Estado
 
-| Fase | Entregable |
+- Fase 0 cerrada: `docs/protocol.md`, ADRs, `Makefile`, scaffold del backend y simulador MQTT.
+- Pendiente de fase 0: scaffold del frontend.
+
+## Roadmap
+
+Hitos verticales. Un hito se cierra cuando funciona de punta a punta.
+
+| Hito | Entregable |
 |---|---|
-| 0 | `docs/protocol.md` + ADRs + `Makefile` + scaffolds + simulador |
-| 1 | Base de datos + auth + CRUD básico; firmware: relé y botón |
-| 2 | Gateway MQTT + decisiones + polling; firmware: WiFi + TLS + hora |
-| 3 | Sincronización, outbox, apertura remota y enrolamiento |
-| 4 | Retención, límites, OTA, mejoras de seguridad, respaldo celular |
-
-**Fase actual: 0.** Próximo paso: scaffold de `backend/` y `frontend/`, y `backend/scripts/simulator.py`.
+| 1. Admin y datos | Base de datos, auth, CLI `create-admin`, CRUD de portadores, dispositivos y credenciales, auditoría; scaffold frontend con Login |
+| 2. Primer dispositivo en línea | Firmware: NVS, WiFi, hora y MQTT con `status`/`heartbeat`; backend: gateway MQTT que ingiere eventos y los muestra con polling |
+| 3. Acceso local-first | Snapshot de ACL con guardado atómico, outbox, decisión local y `access-decision` (el simulador ya permite probarlo) |
+| 4. Operación remota | `unlock`, enrolamiento por toque y PIN validado en el backend |
+| 5. Endurecimiento | Retención y TTL, límites de intentos, mejoras generales de seguridad |
 
 ## Fuera de alcance por ahora
 
 - Horarios de acceso.
 - Sensor de puerta, botón de salida, UPS y llave mecánica.
 - OTA y mejoras de hardware para seguridad de claves.
-- Log local en microSD.
 - Rotación/revocación avanzada de sesiones.
 - Validación criptográfica de tarjeta (MIFARE Classic solo usa UID, clonable).
 

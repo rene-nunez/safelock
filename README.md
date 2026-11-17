@@ -24,6 +24,61 @@ MFRC522, microSD, and SSD1306 OLED share SPI; the DS1307 RTC and PCF8574T share 
 
 Active levels, hardware variants, and lock timings are configured in [`firmware/include/config.h`](firmware/include/config.h). This covers the PCF8574 LED polarity, buzzer type, DRV8871 coil level, pulse length, sensor debounce, etc.
 
+## Development
+
+Requires Python 3.14+ and Mosquitto 2.x. The local broker listens on `127.0.0.1:1883` without TLS; TLS is only used against EMQX.
+
+Install Mosquitto if it is not already available (Debian/Ubuntu):
+
+```bash
+sudo apt install mosquitto mosquitto-clients
+```
+
+Configure it with `allow_anonymous false` and a `password_file`, then create one user per simulated device. Both devices share the development password:
+
+```bash
+sudo mosquitto_passwd -b /etc/mosquitto/passwd sl-0001 "$SIM_PASSWORD"
+sudo mosquitto_passwd -b /etc/mosquitto/passwd sl-0002 "$SIM_PASSWORD"
+make mqtt-restart
+```
+
+Set up the backend environment and run the API:
+
+```bash
+make venv
+make api
+```
+
+The simulator publishes the MQTT contract from [`docs/protocol.md`](docs/protocol.md) for fake devices:
+
+```bash
+SIM_PASSWORD=... make simulator
+make simulator SIM_ARGS="--no-interactive --devices sl-0001 --heartbeat 5"
+```
+
+When stdin is a TTY it opens a console:
+
+```text
+use <device_id>    Select the target device
+scan <UID>         Send an enrollment card scan
+grant [UID]        Send a granted access decision
+deny [UID]         Send a denied access decision
+open               Simulate a remote unlock
+manual             Simulate a manual opening
+offline on|off     Simulate the backend being unavailable
+status             Republish the retained status
+quit               Exit
+```
+
+`scan` only works after a `commands/enroll` command opens enrollment. Environment variables: `SIM_MQTT_URL`, `SIM_PASSWORD`, `SIM_DEVICES`, `SIM_HEARTBEAT`.
+
+Run the checks:
+
+```bash
+make lint
+make test
+```
+
 ## Security
 
 Please take all of the following into consideration before attempting to implement this software:
