@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useState, type ComponentProps } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Cpu, Plus } from 'lucide-react'
-import { useForm } from 'react-hook-form'
+import { useForm, useWatch } from 'react-hook-form'
 import { z } from 'zod'
 
 import { Badge } from '@/components/ui/badge'
@@ -25,6 +25,7 @@ import {
   listDevices,
   updateDevice,
   type CreateDeviceInput,
+  type DeviceLocation,
   type UpdateDeviceInput,
 } from '@/lib/api'
 import { formatDateTime } from '@/lib/format'
@@ -97,6 +98,42 @@ function locationFrom(lat: string, lng: string) {
   return lat === '' ? null : { lat: Number(lat), lng: Number(lng) }
 }
 
+const LocationPicker = lazy(async () => {
+  const module = await import('@/components/map/location-picker')
+  return { default: module.LocationPicker }
+})
+
+function MapPicker(props: ComponentProps<typeof LocationPicker>) {
+  return (
+    <Suspense
+      fallback={
+        <div
+          className={`w-full animate-pulse rounded-lg border border-border bg-secondary/40 ${props.className ?? ''}`}
+        />
+      }
+    >
+      <MapPicker {...props} />
+    </Suspense>
+  )
+}
+
+function parseLocation(lat: string, lng: string): DeviceLocation | null {
+  if (lat.trim() === '' || lng.trim() === '') return null
+  const parsedLat = Number(lat)
+  const parsedLng = Number(lng)
+  if (
+    Number.isNaN(parsedLat) ||
+    Number.isNaN(parsedLng) ||
+    parsedLat < -90 ||
+    parsedLat > 90 ||
+    parsedLng < -180 ||
+    parsedLng > 180
+  ) {
+    return null
+  }
+  return { lat: parsedLat, lng: parsedLng }
+}
+
 export function DevicesPage() {
   const { user } = useAuth()
   const isAdmin = user?.role === 'admin'
@@ -133,6 +170,31 @@ export function DevicesPage() {
       requires_pin: false,
     },
   })
+
+  const createLat = useWatch({ control: createForm.control, name: 'lat' })
+  const createLng = useWatch({ control: createForm.control, name: 'lng' })
+  const settingsLat = useWatch({ control: settingsForm.control, name: 'lat' })
+  const settingsLng = useWatch({ control: settingsForm.control, name: 'lng' })
+  const createLocation = parseLocation(createLat, createLng)
+  const settingsLocation = parseLocation(settingsLat, settingsLng)
+
+  function applyCreateLocation(next: DeviceLocation | null) {
+    createForm.setValue('lat', next ? String(next.lat) : '', {
+      shouldValidate: true,
+    })
+    createForm.setValue('lng', next ? String(next.lng) : '', {
+      shouldValidate: true,
+    })
+  }
+
+  function applySettingsLocation(next: DeviceLocation | null) {
+    settingsForm.setValue('lat', next ? String(next.lat) : '', {
+      shouldValidate: true,
+    })
+    settingsForm.setValue('lng', next ? String(next.lng) : '', {
+      shouldValidate: true,
+    })
+  }
 
   useEffect(() => {
     if (selected) {
@@ -286,6 +348,26 @@ export function DevicesPage() {
                 <Plus className="size-4" />
                 {createMutation.isPending ? 'Adding' : 'Add'}
               </Button>
+              <div className="lg:col-span-6">
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <Label>Location</Label>
+                  {createLocation ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => applyCreateLocation(null)}
+                    >
+                      Clear location
+                    </Button>
+                  ) : null}
+                </div>
+                <MapPicker
+                  value={createLocation}
+                  onChange={applyCreateLocation}
+                  className="h-56"
+                />
+              </div>
             </form>
             {createMutation.error ? (
               <p className="mt-3 text-sm text-red-400">
@@ -511,6 +593,26 @@ export function DevicesPage() {
                         {...settingsForm.register('lng')}
                       />
                     </div>
+                    <div className="sm:col-span-2">
+                      <div className="mb-2 flex items-center justify-between gap-2">
+                        <Label>Location on map</Label>
+                        {settingsLocation ? (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => applySettingsLocation(null)}
+                          >
+                            Clear location
+                          </Button>
+                        ) : null}
+                      </div>
+                      <MapPicker
+                        value={settingsLocation}
+                        onChange={applySettingsLocation}
+                        className="h-64"
+                      />
+                    </div>
                     <div className="grid gap-2">
                       <Label htmlFor="settings-policy">Offline policy</Label>
                       <Select
@@ -562,19 +664,27 @@ export function DevicesPage() {
                     </div>
                   </form>
                 ) : (
-                  <div className="grid gap-2 text-sm text-muted-foreground">
-                    <p>
-                      Offline policy: {selected.offline_policy} · stale ACL{' '}
-                      {selected.stale_acl_hours} h
-                    </p>
-                    <p>Unlock duration: {selected.unlock_ms} ms</p>
-                    <p>Requires PIN: {selected.requires_pin ? 'yes' : 'no'}</p>
-                    <p>
-                      Last sync:{' '}
-                      {selected.last_sync_at
-                        ? formatDateTime(selected.last_sync_at)
-                        : 'Never'}
-                    </p>
+                  <div className="grid gap-3 text-sm text-muted-foreground">
+                    <MapPicker
+                      value={selected.location}
+                      onChange={() => undefined}
+                      disabled
+                      className="h-56"
+                    />
+                    <div className="grid gap-2">
+                      <p>
+                        Offline policy: {selected.offline_policy} · stale ACL{' '}
+                        {selected.stale_acl_hours} h
+                      </p>
+                      <p>Unlock duration: {selected.unlock_ms} ms</p>
+                      <p>Requires PIN: {selected.requires_pin ? 'yes' : 'no'}</p>
+                      <p>
+                        Last sync:{' '}
+                        {selected.last_sync_at
+                          ? formatDateTime(selected.last_sync_at)
+                          : 'Never'}
+                      </p>
+                    </div>
                   </div>
                 )}
 

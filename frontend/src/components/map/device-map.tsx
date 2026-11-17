@@ -9,28 +9,12 @@ import { buttonVariants } from '@/components/ui/button-variants'
 import { formatDateTime } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import type { Device } from '@/types/device'
-
-const TILE_URL =
-  'https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png'
-
-const ATTRIBUTION =
-  '&copy; <a href="https://stadiamaps.com/" target="_blank" rel="noreferrer">Stadia Maps</a> ' +
-  '&copy; <a href="https://openmaptiles.org/" target="_blank" rel="noreferrer">OpenMapTiles</a> ' +
-  '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a> contributors'
+import { ATTRIBUTION, TILE_URL, pinIcon } from './map-config'
 
 function markerColor(device: Device) {
   if (device.locked) return '#ef4444'
   if (!device.online) return '#71717a'
   return '#22c55e'
-}
-
-function markerIcon(device: Device) {
-  return L.divIcon({
-    className: 'device-marker-wrapper',
-    html: `<span class="device-marker" style="--marker-color:${markerColor(device)}"></span>`,
-    iconSize: [16, 16],
-    iconAnchor: [8, 8],
-  })
 }
 
 function FitDevices({
@@ -87,7 +71,7 @@ export function DeviceMap({ devices, fitRequest }: DeviceMapProps) {
             <Marker
               key={device.id}
               position={[device.location.lat, device.location.lng]}
-              icon={markerIcon(device)}
+              icon={pinIcon(markerColor(device))}
             >
               <Popup>
                 <div className="space-y-2">
