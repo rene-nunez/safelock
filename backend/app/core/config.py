@@ -5,6 +5,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 _ENV_FILE = Path(__file__).resolve().parents[2] / ".env"
 
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=_ENV_FILE,
@@ -20,6 +21,7 @@ class Settings(BaseSettings):
     mongodb_uri: str = "mongodb://127.0.0.1:27017"
     mongodb_db: str = "safelock_dev"
     jwt_secret: str = "dev-only-change-me"
+
 
 @lru_cache
 def get_settings() -> Settings:

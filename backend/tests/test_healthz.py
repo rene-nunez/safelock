@@ -2,6 +2,7 @@ from fastapi.testclient import TestClient
 
 from app.main import app
 
+
 def test_healthz() -> None:
     response = TestClient(app).get("/healthz")
 

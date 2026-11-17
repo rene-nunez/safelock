@@ -25,7 +25,7 @@ monitor: ## Serial monitor
 	pio device monitor -d firmware
 
 simulator: ## Run simulator
-	$(PYTHON) backend/scripts/simulator.py
+	$(PYTHON) backend/scripts/simulator.py $(SIM_ARGS)
 
 test: ## Backend tests
 	$(PYTEST) backend/tests -q
