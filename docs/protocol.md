@@ -44,7 +44,7 @@ Base path: `safelock/devices/{device_id}`
 | `.../commands/synchronize-access-list` | backend → device | 1 | no | Full configuration and access list snapshot. |
 | `.../response` | device → backend | 1 | no | Result of a command. |
 
-## Messages Data
+## Messages
 
 ### `events/card-scan`
 
