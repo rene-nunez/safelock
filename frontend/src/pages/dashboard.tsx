@@ -1,5 +1,4 @@
 import { lazy, Suspense, useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
 import {
   Activity,
   Cpu,
@@ -17,7 +16,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
-import { listDevices } from '@/lib/api'
+import { useDevices } from '@/hooks/use-devices'
 
 const DeviceMap = lazy(async () => {
   const module = await import('@/components/map/device-map')
@@ -50,7 +49,7 @@ function StatCard({ label, value, hint, icon: Icon }: StatCardProps) {
 
 export function DashboardPage() {
   const [fitRequest, setFitRequest] = useState(0)
-  const devicesQuery = useQuery({ queryKey: ['devices'], queryFn: listDevices })
+  const devicesQuery = useDevices()
   const devices = (devicesQuery.data ?? []).filter(
     (device) => device.status === 'active',
   )
