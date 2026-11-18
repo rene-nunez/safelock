@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { KeyRound, Plus, UserPlus, X } from 'lucide-react'
+import { ChevronRight, KeyRound, Plus, UserPlus, X } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 
@@ -18,13 +18,14 @@ import { FormActions } from '@/components/ui/form-actions'
 import { FormField } from '@/components/ui/form-field'
 import { InlineNotice } from '@/components/ui/inline-notice'
 import { Input } from '@/components/ui/input'
-import { PageHeader } from '@/components/ui/page-header'
+import { PageToolbar } from '@/components/ui/page-toolbar'
 import { PasswordInput } from '@/components/ui/password-input'
 import { useAuth } from '@/hooks/use-auth'
 import {
   ApiError,
   createCardholder,
   createCredential,
+  deleteCardholder,
   deleteCredential,
   listCardholders,
   listHolderCredentials,
@@ -38,9 +39,10 @@ import {
   type UpdateCardholderInput,
 } from '@/lib/api'
 import { formatDateTime } from '@/lib/format'
+import { cn } from '@/lib/utils'
 
 const createSchema = z.object({
-  name: z.string().trim().min(1, 'Enter a name'),
+  name: z.string().trim().min(1, 'Enter a full name'),
   email: z
     .string()
     .trim()
@@ -51,7 +53,7 @@ const createSchema = z.object({
 })
 
 const editSchema = z.object({
-  name: z.string().trim().min(1, 'Enter a name'),
+  name: z.string().trim().min(1, 'Enter a full name'),
   email: z
     .string()
     .trim()
@@ -199,6 +201,16 @@ export function CardholdersPage() {
     },
   })
 
+  const deleteMutation = useMutation({
+    mutationFn: deleteCardholder,
+    onMutate: () => setSuccess(null),
+    onSuccess: async () => {
+      setSelectedId(null)
+      showSuccess('Cardholder deleted.')
+      await invalidateCardholders()
+    },
+  })
+
   const createCredentialMutation = useMutation({
     mutationFn: (input: CreateCredentialInput) =>
       createCredential(selectedId ?? '', input),
@@ -288,23 +300,15 @@ export function CardholdersPage() {
 
   return (
     <div className="flex flex-col gap-4 lg:gap-6">
-      <PageHeader
-        title="Cardholders"
-        description="People who can hold credentials, and the cards assigned to them."
-        actions={
-          <Button
-            onClick={() => setCreateOpen((value) => !value)}
-            aria-expanded={createOpen}
-          >
-            {createOpen ? (
-              <X className="size-4" />
-            ) : (
-              <UserPlus className="size-4" />
-            )}
-            {createOpen ? 'Close form' : 'Add cardholder'}
-          </Button>
-        }
-      />
+      <PageToolbar>
+        <Button
+          onClick={() => setCreateOpen((value) => !value)}
+          aria-expanded={createOpen}
+        >
+          {createOpen ? <X className="size-4" /> : <UserPlus className="size-4" />}
+          {createOpen ? 'Close form' : 'Add cardholder'}
+        </Button>
+      </PageToolbar>
 
       <InlineNotice
         tone="success"
@@ -315,9 +319,6 @@ export function CardholdersPage() {
         <Card>
           <CardHeader>
             <CardTitle>Add cardholder</CardTitle>
-            <CardDescription>
-              Cardholders have credentials, and each credential is one card.
-            </CardDescription>
           </CardHeader>
           <CardContent>
             <form
@@ -326,11 +327,14 @@ export function CardholdersPage() {
               onSubmit={createForm.handleSubmit(onCreate)}
             >
               <FormField
-                label="Name"
+                label="Full name"
                 htmlFor="holder-name"
                 error={createForm.formState.errors.name?.message}
               >
-                <Input placeholder="Ada Lovelace" {...createForm.register('name')} />
+                <Input
+                  placeholder="Ada Lovelace"
+                  {...createForm.register('name')}
+                />
               </FormField>
               <FormField
                 label="Email (optional)"
@@ -373,89 +377,87 @@ export function CardholdersPage() {
       ) : null}
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] xl:gap-6">
-        <Card>
-          <CardHeader className="flex-row items-center justify-between gap-4">
-            <div className="flex flex-col gap-1.5">
-              <CardTitle>Cardholders</CardTitle>
-              <CardDescription>People registered in Safelock.</CardDescription>
+        <Card className="h-full">
+          <CardContent className="flex flex-1 flex-col px-0">
+            <div className="flex items-baseline gap-2 px-6 pb-3">
+              <span className="text-2xl font-semibold tabular-nums">
+                {cardholders.length}
+              </span>
+              <span className="text-xs text-muted-foreground">total</span>
             </div>
-            <Badge variant="outline">{cardholders.length}</Badge>
-          </CardHeader>
-          <CardContent className="px-0">
             <InlineNotice
               message={errorMessage(cardholdersQuery.error)}
               className="mx-6 mb-3"
             />
             {cardholdersQuery.isPending ? (
-              <p className="px-6 py-10 text-center text-sm text-muted-foreground">
+              <p className="flex flex-1 items-center justify-center px-6 py-10 text-center text-sm text-muted-foreground">
                 Loading cardholders…
               </p>
             ) : cardholders.length === 0 ? (
-              <p className="px-6 py-10 text-center text-sm text-muted-foreground">
+              <p className="flex flex-1 items-center justify-center px-6 py-10 text-center text-sm text-muted-foreground">
                 No cardholders yet.
               </p>
             ) : (
               <ul className="divide-y divide-border">
-                {cardholders.map((cardholder) => (
-                  <li
-                    key={cardholder.id}
-                    className="flex flex-wrap items-center gap-x-3 gap-y-2 px-6 py-3"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <p className="font-medium">{cardholder.name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {cardholder.email ?? 'No email'}
-                        {cardholder.unit ? ` · ${cardholder.unit}` : ''}
-                      </p>
-                    </div>
-                    <Badge
-                      variant={
-                        cardholder.status === 'active' ? 'success' : 'muted'
-                      }
-                    >
-                      {cardholder.status}
-                    </Badge>
-                    <Button
-                      variant={
-                        selectedId === cardholder.id ? 'secondary' : 'outline'
-                      }
-                      size="sm"
-                      onClick={() => setSelectedId(cardholder.id)}
-                    >
-                      {selectedId === cardholder.id ? 'Editing' : 'Manage'}
-                    </Button>
-                  </li>
-                ))}
+                {cardholders.map((cardholder) => {
+                  const active = selectedId === cardholder.id
+                  return (
+                    <li key={cardholder.id}>
+                      <button
+                        type="button"
+                        aria-current={active ? 'true' : undefined}
+                        onClick={() => setSelectedId(cardholder.id)}
+                        className={cn(
+                          'flex w-full flex-wrap items-center gap-x-3 gap-y-2 px-6 py-3 text-left transition-colors hover:bg-accent/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50',
+                          active && 'bg-accent',
+                        )}
+                      >
+                        <div className="min-w-0 flex-1">
+                          <p className="font-medium">{cardholder.name}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {cardholder.email ?? 'No email'}
+                            {cardholder.unit ? ` · ${cardholder.unit}` : ''}
+                          </p>
+                        </div>
+                        <Badge
+                          variant={
+                            cardholder.status === 'active' ? 'success' : 'muted'
+                          }
+                        >
+                          {cardholder.status}
+                        </Badge>
+                        <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
+                      </button>
+                    </li>
+                  )
+                })}
               </ul>
             )}
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="h-full">
           <CardHeader>
             <CardTitle>{selected ? selected.name : 'Select a cardholder'}</CardTitle>
-            <CardDescription>
-              {selected
-                ? 'Update their details and manage their cards.'
-                : 'Choose a cardholder from the list to see their details.'}
-            </CardDescription>
+            {selected ? null : (
+              <CardDescription>Choose a cardholder from the list.</CardDescription>
+            )}
           </CardHeader>
-          <CardContent>
+          <CardContent className="flex flex-1 flex-col">
+            <InlineNotice
+              tone="success"
+              className="mb-4"
+              message={success?.area === 'detail' ? success.message : null}
+            />
             {selected ? (
-              <div className="flex flex-col gap-6">
-                <InlineNotice
-                  tone="success"
-                  message={
-                    success?.area === 'detail' ? success.message : null
-                  }
-                />
+              <div className="flex flex-1 flex-col gap-6">
                 <form
                   noValidate
                   className="grid gap-4 sm:grid-cols-2"
                   onSubmit={editForm.handleSubmit(onEdit)}
                 >
                   <FormField
-                    label="Name"
+                    label="Full name"
                     htmlFor="edit-name"
                     error={editForm.formState.errors.name?.message}
                   >
@@ -473,10 +475,12 @@ export function CardholdersPage() {
                     <Input type="email" {...editForm.register('email')} />
                   </FormField>
                   <div className="sm:col-span-2">
-                    <h3 className="text-sm font-medium">Cardholder state</h3>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      Deactivating also revokes every active credential.
-                    </p>
+                    <h3 className="text-sm font-medium">
+                      Cardholder state
+                      <span className="ml-2 text-xs font-normal text-muted-foreground">
+                        deactivating revokes all cards
+                      </span>
+                    </h3>
                   </div>
                   <FormActions className="sm:col-span-2">
                     <Button
@@ -508,23 +512,42 @@ export function CardholdersPage() {
                         ? 'Deactivate and revoke cards'
                         : 'Activate'}
                     </Button>
+                    {isAdmin ? (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        disabled={deleteMutation.isPending}
+                        onClick={() => {
+                          if (
+                            window.confirm(
+                              `Delete ${selected.name}? Only possible if they have no credentials or history.`,
+                            )
+                          ) {
+                            deleteMutation.mutate(selected.id)
+                          }
+                        }}
+                      >
+                        Delete permanently
+                      </Button>
+                    ) : null}
                   </FormActions>
                   <InlineNotice
-                    message={errorMessage(updateMutation.error)}
+                    message={errorMessage(
+                      updateMutation.error ?? deleteMutation.error,
+                    )}
                     className="sm:col-span-2"
                   />
                 </form>
 
                 <section className="border-t border-border pt-5">
                   <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div>
-                      <h3 className="text-sm font-medium">Credentials</h3>
-                      <p className="mt-1 text-xs text-muted-foreground">
+                    <h3 className="text-sm font-medium">
+                      Credentials
+                      <span className="ml-2 text-xs font-normal text-muted-foreground">
                         {credentials.length}{' '}
-                        {credentials.length === 1 ? 'card' : 'cards'} · Cards are
-                        revoked rather than deleted when they have history.
-                      </p>
-                    </div>
+                        {credentials.length === 1 ? 'card' : 'cards'}
+                      </span>
+                    </h3>
                     <div className="flex flex-wrap gap-2">
                       <Button
                         variant="outline"
@@ -705,7 +728,7 @@ export function CardholdersPage() {
                       <FormField
                         label={`PIN for ${pinTarget.uid}`}
                         htmlFor="pin-value"
-                        hint="6 to 32 digits. Stored as a hash by the backend."
+                        hint="6–32 digits."
                         className="sm:col-span-2"
                       >
                         <PasswordInput
@@ -713,7 +736,7 @@ export function CardholdersPage() {
                           autoComplete="new-password"
                           value={pinValue}
                           onChange={(event) => setPinValue(event.target.value)}
-                          placeholder="6 to 32 digits"
+                          placeholder="6–32 digits"
                         />
                       </FormField>
                       <FormActions className="sm:col-span-2">
@@ -762,7 +785,7 @@ export function CardholdersPage() {
                       <FormField
                         label="Card UID"
                         htmlFor="credential-uid"
-                        hint="Format AA:BB:CC:DD"
+                        hint="AA:BB:CC:DD"
                         error={credentialForm.formState.errors.uid?.message}
                       >
                         <Input
@@ -773,7 +796,7 @@ export function CardholdersPage() {
                       <FormField
                         label="PIN (optional)"
                         htmlFor="credential-pin"
-                        hint="6 to 32 digits; only used on doors with PIN enabled."
+                        hint="6–32 digits."
                         error={credentialForm.formState.errors.pin?.message}
                       >
                         <PasswordInput
@@ -822,7 +845,7 @@ export function CardholdersPage() {
                 </section>
               </div>
             ) : (
-              <p className="py-10 text-center text-sm text-muted-foreground">
+              <p className="flex flex-1 items-center justify-center py-10 text-center text-sm text-muted-foreground">
                 Pick someone from the list.
               </p>
             )}

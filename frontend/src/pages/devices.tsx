@@ -8,7 +8,7 @@ import {
 } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Cpu, Plus, X } from 'lucide-react'
+import { ChevronRight, Cpu, Plus, X } from 'lucide-react'
 import { useForm, useWatch } from 'react-hook-form'
 import { useSearchParams } from 'react-router-dom'
 import { z } from 'zod'
@@ -18,7 +18,6 @@ import { Button } from '@/components/ui/button'
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
@@ -26,7 +25,8 @@ import { FormActions } from '@/components/ui/form-actions'
 import { FormField } from '@/components/ui/form-field'
 import { InlineNotice } from '@/components/ui/inline-notice'
 import { Input } from '@/components/ui/input'
-import { PageHeader } from '@/components/ui/page-header'
+import { Label } from '@/components/ui/label'
+import { PageToolbar } from '@/components/ui/page-toolbar'
 import { Select } from '@/components/ui/select'
 import { useAuth } from '@/hooks/use-auth'
 import {
@@ -40,6 +40,7 @@ import {
   type UpdateDeviceInput,
 } from '@/lib/api'
 import { formatDateTime } from '@/lib/format'
+import { cn } from '@/lib/utils'
 
 const coordinate = (min: number, max: number) =>
   z
@@ -177,6 +178,7 @@ export function DevicesPage() {
   const devicesQuery = useQuery({ queryKey: ['devices'], queryFn: listDevices })
   const devices = devicesQuery.data ?? []
   const selected = devices.find((device) => device.id === selectedId) ?? null
+  const onlineCount = devices.filter((device) => device.online).length
 
   const requestedDevice = searchParams.get('device')
   useEffect(() => {
@@ -330,25 +332,17 @@ export function DevicesPage() {
 
   return (
     <div className="flex flex-col gap-4 lg:gap-6">
-      <PageHeader
-        title="Devices"
-        description="Locks registered in Safelock and their access policies."
-        actions={
-          isAdmin ? (
-            <Button
-              onClick={() => setCreateOpen((value) => !value)}
-              aria-expanded={createOpen}
-            >
-              {createOpen ? (
-                <X className="size-4" />
-              ) : (
-                <Plus className="size-4" />
-              )}
-              {createOpen ? 'Close form' : 'Add device'}
-            </Button>
-          ) : null
-        }
-      />
+      <PageToolbar>
+        {isAdmin ? (
+          <Button
+            onClick={() => setCreateOpen((value) => !value)}
+            aria-expanded={createOpen}
+          >
+            {createOpen ? <X className="size-4" /> : <Plus className="size-4" />}
+            {createOpen ? 'Close form' : 'Add device'}
+          </Button>
+        ) : null}
+      </PageToolbar>
 
       <InlineNotice
         tone="success"
@@ -359,9 +353,6 @@ export function DevicesPage() {
         <Card>
           <CardHeader>
             <CardTitle>Add device</CardTitle>
-            <CardDescription>
-              Register a lock before it connects for the first time.
-            </CardDescription>
           </CardHeader>
           <CardContent>
             <form
@@ -372,7 +363,7 @@ export function DevicesPage() {
               <FormField
                 label="Device ID"
                 htmlFor="device-id"
-                hint="Format sl-0001"
+                hint="sl-0001"
                 error={createForm.formState.errors.device_id?.message}
               >
                 <Input
@@ -394,29 +385,26 @@ export function DevicesPage() {
                 <Input placeholder="HQ" {...createForm.register('site')} />
               </FormField>
               <div className="sm:col-span-2">
-                <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
-                  <div>
-                    <p className="text-sm font-medium">Location on map</p>
-                    <p className="text-xs text-muted-foreground">
-                      Click to place the lock, then drag the marker to adjust.
-                    </p>
-                  </div>
-                  {createLocation ? (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => applyCreateLocation(null)}
-                    >
-                      Clear location
-                    </Button>
-                  ) : null}
-                </div>
+                <p className="mb-2 text-sm font-medium">Location on map</p>
                 <LazyMapPicker
                   value={createLocation}
                   onChange={applyCreateLocation}
                   className="h-56"
                 />
+                <div className="mt-2 flex flex-wrap items-end justify-between gap-2">
+                  <p className="font-mono text-xs text-muted-foreground">
+                    Latitude {createLat || '—'} · Longitude {createLng || '—'}
+                  </p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={createLocation === null}
+                    onClick={() => applyCreateLocation(null)}
+                  >
+                    Clear location
+                  </Button>
+                </div>
                 <div className="mt-2 grid gap-2 sm:grid-cols-2">
                   <FormField
                     label="Latitude"
@@ -463,95 +451,99 @@ export function DevicesPage() {
       ) : null}
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] xl:gap-6">
-        <Card>
-          <CardHeader className="flex-row items-center justify-between gap-4">
-            <div className="flex flex-col gap-1.5">
-              <CardTitle>Devices</CardTitle>
-              <CardDescription>Locks registered in Safelock.</CardDescription>
+        <Card className="h-full">
+          <CardContent className="flex flex-1 flex-col px-0">
+            <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1 px-6 pb-3">
+              <span className="text-2xl font-semibold tabular-nums">
+                {onlineCount}
+              </span>
+              <span className="text-xs text-muted-foreground">
+                online / {devices.length} total
+              </span>
             </div>
-            <Badge variant="outline">{devices.length}</Badge>
-          </CardHeader>
-          <CardContent className="px-0">
             <InlineNotice
               message={errorMessage(devicesQuery.error)}
               className="mx-6 mb-3"
             />
             {devicesQuery.isPending ? (
-              <p className="px-6 py-10 text-center text-sm text-muted-foreground">
+              <p className="flex flex-1 items-center justify-center px-6 py-10 text-center text-sm text-muted-foreground">
                 Loading devices…
               </p>
             ) : devices.length === 0 ? (
-              <p className="px-6 py-10 text-center text-sm text-muted-foreground">
+              <p className="flex flex-1 items-center justify-center px-6 py-10 text-center text-sm text-muted-foreground">
                 No devices yet.
               </p>
             ) : (
               <ul className="divide-y divide-border">
-                {devices.map((device) => (
-                  <li
-                    key={device.id}
-                    className="flex flex-wrap items-center gap-x-3 gap-y-2 px-6 py-3"
-                  >
-                    <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-secondary text-muted-foreground">
-                      <Cpu className="size-4" />
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate font-medium">{device.name}</p>
-                      <p className="font-mono text-xs text-muted-foreground">
-                        {device.device_id}
-                        {device.site ? ` · ${device.site}` : ''}
-                      </p>
-                    </div>
-                    <div className="flex flex-wrap gap-1.5">
-                      <Badge
-                        variant={device.online ? 'success' : 'muted'}
+                {devices.map((device) => {
+                  const active = selectedId === device.id
+                  return (
+                    <li key={device.id}>
+                      <button
+                        type="button"
+                        aria-current={active ? 'true' : undefined}
+                        onClick={() => setSelectedId(device.id)}
+                        className={cn(
+                          'flex w-full flex-wrap items-center gap-x-3 gap-y-2 px-6 py-3 text-left transition-colors hover:bg-accent/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50',
+                          active && 'bg-accent',
+                        )}
                       >
-                        {device.online ? 'Online' : 'Offline'}
-                      </Badge>
-                      <Badge
-                        variant={device.locked ? 'danger' : 'outline'}
-                      >
-                        {device.locked ? 'Locked' : 'Unlocked'}
-                      </Badge>
-                      {device.requires_pin ? (
-                        <Badge variant="secondary">PIN</Badge>
-                      ) : null}
-                      {device.status === 'retired' ? (
-                        <Badge variant="muted">Retired</Badge>
-                      ) : null}
-                    </div>
-                    <Button
-                      variant={
-                        selectedId === device.id ? 'secondary' : 'outline'
-                      }
-                      size="sm"
-                      onClick={() => setSelectedId(device.id)}
-                    >
-                      {selectedId === device.id ? 'Editing' : 'Manage'}
-                    </Button>
-                  </li>
-                ))}
+                        <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-secondary text-muted-foreground">
+                          <Cpu className="size-4" />
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate font-medium">{device.name}</p>
+                          <p className="font-mono text-xs text-muted-foreground">
+                            {device.device_id}
+                            {device.site ? ` · ${device.site}` : ''}
+                          </p>
+                        </div>
+                        <div className="flex flex-wrap gap-1.5">
+                          <Badge
+                            variant={device.online ? 'success' : 'muted'}
+                          >
+                            {device.online ? 'Online' : 'Offline'}
+                          </Badge>
+                          <Badge
+                            variant={device.locked ? 'danger' : 'outline'}
+                          >
+                            {device.locked ? 'Locked' : 'Unlocked'}
+                          </Badge>
+                          {device.requires_pin ? (
+                            <Badge variant="secondary">PIN</Badge>
+                          ) : null}
+                          {device.status === 'retired' ? (
+                            <Badge variant="muted">Retired</Badge>
+                          ) : null}
+                        </div>
+                        <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
+                      </button>
+                    </li>
+                  )
+                })}
               </ul>
             )}
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="h-full">
           <CardHeader>
             <CardTitle>{selected ? selected.name : 'Select a device'}</CardTitle>
-            <CardDescription>
-              {selected
-                ? `${selected.device_id} · firmware ${selected.fw ?? 'unknown'} · ACL v${selected.acl_version}`
-                : 'Choose a device from the list to review or change its settings.'}
-            </CardDescription>
+            {selected ? (
+              <p className="text-xs text-muted-foreground">
+                {selected.device_id} · firmware {selected.fw ?? 'unknown'} · ACL v
+                {selected.acl_version}
+              </p>
+            ) : null}
           </CardHeader>
-          <CardContent>
+          <CardContent className="flex flex-1 flex-col">
             <InlineNotice
               tone="success"
               className="mb-4"
               message={success?.area === 'detail' ? success.message : null}
             />
             {selected ? (
-              <div className="flex flex-col gap-6">
+              <div className="flex flex-1 flex-col gap-6">
                 <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                   <StatusTile label="Connectivity">
                     <Badge variant={selected.online ? 'success' : 'muted'}>
@@ -582,9 +574,6 @@ export function DevicesPage() {
 
                 <section className="border-t border-border pt-5">
                   <h3 className="text-sm font-medium">Actions</h3>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Remote lock denies every access until it is removed.
-                  </p>
                   <div className="mt-3 flex flex-wrap gap-2">
                     <Button
                       variant={selected.locked ? 'secondary' : 'destructive'}
@@ -643,7 +632,9 @@ export function DevicesPage() {
                     ) : null}
                   </div>
                   <InlineNotice
-                    message={errorMessage(updateMutation.error ?? deleteMutation.error)}
+                    message={errorMessage(
+                      updateMutation.error ?? deleteMutation.error,
+                    )}
                     className="mt-3"
                   />
                 </section>
@@ -654,12 +645,7 @@ export function DevicesPage() {
                     className="flex flex-col gap-4 border-t border-border pt-5"
                     onSubmit={settingsForm.handleSubmit(onSave)}
                   >
-                    <div>
-                      <h3 className="text-sm font-medium">Settings</h3>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        Changes reach the device on its next synchronization.
-                      </p>
-                    </div>
+                    <h3 className="text-sm font-medium">Settings</h3>
                     <div className="grid gap-4 sm:grid-cols-2">
                       <FormField
                         label="Name"
@@ -674,7 +660,7 @@ export function DevicesPage() {
                       <FormField
                         label="Offline policy"
                         htmlFor="settings-policy"
-                        hint="Allow access with a cached list, or deny without the backend."
+                        hint="Allow with a cached list, or deny without the backend."
                       >
                         <Select {...settingsForm.register('offline_policy')}>
                           <option value="allow">Allow with cached ACL</option>
@@ -684,7 +670,6 @@ export function DevicesPage() {
                       <FormField
                         label="Stale ACL hours"
                         htmlFor="settings-stale"
-                        hint="How long the cached list stays valid offline."
                         error={
                           settingsForm.formState.errors.stale_acl_hours?.message
                         }
@@ -697,7 +682,6 @@ export function DevicesPage() {
                       <FormField
                         label="Unlock duration (ms)"
                         htmlFor="settings-unlock"
-                        hint="Time the bolt stays open after a valid access."
                         error={settingsForm.formState.errors.unlock_ms?.message}
                       >
                         <Input
@@ -705,52 +689,46 @@ export function DevicesPage() {
                           {...settingsForm.register('unlock_ms')}
                         />
                       </FormField>
-                      <div className="flex items-end">
-                        <label className="flex items-start gap-2 pb-2 text-sm">
+                      <div className="grid gap-2">
+                        <Label htmlFor="settings-requires-pin">
+                          Require PIN on this door
+                        </Label>
+                        <div className="flex h-9 items-center">
                           <input
+                            id="settings-requires-pin"
                             type="checkbox"
-                            className="mt-0.5 size-4 rounded border-input"
+                            className="size-4 rounded border-input"
                             {...settingsForm.register('requires_pin')}
                           />
-                          <span>
-                            Require PIN on this door
-                            <span className="block text-xs text-muted-foreground">
-                              The door becomes online-only.
-                            </span>
-                          </span>
-                        </label>
+                        </div>
+                        <p className="min-h-4 text-xs text-muted-foreground">
+                          The door becomes online-only.
+                        </p>
                       </div>
                       <div className="sm:col-span-2">
-                        <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
-                          <div>
-                            <p className="text-sm font-medium">
-                              Location on map
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              Click to place the lock, then drag the marker to
-                              adjust.
-                            </p>
-                          </div>
-                          {settingsLocation ? (
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => applySettingsLocation(null)}
-                            >
-                              Clear location
-                            </Button>
-                          ) : null}
-                        </div>
+                        <p className="mb-2 text-sm font-medium">
+                          Location on map
+                        </p>
                         <LazyMapPicker
                           value={settingsLocation}
                           onChange={applySettingsLocation}
                           className="h-64"
                         />
-                        <p className="mt-2 font-mono text-xs text-muted-foreground">
-                          Latitude {settingsLat || '—'} · Longitude{' '}
-                          {settingsLng || '—'}
-                        </p>
+                        <div className="mt-2 flex flex-wrap items-end justify-between gap-2">
+                          <p className="font-mono text-xs text-muted-foreground">
+                            Latitude {settingsLat || '—'} · Longitude{' '}
+                            {settingsLng || '—'}
+                          </p>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            disabled={settingsLocation === null}
+                            onClick={() => applySettingsLocation(null)}
+                          >
+                            Clear location
+                          </Button>
+                        </div>
                       </div>
                     </div>
                     <FormActions>
@@ -791,7 +769,9 @@ export function DevicesPage() {
                       </StatusTile>
                     </div>
                     <div>
-                      <p className="text-sm font-medium">Location on map</p>
+                      <p className="mb-2 text-sm font-medium">
+                        Location on map
+                      </p>
                       <LazyMapPicker
                         value={selected.location}
                         onChange={() => undefined}
@@ -803,7 +783,7 @@ export function DevicesPage() {
                 )}
               </div>
             ) : (
-              <p className="py-10 text-center text-sm text-muted-foreground">
+              <p className="flex flex-1 items-center justify-center py-10 text-center text-sm text-muted-foreground">
                 Pick a device from the list.
               </p>
             )}

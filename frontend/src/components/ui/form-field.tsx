@@ -22,9 +22,8 @@ export function FormField({
 }: FormFieldProps) {
   const hintId = `${htmlFor}-hint`
   const errorId = `${htmlFor}-error`
-  const describedBy = [hint ? hintId : null, error ? errorId : null]
-    .filter(Boolean)
-    .join(' ')
+  // Errors replace hints so the field keeps the same height when validation runs.
+  const describedBy = error ? errorId : hint ? hintId : undefined
 
   const control = isValidElement<Record<string, unknown>>(children)
     ? cloneElement(children, {
@@ -38,16 +37,17 @@ export function FormField({
     <div className={cn('grid gap-2', className)}>
       <Label htmlFor={htmlFor}>{label}</Label>
       {control}
-      {hint ? (
-        <p id={hintId} className="text-xs text-muted-foreground">
-          {hint}
-        </p>
-      ) : null}
-      {error ? (
-        <p id={errorId} className="text-xs text-red-400">
-          {error}
-        </p>
-      ) : null}
+      <div className="min-h-4 text-xs">
+        {error ? (
+          <p id={errorId} className="text-red-400">
+            {error}
+          </p>
+        ) : hint ? (
+          <p id={hintId} className="text-muted-foreground">
+            {hint}
+          </p>
+        ) : null}
+      </div>
     </div>
   )
 }

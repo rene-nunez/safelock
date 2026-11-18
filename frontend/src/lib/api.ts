@@ -227,6 +227,10 @@ export function updateCardholder(
   })
 }
 
+export function deleteCardholder(id: string): Promise<void> {
+  return request<void>(`/cardholders/${id}`, { method: 'DELETE' })
+}
+
 export type CreateCredentialInput = {
   uid: string
   valid_from?: string | null

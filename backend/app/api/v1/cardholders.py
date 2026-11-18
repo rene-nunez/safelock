@@ -1,8 +1,8 @@
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 
-from app.api.deps import get_current_user, get_db
+from app.api.deps import get_current_admin, get_current_user, get_db
 from app.api.v1.common import actor_object_id, client_ip
 from app.db.mongo import Database
 from app.schemas.auth import UserOut
@@ -14,8 +14,10 @@ from app.schemas.cardholders import (
 from app.schemas.credentials import CredentialCreate, CredentialOut
 from app.services.audit import record_audit
 from app.services.cardholders import (
+    cardholder_has_history,
     cardholder_to_out,
     create_cardholder,
+    delete_cardholder,
     get_cardholder,
     list_cardholders,
     update_cardholder,
@@ -31,6 +33,7 @@ from app.services.credentials import (
 router = APIRouter(prefix="/cardholders", tags=["cardholders"])
 
 CurrentUser = Annotated[UserOut, Depends(get_current_user)]
+AdminUser = Annotated[UserOut, Depends(get_current_admin)]
 Db = Annotated[Database, Depends(get_db)]
 
 
@@ -41,6 +44,15 @@ async def _require_cardholder(db: Database, cardholder_id: str) -> dict[str, Any
             status_code=status.HTTP_404_NOT_FOUND, detail="Cardholder not found"
         )
     return cardholder
+
+
+def _snapshot(cardholder: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "name": cardholder["name"],
+        "email": cardholder.get("email"),
+        "unit": cardholder.get("unit"),
+        "status": cardholder.get("status", "active"),
+    }
 
 
 @router.get("", response_model=list[CardholderOut])
@@ -143,6 +155,32 @@ async def update_cardholder_endpoint(
             )
 
     return cardholder_to_out(updated)
+
+
+@router.delete("/{cardholder_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_cardholder_endpoint(
+    cardholder_id: str,
+    request: Request,
+    db: Db,
+    admin: AdminUser,
+) -> Response:
+    target = await _require_cardholder(db, cardholder_id)
+    if await cardholder_has_history(db, target):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="The cardholder has credentials or history; deactivate it instead",
+        )
+
+    await delete_cardholder(db, target)
+    await record_audit(
+        db,
+        actor_id=actor_object_id(admin),
+        action="cardholder.delete",
+        target=str(target["_id"]),
+        before=_snapshot(target),
+        ip=client_ip(request),
+    )
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.get("/{cardholder_id}/credentials", response_model=list[CredentialOut])

@@ -63,3 +63,15 @@ async def update_cardholder(
         {"$set": updates},
         return_document=ReturnDocument.AFTER,
     )
+
+
+async def cardholder_has_history(
+    db: Database, document: CardholderDocument
+) -> bool:
+    return bool(
+        await db.credentials.count_documents({"holder_id": document["_id"]})
+    )
+
+
+async def delete_cardholder(db: Database, document: CardholderDocument) -> None:
+    await db.cardholders.delete_one({"_id": document["_id"]})

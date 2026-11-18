@@ -123,3 +123,54 @@ async def test_inactive_holder_cannot_receive_credentials(
     )
 
     assert response.status_code == 409
+
+
+async def test_admin_deletes_cardholder_without_credentials(
+    api: AsyncClient, admin_headers: dict[str, str], db: Database
+) -> None:
+    holder = await create_cardholder(api, admin_headers)
+
+    response = await api.delete(
+        f"/api/v1/cardholders/{holder['id']}", headers=admin_headers
+    )
+
+    assert response.status_code == 204
+    missing = await api.get(
+        f"/api/v1/cardholders/{holder['id']}", headers=admin_headers
+    )
+    assert missing.status_code == 404
+    assert await db.audit_logs.count_documents({"action": "cardholder.delete"}) == 1
+
+
+async def test_delete_cardholder_with_credentials_conflicts(
+    api: AsyncClient, admin_headers: dict[str, str]
+) -> None:
+    holder = await create_cardholder(api, admin_headers)
+    created = await api.post(
+        f"/api/v1/cardholders/{holder['id']}/credentials",
+        headers=admin_headers,
+        json={"uid": "AA:BB:CC:DD"},
+    )
+    assert created.status_code == 201
+
+    response = await api.delete(
+        f"/api/v1/cardholders/{holder['id']}", headers=admin_headers
+    )
+
+    assert response.status_code == 409
+    still_there = await api.get(
+        f"/api/v1/cardholders/{holder['id']}", headers=admin_headers
+    )
+    assert still_there.status_code == 200
+
+
+async def test_operator_cannot_delete_cardholder(
+    api: AsyncClient, operator_headers: dict[str, str]
+) -> None:
+    holder = await create_cardholder(api, operator_headers)
+
+    response = await api.delete(
+        f"/api/v1/cardholders/{holder['id']}", headers=operator_headers
+    )
+
+    assert response.status_code == 403
