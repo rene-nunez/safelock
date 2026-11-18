@@ -103,15 +103,24 @@ void Indicators::buzzer_off() {
 #endif
 }
 
-void Indicators::start_beep(uint16_t freq, uint16_t on_ms, uint16_t off_ms, uint8_t repeats) {
+void Indicators::start_beep(
+  uint16_t freq,
+  uint16_t on_ms,
+  uint16_t off_ms,
+  uint8_t repeats,
+  uint16_t alternate_freq
+) {
   if (repeats == 0) return;
 
   beep_freq = freq;
+  beep_primary_freq = freq;
+  beep_alternate_freq = alternate_freq;
   beep_on_ms = on_ms;
   beep_off_ms = off_ms;
   beep_remaining = repeats;
   beep_active = true;
   beep_on = true;
+  beep_alternate_next = true;
 
   buzzer_on();
   beep_phase_end = millis() + on_ms;
@@ -126,7 +135,7 @@ void Indicators::beep_error() {
 }
 
 void Indicators::beep_alert() {
-  start_beep(500, 250, 100, 3);
+  start_beep(700, 130, 70, 5, 1400);
 }
 
 void Indicators::update() {
@@ -138,6 +147,11 @@ void Indicators::update() {
   beep_on = !beep_on;
 
   if (beep_on) {
+    if (beep_alternate_freq != 0) {
+      beep_freq = beep_alternate_next ? beep_alternate_freq : beep_primary_freq;
+      beep_alternate_next = !beep_alternate_next;
+    }
+
     buzzer_on();
     beep_phase_end = now + beep_on_ms;
     return;

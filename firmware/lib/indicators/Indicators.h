@@ -9,17 +9,26 @@ class Indicators {
     bool ready = false;
 
     uint16_t beep_freq = 0;
+    uint16_t beep_primary_freq = 0;
+    uint16_t beep_alternate_freq = 0;
     uint16_t beep_on_ms = 0;
     uint16_t beep_off_ms = 0;
     uint8_t beep_remaining = 0;
     bool beep_active = false;
     bool beep_on = false;
+    bool beep_alternate_next = false;
     unsigned long beep_phase_end = 0;
 
     uint8_t find_address();
     void write_pcf();
     void set_leds(bool red, bool green);
-    void start_beep(uint16_t freq, uint16_t on_ms, uint16_t off_ms, uint8_t repeats);
+    void start_beep(
+      uint16_t freq,
+      uint16_t on_ms,
+      uint16_t off_ms,
+      uint8_t repeats,
+      uint16_t alternate_freq = 0
+    );
     void buzzer_on();
     void buzzer_off();
 
