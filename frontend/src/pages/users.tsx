@@ -293,7 +293,7 @@ export function UsersPage() {
                             {entry.email}
                           </span>
                           {own ? (
-                            <span className="mt-0.5 block text-xs font-bold">
+                            <span className="mt-0.5 block text-xs text-muted-foreground">
                               Current account
                             </span>
                           ) : (
@@ -314,7 +314,9 @@ export function UsersPage() {
                         <Badge variant={entry.active ? 'success' : 'muted'}>
                           {entry.active ? 'Active' : 'Inactive'}
                         </Badge>
-                        {own ? null : (
+                        {own ? (
+                          <span className="size-4 shrink-0" aria-hidden />
+                        ) : (
                           <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
                         )}
                       </button>
