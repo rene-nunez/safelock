@@ -77,6 +77,7 @@ async def create_credential(
         "valid_from": payload.valid_from,
         "valid_to": payload.valid_to,
         "revoked_at": None,
+        "revoked_reason": None,
         "pin_hash": pin_hash,
         "pin_fails": 0,
         "pin_locked_until": None,
@@ -109,7 +110,14 @@ async def revoke_credential(
     now = datetime.now(UTC)
     return await db.credentials.find_one_and_update(
         {"_id": document["_id"]},
-        {"$set": {"status": "revoked", "revoked_at": now, "updated_at": now}},
+        {
+            "$set": {
+                "status": "revoked",
+                "revoked_at": now,
+                "revoked_reason": None,
+                "updated_at": now,
+            }
+        },
         return_document=ReturnDocument.AFTER,
     ) or document
 
@@ -124,6 +132,7 @@ async def restore_credential(
                 "$set": {
                     "status": "active",
                     "revoked_at": None,
+                    "revoked_reason": None,
                     "updated_at": datetime.now(UTC),
                 }
             },
@@ -135,7 +144,7 @@ async def restore_credential(
 
 
 async def revoke_holder_credentials(
-    db: Database, holder_id: ObjectId
+    db: Database, holder_id: ObjectId, reason: str | None = None
 ) -> list[CredentialDocument]:
     documents = await list_holder_credentials(db, holder_id)
     active = [document for document in documents if document.get("status") == "active"]
@@ -145,13 +154,61 @@ async def revoke_holder_credentials(
     now = datetime.now(UTC)
     await db.credentials.update_many(
         {"holder_id": holder_id, "status": "active"},
-        {"$set": {"status": "revoked", "revoked_at": now, "updated_at": now}},
+        {
+            "$set": {
+                "status": "revoked",
+                "revoked_at": now,
+                "revoked_reason": reason,
+                "updated_at": now,
+            }
+        },
     )
     for document in active:
         document["status"] = "revoked"
         document["revoked_at"] = now
+        document["revoked_reason"] = reason
         document["updated_at"] = now
     return active
+
+
+async def restore_holder_credentials(
+    db: Database, holder_id: ObjectId, reason: str = "cardholder_inactive"
+) -> list[CredentialDocument]:
+    documents = [
+        document
+        for document in await list_holder_credentials(db, holder_id)
+        if document.get("status") == "revoked"
+        and document.get("revoked_reason") == reason
+    ]
+    if not documents:
+        return []
+
+    ids = [document["_id"] for document in documents]
+    uids = [document["uid"] for document in documents]
+    conflict = await db.credentials.find_one(
+        {"uid": {"$in": uids}, "status": "active", "_id": {"$nin": ids}}
+    )
+    if conflict is not None:
+        raise CredentialAlreadyExistsError(conflict["uid"])
+
+    now = datetime.now(UTC)
+    await db.credentials.update_many(
+        {"_id": {"$in": ids}},
+        {
+            "$set": {
+                "status": "active",
+                "revoked_at": None,
+                "revoked_reason": None,
+                "updated_at": now,
+            }
+        },
+    )
+    for document in documents:
+        document["status"] = "active"
+        document["revoked_at"] = None
+        document["revoked_reason"] = None
+        document["updated_at"] = now
+    return documents
 
 
 async def delete_credential(db: Database, document: CredentialDocument) -> None:

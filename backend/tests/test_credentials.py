@@ -217,6 +217,32 @@ async def test_restore_is_admin_only(
     assert restored.json()["status"] == "active"
 
 
+async def test_restore_requires_active_cardholder(
+    api: AsyncClient, admin_headers: dict[str, str]
+) -> None:
+    holder = await create_cardholder(api, admin_headers)
+    created = await api.post(
+        f"/api/v1/cardholders/{holder['id']}/credentials",
+        headers=admin_headers,
+        json={"uid": "AA:BB:CC:DD"},
+    )
+    credential_id = created.json()["id"]
+    await api.patch(
+        f"/api/v1/cardholders/{holder['id']}",
+        headers=admin_headers,
+        json={"status": "inactive"},
+    )
+
+    response = await api.post(
+        f"/api/v1/credentials/{credential_id}/restore", headers=admin_headers
+    )
+
+    assert response.status_code == 409
+    assert response.json()["detail"] == (
+        "Cannot restore a credential while the cardholder is inactive"
+    )
+
+
 async def test_delete_unused_credential(
     api: AsyncClient, operator_headers: dict[str, str], db: Database
 ) -> None:

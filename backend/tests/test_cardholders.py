@@ -174,3 +174,139 @@ async def test_operator_cannot_delete_cardholder(
     )
 
     assert response.status_code == 403
+
+
+async def test_activate_and_restore_cardholder(
+    api: AsyncClient, admin_headers: dict[str, str], db: Database
+) -> None:
+    holder = await create_cardholder(api, admin_headers)
+    for uid in ("AA:BB:CC:DD", "11:22:33:44"):
+        created = await api.post(
+            f"/api/v1/cardholders/{holder['id']}/credentials",
+            headers=admin_headers,
+            json={"uid": uid},
+        )
+        assert created.status_code == 201
+    await api.patch(
+        f"/api/v1/cardholders/{holder['id']}",
+        headers=admin_headers,
+        json={"status": "inactive"},
+    )
+
+    response = await api.post(
+        f"/api/v1/cardholders/{holder['id']}/activate-and-restore",
+        headers=admin_headers,
+    )
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "active"
+    credentials = await api.get(
+        f"/api/v1/cardholders/{holder['id']}/credentials", headers=admin_headers
+    )
+    assert {item["status"] for item in credentials.json()} == {"active"}
+    assert (
+        await db.audit_logs.count_documents(
+            {
+                "action": "credential.restore",
+                "after.reason": "cardholder_activation",
+            }
+        )
+        == 2
+    )
+
+
+async def test_activate_and_restore_keeps_manual_revocations(
+    api: AsyncClient, admin_headers: dict[str, str]
+) -> None:
+    holder = await create_cardholder(api, admin_headers)
+    manual = await api.post(
+        f"/api/v1/cardholders/{holder['id']}/credentials",
+        headers=admin_headers,
+        json={"uid": "AA:BB:CC:DD"},
+    )
+    deactivated = await api.post(
+        f"/api/v1/cardholders/{holder['id']}/credentials",
+        headers=admin_headers,
+        json={"uid": "11:22:33:44"},
+    )
+    assert deactivated.status_code == 201
+    await api.post(
+        f"/api/v1/credentials/{manual.json()['id']}/revoke", headers=admin_headers
+    )
+    await api.patch(
+        f"/api/v1/cardholders/{holder['id']}",
+        headers=admin_headers,
+        json={"status": "inactive"},
+    )
+
+    response = await api.post(
+        f"/api/v1/cardholders/{holder['id']}/activate-and-restore",
+        headers=admin_headers,
+    )
+
+    assert response.status_code == 200
+    credentials = await api.get(
+        f"/api/v1/cardholders/{holder['id']}/credentials", headers=admin_headers
+    )
+    by_uid = {item["uid"]: item["status"] for item in credentials.json()}
+    assert by_uid["AA:BB:CC:DD"] == "revoked"
+    assert by_uid["11:22:33:44"] == "active"
+
+
+async def test_activate_and_restore_is_admin_only(
+    api: AsyncClient,
+    admin_headers: dict[str, str],
+    operator_headers: dict[str, str],
+) -> None:
+    holder = await create_cardholder(api, admin_headers)
+    await api.patch(
+        f"/api/v1/cardholders/{holder['id']}",
+        headers=admin_headers,
+        json={"status": "inactive"},
+    )
+
+    forbidden = await api.post(
+        f"/api/v1/cardholders/{holder['id']}/activate-and-restore",
+        headers=operator_headers,
+    )
+    allowed = await api.post(
+        f"/api/v1/cardholders/{holder['id']}/activate-and-restore",
+        headers=admin_headers,
+    )
+
+    assert forbidden.status_code == 403
+    assert allowed.status_code == 200
+
+
+async def test_activate_and_restore_conflicting_uid_is_blocked(
+    api: AsyncClient, admin_headers: dict[str, str]
+) -> None:
+    holder = await create_cardholder(api, admin_headers)
+    await api.post(
+        f"/api/v1/cardholders/{holder['id']}/credentials",
+        headers=admin_headers,
+        json={"uid": "AA:BB:CC:DD"},
+    )
+    await api.patch(
+        f"/api/v1/cardholders/{holder['id']}",
+        headers=admin_headers,
+        json={"status": "inactive"},
+    )
+    other = await create_cardholder(api, admin_headers, email="grace@example.com")
+    replacement = await api.post(
+        f"/api/v1/cardholders/{other['id']}/credentials",
+        headers=admin_headers,
+        json={"uid": "AA:BB:CC:DD"},
+    )
+    assert replacement.status_code == 201
+
+    response = await api.post(
+        f"/api/v1/cardholders/{holder['id']}/activate-and-restore",
+        headers=admin_headers,
+    )
+
+    assert response.status_code == 409
+    current = await api.get(
+        f"/api/v1/cardholders/{holder['id']}", headers=admin_headers
+    )
+    assert current.json()["status"] == "inactive"

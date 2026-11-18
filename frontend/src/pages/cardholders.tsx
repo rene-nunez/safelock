@@ -7,13 +7,7 @@ import { z } from 'zod'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { FormActions } from '@/components/ui/form-actions'
 import { FormField } from '@/components/ui/form-field'
 import { InlineNotice } from '@/components/ui/inline-notice'
@@ -23,6 +17,7 @@ import { PasswordInput } from '@/components/ui/password-input'
 import { useAuth } from '@/hooks/use-auth'
 import {
   ApiError,
+  activateAndRestoreCardholder,
   createCardholder,
   createCredential,
   deleteCardholder,
@@ -201,6 +196,15 @@ export function CardholdersPage() {
     },
   })
 
+  const activateRestoreMutation = useMutation({
+    mutationFn: activateAndRestoreCardholder,
+    onMutate: () => setSuccess(null),
+    onSuccess: async () => {
+      showSuccess('Cardholder activated and cards restored.', 'detail')
+      await Promise.all([invalidateCardholders(), invalidateCredentials()])
+    },
+  })
+
   const deleteMutation = useMutation({
     mutationFn: deleteCardholder,
     onMutate: () => setSuccess(null),
@@ -321,52 +325,52 @@ export function CardholdersPage() {
             <CardTitle>Add cardholder</CardTitle>
           </CardHeader>
           <CardContent>
-            <form
-              noValidate
-              className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"
-              onSubmit={createForm.handleSubmit(onCreate)}
-            >
-              <FormField
-                label="Full name"
-                htmlFor="holder-name"
-                error={createForm.formState.errors.name?.message}
-              >
-                <Input
-                  placeholder="Ada Lovelace"
-                  {...createForm.register('name')}
-                />
-              </FormField>
-              <FormField
-                label="Email (optional)"
-                htmlFor="holder-email"
-                error={createForm.formState.errors.email?.message}
-              >
-                <Input
-                  type="email"
-                  autoComplete="off"
-                  placeholder="ada@example.com"
-                  {...createForm.register('email')}
-                />
-              </FormField>
-              <FormField label="Unit (optional)" htmlFor="holder-unit">
-                <Input
-                  placeholder="Engineering"
-                  {...createForm.register('unit')}
-                />
-              </FormField>
-              <FormActions className="xl:self-end">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  onClick={() => setCreateOpen(false)}
+            <form noValidate onSubmit={createForm.handleSubmit(onCreate)}>
+              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                <FormField
+                  label="Full name"
+                  htmlFor="holder-name"
+                  error={createForm.formState.errors.name?.message}
                 >
-                  Cancel
-                </Button>
-                <Button type="submit" disabled={createMutation.isPending}>
-                  <UserPlus className="size-4" />
-                  {createMutation.isPending ? 'Adding…' : 'Add cardholder'}
-                </Button>
-              </FormActions>
+                  <Input
+                    placeholder="Ada Lovelace"
+                    {...createForm.register('name')}
+                  />
+                </FormField>
+                <FormField
+                  label="Email (optional)"
+                  htmlFor="holder-email"
+                  error={createForm.formState.errors.email?.message}
+                >
+                  <Input
+                    type="email"
+                    autoComplete="off"
+                    placeholder="ada@example.com"
+                    {...createForm.register('email')}
+                  />
+                </FormField>
+                <FormField label="Unit (optional)" htmlFor="holder-unit">
+                  <Input
+                    placeholder="Engineering"
+                    {...createForm.register('unit')}
+                  />
+                </FormField>
+              </div>
+              <div className="mt-4 border-t border-border pt-4">
+                <FormActions>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={() => setCreateOpen(false)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button type="submit" disabled={createMutation.isPending}>
+                    <UserPlus className="size-4" />
+                    {createMutation.isPending ? 'Adding…' : 'Add cardholder'}
+                  </Button>
+                </FormActions>
+              </div>
             </form>
             <InlineNotice
               message={errorMessage(createMutation.error)}
@@ -376,9 +380,9 @@ export function CardholdersPage() {
         </Card>
       ) : null}
 
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] xl:gap-6">
-        <Card className="h-full">
-          <CardContent className="flex flex-1 flex-col px-0">
+      <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] xl:gap-6">
+        <Card>
+          <CardContent className="flex flex-col px-0">
             <div className="flex items-baseline gap-2 px-6 pb-3">
               <span className="text-2xl font-semibold tabular-nums">
                 {cardholders.length}
@@ -390,11 +394,11 @@ export function CardholdersPage() {
               className="mx-6 mb-3"
             />
             {cardholdersQuery.isPending ? (
-              <p className="flex flex-1 items-center justify-center px-6 py-10 text-center text-sm text-muted-foreground">
+              <p className="flex items-center justify-center px-6 py-10 text-center text-sm text-muted-foreground">
                 Loading cardholders…
               </p>
             ) : cardholders.length === 0 ? (
-              <p className="flex flex-1 items-center justify-center px-6 py-10 text-center text-sm text-muted-foreground">
+              <p className="flex items-center justify-center px-6 py-10 text-center text-sm text-muted-foreground">
                 No cardholders yet.
               </p>
             ) : (
@@ -436,21 +440,18 @@ export function CardholdersPage() {
           </CardContent>
         </Card>
 
-        <Card className="h-full">
+        <Card>
           <CardHeader>
             <CardTitle>{selected ? selected.name : 'Select a cardholder'}</CardTitle>
-            {selected ? null : (
-              <CardDescription>Choose a cardholder from the list.</CardDescription>
-            )}
           </CardHeader>
-          <CardContent className="flex flex-1 flex-col">
+          <CardContent className="flex flex-col">
             <InlineNotice
               tone="success"
               className="mb-4"
               message={success?.area === 'detail' ? success.message : null}
             />
             {selected ? (
-              <div className="flex flex-1 flex-col gap-6">
+              <div className="flex flex-col gap-6">
                 <form
                   noValidate
                   className="grid gap-4 sm:grid-cols-2"
@@ -490,28 +491,50 @@ export function CardholdersPage() {
                     >
                       Save changes
                     </Button>
-                    <Button
-                      type="button"
-                      variant={
-                        selected.status === 'active' ? 'destructive' : 'secondary'
-                      }
-                      disabled={updateMutation.isPending}
-                      onClick={() =>
-                        updateMutation.mutate({
-                          id: selected.id,
-                          input: {
-                            status:
-                              selected.status === 'active'
-                                ? 'inactive'
-                                : 'active',
-                          },
-                        })
-                      }
-                    >
-                      {selected.status === 'active'
-                        ? 'Deactivate and revoke cards'
-                        : 'Activate'}
-                    </Button>
+                    {selected.status === 'active' ? (
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        disabled={updateMutation.isPending}
+                        onClick={() =>
+                          updateMutation.mutate({
+                            id: selected.id,
+                            input: { status: 'inactive' },
+                          })
+                        }
+                      >
+                        Deactivate and revoke cards
+                      </Button>
+                    ) : isAdmin ? (
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        title="Restores the cards revoked when this cardholder was deactivated"
+                        disabled={
+                          updateMutation.isPending ||
+                          activateRestoreMutation.isPending
+                        }
+                        onClick={() =>
+                          activateRestoreMutation.mutate(selected.id)
+                        }
+                      >
+                        Activate and restore cards
+                      </Button>
+                    ) : (
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        disabled={updateMutation.isPending}
+                        onClick={() =>
+                          updateMutation.mutate({
+                            id: selected.id,
+                            input: { status: 'active' },
+                          })
+                        }
+                      >
+                        Activate
+                      </Button>
+                    )}
                     {isAdmin ? (
                       <Button
                         type="button"
@@ -533,7 +556,9 @@ export function CardholdersPage() {
                   </FormActions>
                   <InlineNotice
                     message={errorMessage(
-                      updateMutation.error ?? deleteMutation.error,
+                      updateMutation.error ??
+                        activateRestoreMutation.error ??
+                        deleteMutation.error,
                     )}
                     className="sm:col-span-2"
                   />
@@ -678,7 +703,15 @@ export function CardholdersPage() {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                disabled={credentialMutation.isPending}
+                                title={
+                                  selected.status === 'inactive'
+                                    ? 'Activate the cardholder first'
+                                    : undefined
+                                }
+                                disabled={
+                                  credentialMutation.isPending ||
+                                  selected.status === 'inactive'
+                                }
                                 onClick={() =>
                                   credentialMutation.mutate({
                                     id: credential.id,
@@ -845,7 +878,7 @@ export function CardholdersPage() {
                 </section>
               </div>
             ) : (
-              <p className="flex flex-1 items-center justify-center py-10 text-center text-sm text-muted-foreground">
+              <p className="flex items-center justify-center py-10 text-center text-sm text-muted-foreground">
                 Pick someone from the list.
               </p>
             )}

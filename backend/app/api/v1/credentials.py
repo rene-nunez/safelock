@@ -146,6 +146,17 @@ async def restore_credential_endpoint(
     if target.get("status") == "active":
         return credential_to_out(target)
 
+    holder = await db.cardholders.find_one({"_id": target["holder_id"]})
+    if holder is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Cardholder not found"
+        )
+    if holder.get("status", "active") != "active":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Cannot restore a credential while the cardholder is inactive",
+        )
+
     try:
         updated = await restore_credential(db, target)
     except CredentialAlreadyExistsError as error:

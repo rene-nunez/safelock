@@ -25,7 +25,6 @@ import { FormActions } from '@/components/ui/form-actions'
 import { FormField } from '@/components/ui/form-field'
 import { InlineNotice } from '@/components/ui/inline-notice'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { PageToolbar } from '@/components/ui/page-toolbar'
 import { Select } from '@/components/ui/select'
 import { useAuth } from '@/hooks/use-auth'
@@ -90,7 +89,6 @@ const settingsSchema = z
       .refine((value) => Number(value) >= 100 && Number(value) <= 30_000, {
         message: 'Use 100 to 30000 ms',
       }),
-    requires_pin: z.boolean(),
   })
   .refine((values) => (values.lat === '') === (values.lng === ''), {
     message: 'Set both latitude and longitude, or neither',
@@ -99,7 +97,7 @@ const settingsSchema = z
 
 type CreateValues = z.infer<typeof createSchema>
 type SettingsValues = z.infer<typeof settingsSchema>
-type NoticeArea = 'page' | 'detail'
+type NoticeArea = 'page' | 'detail' | 'settings'
 
 function errorMessage(error: unknown): string | null {
   if (error === null || error === undefined) return null
@@ -215,7 +213,6 @@ export function DevicesPage() {
       offline_policy: 'allow',
       stale_acl_hours: '72',
       unlock_ms: '3000',
-      requires_pin: false,
     },
   })
 
@@ -254,7 +251,6 @@ export function DevicesPage() {
       offline_policy: selected.offline_policy,
       stale_acl_hours: String(selected.stale_acl_hours),
       unlock_ms: String(selected.unlock_ms),
-      requires_pin: selected.requires_pin,
     })
     // Reset only when switching devices, not after a background refetch.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -287,8 +283,15 @@ export function DevicesPage() {
           input.status === 'retired' ? 'Device retired.' : 'Device reactivated.',
           'detail',
         )
+      } else if ('requires_pin' in input) {
+        showSuccess(
+          input.requires_pin
+            ? 'PIN requirement enabled.'
+            : 'PIN requirement removed.',
+          'detail',
+        )
       } else {
-        showSuccess('Device settings saved.', 'detail')
+        showSuccess('Device settings saved.', 'settings')
       }
       await invalidate()
     },
@@ -325,7 +328,6 @@ export function DevicesPage() {
         offline_policy: values.offline_policy,
         stale_acl_hours: Number(values.stale_acl_hours),
         unlock_ms: Number(values.unlock_ms),
-        requires_pin: values.requires_pin,
       },
     })
   }
@@ -389,12 +391,9 @@ export function DevicesPage() {
                 <LazyMapPicker
                   value={createLocation}
                   onChange={applyCreateLocation}
-                  className="h-56"
+                  className="mx-auto aspect-square w-full max-w-[448px]"
                 />
-                <div className="mt-2 flex flex-wrap items-end justify-between gap-2">
-                  <p className="font-mono text-xs text-muted-foreground">
-                    Latitude {createLat || '—'} · Longitude {createLng || '—'}
-                  </p>
+                <div className="mt-2 flex justify-end">
                   <Button
                     type="button"
                     variant="outline"
@@ -450,9 +449,9 @@ export function DevicesPage() {
         </Card>
       ) : null}
 
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] xl:gap-6">
-        <Card className="h-full">
-          <CardContent className="flex flex-1 flex-col px-0">
+      <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] xl:gap-6">
+        <Card>
+          <CardContent className="flex flex-col px-0">
             <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1 px-6 pb-3">
               <span className="text-2xl font-semibold tabular-nums">
                 {onlineCount}
@@ -466,11 +465,11 @@ export function DevicesPage() {
               className="mx-6 mb-3"
             />
             {devicesQuery.isPending ? (
-              <p className="flex flex-1 items-center justify-center px-6 py-10 text-center text-sm text-muted-foreground">
+              <p className="flex items-center justify-center px-6 py-10 text-center text-sm text-muted-foreground">
                 Loading devices…
               </p>
             ) : devices.length === 0 ? (
-              <p className="flex flex-1 items-center justify-center px-6 py-10 text-center text-sm text-muted-foreground">
+              <p className="flex items-center justify-center px-6 py-10 text-center text-sm text-muted-foreground">
                 No devices yet.
               </p>
             ) : (
@@ -526,7 +525,7 @@ export function DevicesPage() {
           </CardContent>
         </Card>
 
-        <Card className="h-full">
+        <Card>
           <CardHeader>
             <CardTitle>{selected ? selected.name : 'Select a device'}</CardTitle>
             {selected ? (
@@ -536,14 +535,14 @@ export function DevicesPage() {
               </p>
             ) : null}
           </CardHeader>
-          <CardContent className="flex flex-1 flex-col">
+          <CardContent className="flex flex-col">
             <InlineNotice
               tone="success"
               className="mb-4"
               message={success?.area === 'detail' ? success.message : null}
             />
             {selected ? (
-              <div className="flex flex-1 flex-col gap-6">
+              <div className="flex flex-col gap-6">
                 <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                   <StatusTile label="Connectivity">
                     <Badge variant={selected.online ? 'success' : 'muted'}>
@@ -592,6 +591,31 @@ export function DevicesPage() {
                     </Button>
                     {isAdmin ? (
                       <>
+                        <Button
+                          variant={
+                            selected.requires_pin ? 'secondary' : 'outline'
+                          }
+                          size="sm"
+                          title={
+                            selected.requires_pin
+                              ? 'Removing PIN allows offline card access'
+                              : 'PIN-enabled doors are online-only'
+                          }
+                          aria-label={
+                            selected.requires_pin
+                              ? 'Remove PIN requirement'
+                              : 'Require PIN'
+                          }
+                          disabled={updateMutation.isPending}
+                          onClick={() =>
+                            updateMutation.mutate({
+                              id: selected.id,
+                              input: { requires_pin: !selected.requires_pin },
+                            })
+                          }
+                        >
+                          {selected.requires_pin ? 'Remove PIN' : 'Require PIN'}
+                        </Button>
                         <Button
                           variant="outline"
                           size="sm"
@@ -689,22 +713,6 @@ export function DevicesPage() {
                           {...settingsForm.register('unlock_ms')}
                         />
                       </FormField>
-                      <div className="grid gap-2">
-                        <Label htmlFor="settings-requires-pin">
-                          Require PIN on this door
-                        </Label>
-                        <div className="flex h-9 items-center">
-                          <input
-                            id="settings-requires-pin"
-                            type="checkbox"
-                            className="size-4 rounded border-input"
-                            {...settingsForm.register('requires_pin')}
-                          />
-                        </div>
-                        <p className="min-h-4 text-xs text-muted-foreground">
-                          The door becomes online-only.
-                        </p>
-                      </div>
                       <div className="sm:col-span-2">
                         <p className="mb-2 text-sm font-medium">
                           Location on map
@@ -731,6 +739,12 @@ export function DevicesPage() {
                         </div>
                       </div>
                     </div>
+                    <InlineNotice
+                      tone="success"
+                      message={
+                        success?.area === 'settings' ? success.message : null
+                      }
+                    />
                     <FormActions>
                       <Button
                         type="submit"
@@ -783,7 +797,7 @@ export function DevicesPage() {
                 )}
               </div>
             ) : (
-              <p className="flex flex-1 items-center justify-center py-10 text-center text-sm text-muted-foreground">
+              <p className="flex items-center justify-center py-10 text-center text-sm text-muted-foreground">
                 Pick a device from the list.
               </p>
             )}

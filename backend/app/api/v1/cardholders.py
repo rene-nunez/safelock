@@ -27,6 +27,7 @@ from app.services.credentials import (
     create_credential,
     credential_to_out,
     list_holder_credentials,
+    restore_holder_credentials,
     revoke_holder_credentials,
 )
 
@@ -134,7 +135,9 @@ async def update_cardholder_endpoint(
         and updates.get("status") == "inactive"
     )
     if deactivated:
-        revoked = await revoke_holder_credentials(db, target["_id"])
+        revoked = await revoke_holder_credentials(
+            db, target["_id"], reason="cardholder_inactive"
+        )
         for credential in revoked:
             await record_audit(
                 db,
@@ -153,6 +156,52 @@ async def update_cardholder_endpoint(
                 after={"count": len(revoked)},
                 ip=client_ip(request),
             )
+
+    return cardholder_to_out(updated)
+
+
+@router.post("/{cardholder_id}/activate-and-restore", response_model=CardholderOut)
+async def activate_and_restore_cardholder(
+    cardholder_id: str,
+    request: Request,
+    db: Db,
+    admin: AdminUser,
+) -> CardholderOut:
+    target = await _require_cardholder(db, cardholder_id)
+    if target.get("status", "active") == "active":
+        return cardholder_to_out(target)
+
+    try:
+        restored = await restore_holder_credentials(db, target["_id"])
+    except CredentialAlreadyExistsError as error:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail=str(error)
+        ) from error
+
+    updated = await update_cardholder(db, target["_id"], {"status": "active"})
+    if updated is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Cardholder not found"
+        )
+
+    await record_audit(
+        db,
+        actor_id=actor_object_id(admin),
+        action="cardholder.update",
+        target=str(target["_id"]),
+        before=_snapshot(target),
+        after={"status": "active", "restored_credentials": len(restored)},
+        ip=client_ip(request),
+    )
+    for credential in restored:
+        await record_audit(
+            db,
+            actor_id=actor_object_id(admin),
+            action="credential.restore",
+            target=credential["uid"],
+            after={"reason": "cardholder_activation"},
+            ip=client_ip(request),
+        )
 
     return cardholder_to_out(updated)
 

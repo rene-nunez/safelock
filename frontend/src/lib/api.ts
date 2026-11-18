@@ -227,6 +227,12 @@ export function updateCardholder(
   })
 }
 
+export function activateAndRestoreCardholder(id: string): Promise<Cardholder> {
+  return request<Cardholder>(`/cardholders/${id}/activate-and-restore`, {
+    method: 'POST',
+  })
+}
+
 export function deleteCardholder(id: string): Promise<void> {
   return request<void>(`/cardholders/${id}`, { method: 'DELETE' })
 }
