@@ -9,6 +9,7 @@ type FormFieldProps = {
   hint?: string
   error?: string
   className?: string
+  reserveMessage?: boolean
   children: ReactNode
 }
 
@@ -18,6 +19,7 @@ export function FormField({
   hint,
   error,
   className,
+  reserveMessage = true,
   children,
 }: FormFieldProps) {
   const hintId = `${htmlFor}-hint`
@@ -37,17 +39,19 @@ export function FormField({
     <div className={cn('grid gap-2', className)}>
       <Label htmlFor={htmlFor}>{label}</Label>
       {control}
-      <div className="min-h-4 text-xs">
-        {error ? (
-          <p id={errorId} className="text-red-400">
-            {error}
-          </p>
-        ) : hint ? (
-          <p id={hintId} className="text-muted-foreground">
-            {hint}
-          </p>
-        ) : null}
-      </div>
+      {error || hint || reserveMessage ? (
+        <div className="min-h-4 text-xs">
+          {error ? (
+            <p id={errorId} className="text-red-400">
+              {error}
+            </p>
+          ) : hint ? (
+            <p id={hintId} className="text-muted-foreground">
+              {hint}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   )
 }

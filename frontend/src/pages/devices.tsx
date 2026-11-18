@@ -401,24 +401,15 @@ export function DevicesPage() {
                   onChange={applyCreateLocation}
                   className="h-[448px] w-full"
                 />
-                <div className="mt-2 flex justify-end">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    disabled={createLocation === null}
-                    onClick={() => applyCreateLocation(null)}
-                  >
-                    Clear location
-                  </Button>
-                </div>
-                <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                <div className="mt-4 grid gap-2 sm:grid-cols-2">
                   <FormField
                     label="Latitude"
                     htmlFor="device-lat"
                     error={createForm.formState.errors.lat?.message}
+                    reserveMessage={false}
                   >
                     <Input
+                      inputMode="decimal"
                       placeholder="-33.45"
                       {...createForm.register('lat')}
                     />
@@ -427,15 +418,27 @@ export function DevicesPage() {
                     label="Longitude"
                     htmlFor="device-lng"
                     error={createForm.formState.errors.lng?.message}
+                    reserveMessage={false}
                   >
                     <Input
+                      inputMode="decimal"
                       placeholder="-70.66"
                       {...createForm.register('lng')}
                     />
                   </FormField>
                 </div>
+                <div className="mt-2 flex justify-end">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={createLocation === null}
+                    onClick={() => applyCreateLocation(null)}
+                  >
+                    Clear location
+                  </Button>
+                </div>
               </div>
-              <FormActions className="sm:col-span-2">
+              <FormActions className="mt-4 sm:col-span-2">
                 <Button
                   type="button"
                   variant="ghost"
@@ -699,7 +702,6 @@ export function DevicesPage() {
                       <FormField
                         label="Offline policy"
                         htmlFor="settings-policy"
-                        hint="Allow with a cached list, or deny without the backend."
                       >
                         <Select {...settingsForm.register('offline_policy')}>
                           <option value="allow">Allow with cached ACL</option>
@@ -737,15 +739,36 @@ export function DevicesPage() {
                           onChange={applySettingsLocation}
                           className="h-64"
                         />
-                        <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
-                          <p className="font-mono text-xs text-muted-foreground">
-                            Latitude {settingsLat || '—'} · Longitude{' '}
-                            {settingsLng || '—'}
-                          </p>
+                        <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                          <FormField
+                            label="Latitude"
+                            htmlFor="settings-lat"
+                            error={settingsForm.formState.errors.lat?.message}
+                            reserveMessage={false}
+                          >
+                            <Input
+                              inputMode="decimal"
+                              placeholder="-33.45"
+                              {...settingsForm.register('lat')}
+                            />
+                          </FormField>
+                          <FormField
+                            label="Longitude"
+                            htmlFor="settings-lng"
+                            error={settingsForm.formState.errors.lng?.message}
+                            reserveMessage={false}
+                          >
+                            <Input
+                              inputMode="decimal"
+                              placeholder="-70.66"
+                              {...settingsForm.register('lng')}
+                            />
+                          </FormField>
+                        </div>
+                        <div className="mt-2 flex justify-end">
                           <Button
                             type="button"
                             variant="outline"
-                            size="sm"
                             disabled={settingsLocation === null}
                             onClick={() => applySettingsLocation(null)}
                           >
@@ -760,10 +783,9 @@ export function DevicesPage() {
                         success?.area === 'settings' ? success.message : null
                       }
                     />
-                    <FormActions>
+                    <FormActions className="mt-4">
                       <Button
                         type="submit"
-                        variant="outline"
                         disabled={updateMutation.isPending}
                       >
                         Save settings
