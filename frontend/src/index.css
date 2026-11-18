@@ -71,7 +71,7 @@
   }
 }
 
-/* Leaflet dark theme */
+/* Light map controls on the clear Stadia tiles */
 
 .leaflet-container {
   background: #f4f4f5;
@@ -102,6 +102,7 @@
   margin: 0;
 }
 
+/* Popups follow the dark UI. */
 .leaflet-popup-content-wrapper,
 .leaflet-popup-tip {
   border: 1px solid var(--border);

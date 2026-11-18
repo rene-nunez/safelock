@@ -37,7 +37,7 @@ import { formatDateTime } from '@/lib/format'
 import { cn } from '@/lib/utils'
 
 const createSchema = z.object({
-  name: z.string().trim().min(1, 'Enter a full name'),
+  name: z.string().trim().min(1, 'Enter a name'),
   email: z
     .string()
     .trim()
@@ -48,7 +48,7 @@ const createSchema = z.object({
 })
 
 const editSchema = z.object({
-  name: z.string().trim().min(1, 'Enter a full name'),
+  name: z.string().trim().min(1, 'Enter a name'),
   email: z
     .string()
     .trim()
@@ -328,7 +328,7 @@ export function CardholdersPage() {
             <form noValidate onSubmit={createForm.handleSubmit(onCreate)}>
               <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                 <FormField
-                  label="Full name"
+                  label="Name"
                   htmlFor="holder-name"
                   error={createForm.formState.errors.name?.message}
                 >
@@ -457,7 +457,7 @@ export function CardholdersPage() {
                   onSubmit={editForm.handleSubmit(onEdit)}
                 >
                   <FormField
-                    label="Full name"
+                    label="Name"
                     htmlFor="edit-name"
                     error={editForm.formState.errors.name?.message}
                   >
