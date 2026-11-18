@@ -21,14 +21,14 @@ export const NAV_ITEMS: NavItem[] = [
   {
     to: '/',
     label: 'Dashboard',
-    description: 'System overview.',
+    description: 'System overview and activity.',
     icon: LayoutDashboard,
     end: true,
   },
   {
     to: '/cardholders',
     label: 'Cardholders',
-    description: 'Credentials by cardholder.',
+    description: 'Monitor cardholders and access credentials.',
     icon: Contact,
   },
   {
