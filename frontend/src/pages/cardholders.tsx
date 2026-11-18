@@ -421,10 +421,6 @@ export function CardholdersPage() {
                       >
                         <div className="min-w-0 flex-1">
                           <p className="font-medium">{cardholder.name}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {cardholder.email ?? 'No email'}
-                            {cardholder.unit ? ` · ${cardholder.unit}` : ''}
-                          </p>
                         </div>
                         <Badge
                           variant={
@@ -643,7 +639,7 @@ export function CardholdersPage() {
                       {credentials.map((credential) => (
                         <div
                           key={credential.id}
-                          className="flex flex-col gap-3 rounded-lg border border-border bg-secondary/20 p-3"
+                          className="flex h-full flex-col gap-3 rounded-lg border border-border bg-secondary/20 p-3"
                         >
                           <div className="flex items-start justify-between gap-2">
                             <div className="min-w-0">
@@ -676,7 +672,7 @@ export function CardholdersPage() {
                               <Badge variant="danger">PIN locked</Badge>
                             ) : null}
                           </div>
-                          <div className="flex flex-wrap gap-1.5 border-t border-border pt-3">
+                          <div className="mt-auto flex flex-wrap gap-1.5 border-t border-border pt-3">
                             <Button
                               variant="ghost"
                               size="sm"

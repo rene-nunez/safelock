@@ -503,10 +503,6 @@ export function DevicesPage() {
                         </span>
                         <div className="min-w-0 flex-1">
                           <p className="truncate font-medium">{device.name}</p>
-                          <p className="font-mono text-xs text-muted-foreground">
-                            {device.device_id}
-                            {device.site ? ` · ${device.site}` : ''}
-                          </p>
                         </div>
                         <div className="flex flex-wrap gap-1.5">
                           <Badge
@@ -741,7 +737,7 @@ export function DevicesPage() {
                           onChange={applySettingsLocation}
                           className="h-64"
                         />
-                        <div className="mt-2 flex flex-wrap items-end justify-between gap-2">
+                        <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
                           <p className="font-mono text-xs text-muted-foreground">
                             Latitude {settingsLat || '—'} · Longitude{' '}
                             {settingsLng || '—'}
