@@ -410,7 +410,10 @@ export function CardholdersPage() {
                       <button
                         type="button"
                         aria-current={active ? 'true' : undefined}
-                        onClick={() => setSelectedId(cardholder.id)}
+                        onClick={() => {
+                          setSuccess(null)
+                          setSelectedId(cardholder.id)
+                        }}
                         className={cn(
                           'flex w-full flex-wrap items-center gap-x-3 gap-y-2 px-6 py-3 text-left transition-colors hover:bg-accent/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50',
                           active && 'bg-accent',

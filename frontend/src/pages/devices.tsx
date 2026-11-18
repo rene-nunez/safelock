@@ -157,6 +157,15 @@ function StatusTile({ label, children }: { label: string; children: ReactNode })
   )
 }
 
+function StatusRow({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 py-2 text-xs first:pt-0 last:pb-0">
+      <dt className="text-muted-foreground">{label}</dt>
+      <dd className="text-right">{children}</dd>
+    </div>
+  )
+}
+
 export function DevicesPage() {
   const { user } = useAuth()
   const isAdmin = user?.role === 'admin'
@@ -365,7 +374,6 @@ export function DevicesPage() {
               <FormField
                 label="Device ID"
                 htmlFor="device-id"
-                hint="sl-0001"
                 error={createForm.formState.errors.device_id?.message}
               >
                 <Input
@@ -391,7 +399,7 @@ export function DevicesPage() {
                 <LazyMapPicker
                   value={createLocation}
                   onChange={applyCreateLocation}
-                  className="mx-auto aspect-square w-full max-w-[448px]"
+                  className="h-[448px] w-full"
                 />
                 <div className="mt-2 flex justify-end">
                   <Button
@@ -481,7 +489,10 @@ export function DevicesPage() {
                       <button
                         type="button"
                         aria-current={active ? 'true' : undefined}
-                        onClick={() => setSelectedId(device.id)}
+                        onClick={() => {
+                          setSuccess(null)
+                          setSelectedId(device.id)
+                        }}
                         className={cn(
                           'flex w-full flex-wrap items-center gap-x-3 gap-y-2 px-6 py-3 text-left transition-colors hover:bg-accent/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50',
                           active && 'bg-accent',
@@ -509,7 +520,9 @@ export function DevicesPage() {
                             {device.locked ? 'Locked' : 'Unlocked'}
                           </Badge>
                           {device.requires_pin ? (
-                            <Badge variant="secondary">PIN</Badge>
+                            <Badge className="border-secondary-foreground/20 bg-secondary text-secondary-foreground">
+                              PIN
+                            </Badge>
                           ) : null}
                           {device.status === 'retired' ? (
                             <Badge variant="muted">Retired</Badge>
@@ -529,46 +542,47 @@ export function DevicesPage() {
           <CardHeader>
             <CardTitle>{selected ? selected.name : 'Select a device'}</CardTitle>
             {selected ? (
-              <p className="text-xs text-muted-foreground">
-                {selected.device_id} · firmware {selected.fw ?? 'unknown'} · ACL v
-                {selected.acl_version}
+              <p className="font-mono text-xs text-muted-foreground">
+                {selected.device_id}
               </p>
             ) : null}
           </CardHeader>
           <CardContent className="flex flex-col">
-            <InlineNotice
-              tone="success"
-              className="mb-4"
-              message={success?.area === 'detail' ? success.message : null}
-            />
+            {selected ? null : (
+              <InlineNotice
+                tone="success"
+                className="mb-4"
+                message={success?.area === 'detail' ? success.message : null}
+              />
+            )}
             {selected ? (
               <div className="flex flex-col gap-6">
-                <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                  <StatusTile label="Connectivity">
-                    <Badge variant={selected.online ? 'success' : 'muted'}>
-                      {selected.online ? 'Online' : 'Offline'}
-                    </Badge>
-                  </StatusTile>
-                  <StatusTile label="Last seen">
-                    <span className="text-xs text-muted-foreground">
-                      {selected.last_seen
-                        ? formatDateTime(selected.last_seen)
-                        : 'Never connected'}
-                    </span>
-                  </StatusTile>
-                  <StatusTile label="Firmware">
-                    <span className="font-mono text-xs">
-                      {selected.fw ?? 'Unknown'}
-                    </span>
-                  </StatusTile>
-                  <StatusTile label="Access list">
-                    <span className="text-xs text-muted-foreground">
-                      v{selected.acl_version} ·{' '}
-                      {selected.last_sync_at
-                        ? formatDateTime(selected.last_sync_at)
-                        : 'Never synced'}
-                    </span>
-                  </StatusTile>
+                <section aria-label="Device status">
+                  <dl className="divide-y divide-border">
+                    <StatusRow label="Connectivity">
+                      <Badge variant={selected.online ? 'success' : 'muted'}>
+                        {selected.online ? 'Online' : 'Offline'}
+                      </Badge>
+                    </StatusRow>
+                    <StatusRow label="Last seen">
+                      <span className="text-muted-foreground">
+                        {selected.last_seen
+                          ? formatDateTime(selected.last_seen)
+                          : 'Never connected'}
+                      </span>
+                    </StatusRow>
+                    <StatusRow label="Firmware">
+                      <span className="font-mono">{selected.fw ?? 'Unknown'}</span>
+                    </StatusRow>
+                    <StatusRow label="Access list">
+                      <span className="text-muted-foreground">
+                        v{selected.acl_version} ·{' '}
+                        {selected.last_sync_at
+                          ? formatDateTime(selected.last_sync_at)
+                          : 'Never synced'}
+                      </span>
+                    </StatusRow>
+                  </dl>
                 </section>
 
                 <section className="border-t border-border pt-5">
@@ -655,6 +669,11 @@ export function DevicesPage() {
                       </>
                     ) : null}
                   </div>
+                  <InlineNotice
+                    tone="success"
+                    message={success?.area === 'detail' ? success.message : null}
+                    className="mt-3"
+                  />
                   <InlineNotice
                     message={errorMessage(
                       updateMutation.error ?? deleteMutation.error,
