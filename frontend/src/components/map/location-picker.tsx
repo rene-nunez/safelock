@@ -1,5 +1,6 @@
-import { useEffect } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import L from 'leaflet'
+import { Crosshair } from 'lucide-react'
 import {
   AttributionControl,
   MapContainer,
@@ -18,6 +19,16 @@ const PICKED_ZOOM = 14
 
 function roundCoordinate(value: number): number {
   return Math.round(value * 1_000_000) / 1_000_000
+}
+
+function MapBridge({ onReady }: { onReady: (map: L.Map) => void }) {
+  const map = useMap()
+
+  useEffect(() => {
+    onReady(map)
+  }, [map, onReady])
+
+  return null
 }
 
 function LocationHandler({
@@ -81,6 +92,17 @@ export function LocationPicker({
   disabled = false,
   className = 'h-64',
 }: LocationPickerProps) {
+  const mapRef = useRef<L.Map | null>(null)
+  const handleMapReady = useCallback((map: L.Map) => {
+    mapRef.current = map
+  }, [])
+
+  function centerOnLocation() {
+    const map = mapRef.current
+    if (map === null || value === null) return
+    map.flyTo([value.lat, value.lng], Math.max(map.getZoom(), PICKED_ZOOM))
+  }
+
   return (
     <div
       className={`relative isolate w-full overflow-hidden rounded-lg border border-border ${className}`}
@@ -97,12 +119,24 @@ export function LocationPicker({
       >
         <TileLayer url={TILE_URL} attribution={ATTRIBUTION} />
         <AttributionControl position="bottomright" prefix={false} />
+        <MapBridge onReady={handleMapReady} />
         <LocationHandler
           value={value}
           onChange={onChange}
           disabled={disabled}
         />
       </MapContainer>
+
+      <button
+        type="button"
+        aria-label="Center on location"
+        title="Center on location"
+        disabled={disabled || value === null}
+        onClick={centerOnLocation}
+        className="absolute right-3 top-3 z-[1000] flex size-9 items-center justify-center rounded-md border border-zinc-200 bg-white text-zinc-900 shadow-sm transition-colors hover:bg-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900/30 disabled:pointer-events-none disabled:opacity-50"
+      >
+        <Crosshair className="size-4" />
+      </button>
 
       {value === null ? (
         <div className="pointer-events-none absolute inset-0 z-[1000] grid place-items-center p-4">
