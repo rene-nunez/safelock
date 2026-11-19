@@ -129,14 +129,13 @@ Enrolamiento: `POST /enrollments` (TTL 60 s) → el dispositivo envía `events/c
 ## Firmware
 
 Pendientes, en orden:
-1. `net`: WiFi con reconexión + hora de red (SNTP).
-2. `mqtt_client`: TLS con CA fija, LWT, reconexión. Prohibido `setInsecure()`.
-3. `settings`: credenciales en NVS, provisión por serie/USB una vez.
-4. `outbox`: cola persistente en LittleFS con reenvío al reconectar.
-5. `acl`: lista de acceso + versión desde snapshot completo, guardado atómico.
-6. `lock`: control de cerradura y sensor de pestillo (ya hay base), apertura manual detectada por sensor, topes de seguridad.
-7. `display`: interfaz en OLED (sin mostrar cuántos dígitos tiene el PIN).
-8. `Tasks`: máquina de estados no bloqueante.
+1. `outbox`: cola persistente en LittleFS con reenvío al reconectar.
+2. `acl`: lista de acceso + versión desde snapshot completo, guardado atómico.
+3. `lock`: control de cerradura y sensor de pestillo (ya hay base), apertura manual detectada por sensor, topes de seguridad.
+4. `display`: interfaz en OLED (sin mostrar cuántos dígitos tiene el PIN).
+5. `Tasks`: máquina de estados no bloqueante.
+
+Ya están `net`, `mqtt_transport` y `settings` (ver `firmware/README.md`). El firmware usa `espMqttClient` (MQTT 3.1.1, TLS y QoS 1): `status` y LWT son retenidos a QoS 1, `heartbeat` va a QoS 0 y `events/*`/`response` irán a QoS 1. `espMqttClient` no persiste los paquetes QoS 1 pendientes al reiniciar; la cola local del hito 3 debe cubrir ese vacío.
 
 Arranque: NVS → reloj válido → WiFi → hora → MQTT + LWT → publicar `status` → suscribirse a `commands/#` → sincronizar si hace falta → listo. Sin lista cargada, no hay acceso.
 
@@ -193,6 +192,7 @@ make mqtt-restart  # reiniciar Mosquitto
 
 - Fase 0 cerrada: `docs/protocol.md`, ADRs, `Makefile`, scaffold del backend y del frontend, simulador MQTT.
 - Hito 1 cerrado: auth JWT, CLI `create-user`, CRUD de portadores, credenciales y dispositivos, auditoría con endpoint de lectura, y frontend de Login, Cardholders, Devices, Audit y Users.
+- Hito 2 implementado y verificado con el simulador: firmware con NVS/WiFi/SNTP/MQTT (`status`/`heartbeat` + LWT a QoS 1), gateway MQTT en el `lifespan`, `access_events` y vista Activity. Pendiente de probar en placa y configurar host y CA reales.
 
 ## Roadmap
 
