@@ -152,8 +152,13 @@ async def _resync_if_needed(
     if device is None or not is_online(device):
         return
 
-    reported = int(device.get("acl_version", 0))
-    desired = int(device.get("desired_acl_version", 0))
+    # Rebuild first: the ACL may have changed while the device was offline, so
+    # the stored desired version can still match what the device reports.
+    snapshot = await build_snapshot(db, device_id)
+    if snapshot is None:
+        return
+    desired = int(snapshot["acl_version"])
+    reported = _as_int(device.get("acl_version"), 0)
     if reported >= desired:
         return
 

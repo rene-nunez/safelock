@@ -3,7 +3,7 @@ import time
 import uuid
 from collections.abc import AsyncIterator
 from datetime import UTC, datetime, timedelta
-from typing import Any
+from typing import Any, cast
 
 import pytest
 from httpx import AsyncClient
@@ -35,7 +35,7 @@ class FakeGateway:
 
 
 @pytest.fixture
-def fake_gateway(api: AsyncClient) -> AsyncIterator[FakeGateway]:
+async def fake_gateway(api: AsyncClient) -> AsyncIterator[FakeGateway]:
     gateway = FakeGateway()
     app.state.gateway = gateway
     try:
@@ -165,7 +165,9 @@ async def test_response_marks_sync_only_for_pending_request(
     await make_device(db)
     now = datetime.now(UTC)
     await db.devices.update_one({"device_id": DEVICE_ID}, {"$set": {"last_seen": now}})
-    snapshot = await acl_sync.publish_snapshot(db, fake_gateway, DEVICE_ID)
+    snapshot = await acl_sync.publish_snapshot(
+        db, cast(MqttGateway, fake_gateway), DEVICE_ID
+    )
     request_id = snapshot["request_id"]
 
     net = MqttGateway(db, Settings(mqtt_url="mqtt://127.0.0.1:1883"))
@@ -199,6 +201,44 @@ async def test_gateway_triggers_sync_when_reported_version_is_old(
     await make_device(db)
     await create_cardholder(db, CardholderCreate(name="Ada"))
     await acl_sync.build_snapshot(db, DEVICE_ID)
+    await db.devices.update_one(
+        {"device_id": DEVICE_ID}, {"$set": {"last_seen": datetime.now(UTC)}}
+    )
+
+    published: list[str] = []
+
+    async def publish_command(
+        device_id: str, command: str, data: dict[str, Any]
+    ) -> bool:
+        published.append(command)
+        return True
+
+    net = MqttGateway(db, Settings(mqtt_url="mqtt://127.0.0.1:1883"))
+    monkeypatch.setattr(net, "publish_command", publish_command)
+    await net.handle_message(
+        f"safelock/devices/{DEVICE_ID}/status",
+        envelope(
+            {
+                "online": True,
+                "fw": "0.2.0",
+                "acl_version": 0,
+                "requires_pin": False,
+                "locked": False,
+                "lock": "locked",
+            }
+        ),
+    )
+    assert published == [acl_sync.SYNC_COMMAND]
+
+
+async def test_offline_change_is_sent_on_reconnect_status(
+    db: Database, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    await make_device(db)
+    holder = await create_cardholder(db, CardholderCreate(name="Ada"))
+    await create_credential(
+        db, holder["_id"], CredentialCreate(uid="AA:BB:CC:DD")
+    )
     await db.devices.update_one(
         {"device_id": DEVICE_ID}, {"$set": {"last_seen": datetime.now(UTC)}}
     )
