@@ -96,11 +96,13 @@ When stdin is a TTY it opens a console:
 ```text
 use <device_id>    Select the target device
 scan <UID>         Send an enrollment card scan
-grant [UID]        Send a granted access decision
+grant [UID]        Decide card access using the local access list
 deny [UID]         Send a denied access decision
 open               Simulate a remote unlock
 manual             Simulate a manual opening
 offline on|off     Simulate the backend being unavailable
+stale on|off       Force the access list to look too old
+acl                Print the local access list
 status             Republish the retained status
 quit               Exit
 ```

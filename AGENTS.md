@@ -128,14 +128,9 @@ Enrolamiento: `POST /enrollments` (TTL 60 s) → el dispositivo envía `events/c
 
 ## Firmware
 
-Pendientes, en orden:
-1. `outbox`: cola persistente en microSD con reenvío al reconectar.
-2. `acl`: lista de acceso + versión desde snapshot completo, guardado atómico.
-3. `lock`: control de cerradura y sensor de pestillo (ya hay base), apertura manual detectada por sensor, topes de seguridad.
-4. `display`: interfaz en OLED (sin mostrar cuántos dígitos tiene el PIN).
-5. `Tasks`: máquina de estados no bloqueante.
+Ya están `net`, `mqtt_transport`, `settings`, `storage`, `acl` (`lib/acl`), `outbox` (`lib/outbox`, clase `LocalOutbox`, porque `espMqttClient` ya define `Outbox`), `lock`, `display` y `Tasks` (ver `firmware/README.md`). El firmware usa `espMqttClient` (MQTT 3.1.1, TLS y QoS 1): `status` y LWT son retenidos a QoS 1, `heartbeat` va a QoS 0 y `events/*`/`response` van a QoS 1. `espMqttClient` no persiste los paquetes QoS 1 pendientes al reiniciar; la cola local cubre ese vacío.
 
-Ya están `net`, `mqtt_transport` y `settings` (ver `firmware/README.md`). El firmware usa `espMqttClient` (MQTT 3.1.1, TLS y QoS 1): `status` y LWT son retenidos a QoS 1, `heartbeat` va a QoS 0 y `events/*`/`response` irán a QoS 1. `espMqttClient` no persiste los paquetes QoS 1 pendientes al reiniciar; la cola local del hito 3 debe cubrir ese vacío.
+Pendientes para el hito 4: comandos `unlock` y `enroll`, y PIN validado por el backend (el teclado hoy solo se drena, sin contraseña local).
 
 Arranque: NVS → reloj válido → WiFi → hora → MQTT + LWT → publicar `status` → suscribirse a `commands/#` → sincronizar si hace falta → listo. Sin lista cargada, no hay acceso.
 
@@ -193,6 +188,7 @@ make mqtt-restart  # reiniciar Mosquitto
 - Fase 0 cerrada: `docs/protocol.md`, ADRs, `Makefile`, scaffold del backend y del frontend, simulador MQTT.
 - Hito 1 cerrado: auth JWT, CLI `create-user`, CRUD de portadores, credenciales y dispositivos, auditoría con endpoint de lectura, y frontend de Login, Cardholders, Devices, Audit y Users.
 - Hito 2 implementado y verificado con el simulador: firmware con NVS/WiFi/SNTP/MQTT (`status`/`heartbeat` + LWT a QoS 1), gateway MQTT en el `lifespan`, `access_events` y vista Activity. Pendiente de probar en placa y configurar host y CA reales.
+- Hito 3 implementado y verificado de punta a punta con el simulador: snapshot completo con guardado atómico en microSD, outbox persistente, decisión local de tarjeta y `access-decision`. El backend actualiza la versión deseada solo cuando cambia el contenido y reenvía al reconectar; el frontend tiene sincronización manual para admin. Pendiente de probar en placa.
 
 ## Roadmap
 
@@ -202,7 +198,7 @@ Hitos verticales. Un hito se cierra cuando funciona de punta a punta.
 |---|---|
 | 1. Admin y datos | Base de datos, auth, CLI `create-user`, CRUD de portadores, dispositivos y credenciales, auditoría; scaffold frontend con Login |
 | 2. Primer dispositivo en línea | Firmware: NVS, WiFi, hora y MQTT con `status`/`heartbeat`; backend: gateway MQTT que ingiere eventos y los muestra con polling |
-| 3. Acceso local-first | Snapshot de ACL con guardado atómico, outbox, decisión local y `access-decision` (el simulador ya permite probarlo) |
+| 3. Acceso local-first | Snapshot de ACL con guardado atómico, outbox, decisión local y `access-decision` (verificado con el simulador) |
 | 4. Operación remota | `unlock`, enrolamiento por toque y PIN validado en el backend |
 | 5. Endurecimiento | Retención y TTL, límites de intentos, mejoras generales de seguridad |
 
