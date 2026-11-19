@@ -103,13 +103,7 @@ void Indicators::buzzer_off() {
 #endif
 }
 
-void Indicators::start_beep(
-  uint16_t freq,
-  uint16_t on_ms,
-  uint16_t off_ms,
-  uint8_t repeats,
-  uint16_t alternate_freq
-) {
+void Indicators::start_beep(uint16_t freq, uint16_t on_ms, uint16_t off_ms, uint8_t repeats, uint16_t alternate_freq) {
   if (repeats == 0) return;
 
   beep_freq = freq;

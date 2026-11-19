@@ -22,13 +22,7 @@ class Indicators {
     uint8_t find_address();
     void write_pcf();
     void set_leds(bool red, bool green);
-    void start_beep(
-      uint16_t freq,
-      uint16_t on_ms,
-      uint16_t off_ms,
-      uint8_t repeats,
-      uint16_t alternate_freq = 0
-    );
+    void start_beep(uint16_t freq, uint16_t on_ms, uint16_t off_ms, uint8_t repeats, uint16_t alternate_freq = 0);
     void buzzer_on();
     void buzzer_off();
 
