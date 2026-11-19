@@ -8,7 +8,7 @@ import {
 } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ChevronRight, Cpu, Plus, X } from 'lucide-react'
+import { ChevronRight, Cpu, Plus, RefreshCw, X } from 'lucide-react'
 import { useForm, useWatch } from 'react-hook-form'
 import { useSearchParams } from 'react-router-dom'
 import { z } from 'zod'
@@ -33,6 +33,7 @@ import {
   createDevice,
   deleteDevice,
   listDevices,
+  synchronizeAccessList,
   updateDevice,
   type CreateDeviceInput,
   type DeviceLocation,
@@ -312,6 +313,18 @@ export function DevicesPage() {
     onSuccess: async () => {
       setSelectedId(null)
       showSuccess('Device deleted.', 'detail')
+      await invalidate()
+    },
+  })
+
+  const syncMutation = useMutation({
+    mutationFn: synchronizeAccessList,
+    onMutate: () => setSuccess(null),
+    onSuccess: async (command) => {
+      showSuccess(
+        `Access list v${command.acl_version} sent to the device.`,
+        'detail',
+      )
       await invalidate()
     },
   })
@@ -605,6 +618,22 @@ export function DevicesPage() {
                     {isAdmin ? (
                       <>
                         <Button
+                          variant="outline"
+                          size="sm"
+                          title={
+                            selected.online
+                              ? 'Send the full access list now'
+                              : 'The device must be online to receive the access list'
+                          }
+                          disabled={!selected.online || syncMutation.isPending}
+                          onClick={() => syncMutation.mutate(selected.id)}
+                        >
+                          <RefreshCw className="size-4" />
+                          {syncMutation.isPending
+                            ? 'Syncing...'
+                            : 'Sync access list'}
+                        </Button>
+                        <Button
                           variant={
                             selected.requires_pin ? 'secondary' : 'outline'
                           }
@@ -675,7 +704,9 @@ export function DevicesPage() {
                   />
                   <InlineNotice
                     message={errorMessage(
-                      updateMutation.error ?? deleteMutation.error,
+                      updateMutation.error ??
+                        deleteMutation.error ??
+                        syncMutation.error,
                     )}
                     className="mt-3"
                   />

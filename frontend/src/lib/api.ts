@@ -382,6 +382,18 @@ export function deleteDevice(id: string): Promise<void> {
   return request<void>(`/devices/${id}`, { method: 'DELETE' })
 }
 
+export type SyncCommand = {
+  request_id: string
+  expires_at: number
+  acl_version: number
+}
+
+export function synchronizeAccessList(id: string): Promise<SyncCommand> {
+  return request<SyncCommand>(`/devices/${id}/synchronize-access-list`, {
+    method: 'POST',
+  })
+}
+
 export function listAccessEvents(
   query: AccessEventQuery = {},
 ): Promise<AccessEventPage> {
