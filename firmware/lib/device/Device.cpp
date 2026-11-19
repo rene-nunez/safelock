@@ -1,9 +1,24 @@
 #include "Device.h"
 #include "pins.h"
 
-Device::Device() : tasks(rfid, numpad, display, clock, storage, lock, indicators) {}
+#include <time.h>
+
+Device::Device() : mqtt(settings, net, clock, lock), tasks(rfid, numpad, display, clock, storage, lock, indicators) {}
 
 void Device::begin() {
+  // Serial is up before begin(): the installer provisions the device over USB.
+  settings.begin();
+  if (!settings.is_provisioned()) {
+    Serial.println("Waiting for provisioning over serial");
+    Serial.println("provision sl-0001 <wifi_ssid> <wifi_password> <mqtt_password>");
+    while (!settings.is_provisioned()) {
+      settings.poll_provisioning();
+      delay(20);
+    }
+  }
+  Serial.print("Device ID: ");
+  Serial.println(settings.get_device_id());
+
   // All SPI devices share the bus: keep every CS high before initializing
   // any of them, so none is selected while the others boot.
   pinMode(SD_CS, OUTPUT);
@@ -18,6 +33,9 @@ void Device::begin() {
   storage.begin();
   lock.begin();
   clock.begin();
+  net.begin(settings.get_wifi_ssid(), settings.get_wifi_password());
+  if (net.time_valid()) clock.sync_from_epoch(time(nullptr));
+
   indicators.begin();
   indicators.show_locked();
   numpad.begin();
@@ -27,5 +45,6 @@ void Device::begin() {
 }
 
 void Device::run() {
+  net.update();
   tasks.run();
 }

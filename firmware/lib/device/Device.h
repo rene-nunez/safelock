@@ -7,10 +7,15 @@
 #include <Storage.h>
 #include <Lock.h>
 #include <Indicators.h>
+#include <Settings.h>
+#include <Net.h>
 #include <Tasks.h>
 
 class Device {
   private:
+    Settings settings;
+    Net net;
+
     RFID rfid;
     Numpad numpad;
     Display display;
