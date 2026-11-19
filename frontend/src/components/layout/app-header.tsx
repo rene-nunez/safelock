@@ -48,8 +48,8 @@ function PageHeading({ onOpenMenu }: { onOpenMenu: () => void }) {
 }
 
 function SystemStatus({ status }: { status: SystemStatusInfo }) {
-  const { apiOnline, apiChecking, devices } = status
-  const apiLabel = apiOnline ? 'Online' : apiChecking ? 'Checking' : 'Offline'
+  const { apiOnline, apiConnecting, devices } = status
+  const apiLabel = apiOnline ? 'Online' : apiConnecting ? 'Connecting…' : 'Offline'
 
   return (
     <Link
@@ -63,7 +63,7 @@ function SystemStatus({ status }: { status: SystemStatusInfo }) {
             'size-2 rounded-full',
             apiOnline
               ? 'bg-brand'
-              : apiChecking
+              : apiConnecting
                 ? 'bg-amber-500'
                 : 'bg-red-500',
           )}
@@ -170,9 +170,9 @@ export function AppHeader({ onOpenMenu }: { onOpenMenu: () => void }) {
           <AccountMenu />
         </div>
       </div>
-      {/* Inside the sticky header so it stays visible while scrolling; kept mounted
-          while retrying so each health check does not shift the layout. */}
-      {!status.apiOnline ? (
+      {/* Inside the sticky header so it stays visible while scrolling. Hidden only
+          until the first health response; it stays mounted during retries. */}
+      {!status.apiOnline && !status.apiConnecting ? (
         <div
           role="status"
           className="border-t border-border bg-secondary px-4 py-2 text-center text-xs text-foreground/90 lg:px-6"

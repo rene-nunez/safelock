@@ -5,7 +5,7 @@ import { useHealth } from '@/hooks/use-health'
 
 export type SystemStatusInfo = {
   apiOnline: boolean
-  apiChecking: boolean
+  apiConnecting: boolean
   devices: DeviceSummary
 }
 
@@ -20,7 +20,7 @@ export function useSystemStatus(): SystemStatusInfo {
 
   return {
     apiOnline,
-    apiChecking: health.isFetching && !apiOnline,
+    apiConnecting: health.isPending,
     devices: deviceSummary,
   }
 }
