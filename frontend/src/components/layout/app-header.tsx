@@ -54,10 +54,10 @@ function SystemStatus({ status }: { status: SystemStatusInfo }) {
   return (
     <Link
       to="/devices"
-      aria-label={`API ${apiLabel}. ${devices.online} of ${devices.total} devices online. ${devices.locked} locked.`}
+      aria-label={`System ${apiLabel}. ${devices.online} of ${devices.total} devices online. ${devices.locked} locked.`}
       className="flex items-center gap-2 rounded-full border border-border px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground sm:px-3"
     >
-      <span className="inline-flex items-center gap-1.5" title={`API ${apiLabel}`}>
+      <span className="inline-flex items-center gap-1.5" title={`System ${apiLabel}`}>
         <span
           className={cn(
             'size-2 rounded-full',
@@ -122,7 +122,7 @@ function AccountMenu() {
         aria-expanded={open}
         title={user ? `${user.email} · ${roleLabel(user.role)}` : 'Signed out'}
         onClick={() => setOpen((value) => !value)}
-        className="grid size-8 shrink-0 place-items-center rounded-full bg-secondary text-xs font-medium ring-1 ring-border transition-colors hover:bg-accent hover:text-accent-foreground"
+        className="grid size-8 shrink-0 place-items-center rounded-full bg-secondary text-xs font-medium ring-1 ring-border transition-all hover:bg-brand/10 hover:text-brand hover:ring-2 hover:ring-brand/40 hover:shadow-md"
       >
         {user ? userInitials(user.email) : '?'}
       </button>
