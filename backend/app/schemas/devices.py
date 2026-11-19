@@ -77,6 +77,7 @@ class DeviceOut(BaseModel):
     unlock_ms: int
     requires_pin: bool
     locked: bool
+    lock: Literal["locked", "unlocked"] | None = None
     status: DeviceStatus
     location: DeviceLocation | None = None
     created_at: datetime

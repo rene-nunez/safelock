@@ -1,6 +1,7 @@
+import asyncio
 import logging
 from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 
 from fastapi import FastAPI
 from pymongo.errors import PyMongoError
@@ -8,6 +9,7 @@ from pymongo.errors import PyMongoError
 from app.api.v1.router import router as v1_router
 from app.core.config import get_settings
 from app.db.mongo import create_client, ensure_indexes, get_database
+from app.services.mqtt_gateway import MqttGateway
 
 logger = logging.getLogger(__name__)
 
@@ -28,9 +30,17 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     except PyMongoError:
         logger.exception("Could not initialize MongoDB indexes")
 
+    # The MQTT consumer lives in the lifespan: never run more than one worker.
+    gateway = MqttGateway(db, settings)
+    gateway_task = asyncio.create_task(gateway.run())
+    app.state.gateway = gateway
+
     try:
         yield
     finally:
+        gateway_task.cancel()
+        with suppress(asyncio.CancelledError):
+            await gateway_task
         await client.close()
 
 

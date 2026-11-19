@@ -46,6 +46,7 @@ def device_to_out(document: DeviceDocument) -> DeviceOut:
         unlock_ms=document.get("unlock_ms", 3000),
         requires_pin=document.get("requires_pin", False),
         locked=document.get("locked", False),
+        lock=document.get("lock"),
         status=document.get("status", "active"),
         location=document.get("location"),
         created_at=document["created_at"],
