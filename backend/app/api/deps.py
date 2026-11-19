@@ -7,6 +7,7 @@ from app.core.config import Settings, get_settings
 from app.core.security import decode_access_token
 from app.db.mongo import Database
 from app.schemas.auth import UserOut
+from app.services.mqtt_gateway import MqttGateway
 from app.services.users import get_user_by_id, user_to_out
 
 bearer_scheme = HTTPBearer(auto_error=False)
@@ -20,6 +21,11 @@ def get_db(request: Request) -> Database:
             detail="Database unavailable",
         )
     return cast(Database, db)
+
+
+def get_gateway(request: Request) -> MqttGateway | None:
+    """The gateway is optional in tests, which do not run the lifespan."""
+    return cast("MqttGateway | None", getattr(request.app.state, "gateway", None))
 
 
 def _unauthorized(detail: str) -> HTTPException:

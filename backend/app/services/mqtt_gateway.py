@@ -7,6 +7,8 @@ import json
 import logging
 import re
 import ssl
+import time
+import uuid
 from collections import OrderedDict
 from datetime import UTC, datetime
 from typing import Any
@@ -21,15 +23,17 @@ from app.core.identifiers import InvalidUidError, normalize_uid
 from app.db.mongo import Database
 from app.schemas.mqtt import (
     AccessDecisionData,
+    CommandResponseData,
     HeartbeatData,
     MessageEnvelope,
     StatusData,
 )
+from app.services import acl_sync
 
 logger = logging.getLogger(__name__)
 
 TOPIC_PREFIX = "safelock/devices"
-KNOWN_KINDS = {"status", "heartbeat", "events/access-decision"}
+KNOWN_KINDS = {"status", "heartbeat", "events/access-decision", "response"}
 MAX_SEEN_IDS = 10_000
 FUTURE_TS_TOLERANCE_S = 300
 RECONNECT_DELAY_S = 5.0
@@ -51,6 +55,10 @@ def parse_topic(topic: str) -> tuple[str, str] | None:
     if _DEVICE_ID_PATTERN.fullmatch(device_id) is None:
         return None
     return device_id, "/".join(parts[3:])
+
+
+def status_online(data: dict[str, Any]) -> bool:
+    return data.get("online") is True
 
 
 def parse_message(topic: str, payload: bytes) -> ParsedMessage | None:
@@ -85,6 +93,8 @@ class MqttGateway:
         self.settings = settings
         self._seen_ids: OrderedDict[str, None] = OrderedDict()
         self._rtc_valid: dict[str, bool] = {}
+        self._mqtt_client: aiomqtt.Client | None = None
+        self._publish_lock = asyncio.Lock()
 
     def _remember_id(self, message_id: str) -> bool:
         if message_id in self._seen_ids:
@@ -122,18 +132,50 @@ class MqttGateway:
             keepalive=60,
         )
 
+    async def publish_command(
+        self, device_id: str, command: str, data: dict[str, Any]
+    ) -> bool:
+        client = self._mqtt_client
+        if client is None:
+            return False
+
+        payload = json.dumps(
+            {
+                "id": str(uuid.uuid4()),
+                "ts": int(time.time()),
+                "device_id": device_id,
+                "data": data,
+            },
+            separators=(",", ":"),
+        )
+        topic = f"{TOPIC_PREFIX}/{device_id}/commands/{command}"
+        try:
+            async with self._publish_lock:
+                await client.publish(topic, payload, qos=1, retain=False)
+        except (aiomqtt.MqttError, OSError, ssl.SSLError, ValueError) as error:
+            logger.warning(
+                "MQTT command publish failed device_id=%s: %s", device_id, error
+            )
+            return False
+        return True
+
     async def run(self) -> None:
         while True:
             try:
                 async with self._client() as client:
-                    await client.subscribe(f"{TOPIC_PREFIX}/+/status", qos=1)
-                    await client.subscribe(f"{TOPIC_PREFIX}/+/heartbeat", qos=0)
-                    await client.subscribe(f"{TOPIC_PREFIX}/+/events/#", qos=1)
-                    logger.info("MQTT gateway connected")
-                    async for message in client.messages:
-                        await self.handle_message(
-                            str(message.topic), bytes(message.payload)
-                        )
+                    self._mqtt_client = client
+                    try:
+                        await client.subscribe(f"{TOPIC_PREFIX}/+/status", qos=1)
+                        await client.subscribe(f"{TOPIC_PREFIX}/+/heartbeat", qos=0)
+                        await client.subscribe(f"{TOPIC_PREFIX}/+/events/#", qos=1)
+                        await client.subscribe(f"{TOPIC_PREFIX}/+/response", qos=1)
+                        logger.info("MQTT gateway connected")
+                        async for message in client.messages:
+                            await self.handle_message(
+                                str(message.topic), bytes(message.payload)
+                            )
+                    finally:
+                        self._mqtt_client = None
             except asyncio.CancelledError:
                 raise
             except (aiomqtt.MqttError, OSError, ssl.SSLError, ValueError) as error:
@@ -195,8 +237,18 @@ class MqttGateway:
 
         if kind == "status":
             await self._handle_status(device_id, envelope)
+            reported = envelope.data.get("acl_version")
+            if (
+                status_online(envelope.data)
+                and isinstance(reported, int)
+                and reported >= 0
+            ):
+                await acl_sync.sync_on_status(self.db, self, device_id, reported)
         elif kind == "heartbeat":
             await self._handle_heartbeat(device_id, envelope)
+            await acl_sync.sync_on_heartbeat(self.db, self, device_id)
+        elif kind == "response":
+            await self._handle_response(device_id, envelope)
         else:
             await self._handle_access_decision(device_id, envelope)
 
@@ -256,6 +308,21 @@ class MqttGateway:
             "MQTT heartbeat device_id=%s rtc_valid=%s",
             device_id,
             heartbeat.rtc_valid,
+        )
+
+    async def _handle_response(
+        self, device_id: str, envelope: MessageEnvelope
+    ) -> None:
+        try:
+            response = CommandResponseData.model_validate(envelope.data)
+        except ValidationError:
+            logger.warning(
+                "Invalid MQTT response id=%s device_id=%s", envelope.id, device_id
+            )
+            return
+
+        await acl_sync.handle_response(
+            self.db, device_id, response.request_id, response.result
         )
 
     async def _handle_access_decision(

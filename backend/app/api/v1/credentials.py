@@ -3,7 +3,7 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi.concurrency import run_in_threadpool
 
-from app.api.deps import get_current_admin, get_current_user, get_db
+from app.api.deps import get_current_admin, get_current_user, get_db, get_gateway
 from app.api.v1.common import actor_object_id, client_ip
 from app.core.security import hash_password
 from app.db.mongo import Database
@@ -13,6 +13,7 @@ from app.schemas.credentials import (
     CredentialUpdate,
     validate_window,
 )
+from app.services import acl_sync
 from app.services.audit import record_audit
 from app.services.credentials import (
     CredentialAlreadyExistsError,
@@ -24,12 +25,14 @@ from app.services.credentials import (
     revoke_credential,
     update_credential,
 )
+from app.services.mqtt_gateway import MqttGateway
 
 router = APIRouter(prefix="/credentials", tags=["credentials"])
 
 CurrentUser = Annotated[UserOut, Depends(get_current_user)]
 AdminUser = Annotated[UserOut, Depends(get_current_admin)]
 Db = Annotated[Database, Depends(get_db)]
+Gateway = Annotated[MqttGateway | None, Depends(get_gateway)]
 
 
 async def _require_credential(db: Database, credential_id: str) -> dict[str, Any]:
@@ -50,6 +53,11 @@ def _snapshot(document: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+async def _sync_acl(db: Database, gateway: MqttGateway | None) -> None:
+    if gateway is not None:
+        await acl_sync.sync_all_online(db, gateway)
+
+
 @router.patch("/{credential_id}", response_model=CredentialOut)
 async def update_credential_endpoint(
     credential_id: str,
@@ -57,6 +65,7 @@ async def update_credential_endpoint(
     request: Request,
     db: Db,
     user: CurrentUser,
+    gateway: Gateway,
 ) -> CredentialOut:
     target = await _require_credential(db, credential_id)
     updates: dict[str, Any] = payload.model_dump(exclude_unset=True)
@@ -108,6 +117,7 @@ async def update_credential_endpoint(
         after=_snapshot(updated),
         ip=client_ip(request),
     )
+    await _sync_acl(db, gateway)
     return credential_to_out(updated)
 
 
@@ -117,6 +127,7 @@ async def revoke_credential_endpoint(
     request: Request,
     db: Db,
     user: CurrentUser,
+    gateway: Gateway,
 ) -> CredentialOut:
     target = await _require_credential(db, credential_id)
     if target.get("status") == "revoked":
@@ -132,6 +143,7 @@ async def revoke_credential_endpoint(
         after=_snapshot(updated),
         ip=client_ip(request),
     )
+    await _sync_acl(db, gateway)
     return credential_to_out(updated)
 
 
@@ -141,6 +153,7 @@ async def restore_credential_endpoint(
     request: Request,
     db: Db,
     admin: AdminUser,
+    gateway: Gateway,
 ) -> CredentialOut:
     target = await _require_credential(db, credential_id)
     if target.get("status") == "active":
@@ -173,6 +186,7 @@ async def restore_credential_endpoint(
         after=_snapshot(updated),
         ip=client_ip(request),
     )
+    await _sync_acl(db, gateway)
     return credential_to_out(updated)
 
 
@@ -182,6 +196,7 @@ async def delete_credential_endpoint(
     request: Request,
     db: Db,
     user: CurrentUser,
+    gateway: Gateway,
 ) -> Response:
     target = await _require_credential(db, credential_id)
     try:
@@ -199,4 +214,5 @@ async def delete_credential_endpoint(
         before=_snapshot(target),
         ip=client_ip(request),
     )
+    await _sync_acl(db, gateway)
     return Response(status_code=status.HTTP_204_NO_CONTENT)

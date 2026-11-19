@@ -1,13 +1,18 @@
+from datetime import UTC, datetime
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 
-from app.api.deps import get_current_admin, get_current_user, get_db
+from app.api.deps import get_current_admin, get_current_user, get_db, get_gateway
 from app.api.v1.common import actor_object_id, client_ip
 from app.db.mongo import Database
 from app.schemas.auth import UserOut
-from app.schemas.devices import DeviceCreate, DeviceOut, DeviceUpdate
+from app.schemas.devices import CommandOut, DeviceCreate, DeviceOut, DeviceUpdate
+from app.services import acl_sync
 from app.services.audit import record_audit
+from app.services.devices import (
+    ONLINE_WINDOW as DEVICE_ONLINE_WINDOW,
+)
 from app.services.devices import (
     DeviceAlreadyExistsError,
     create_device,
@@ -18,12 +23,14 @@ from app.services.devices import (
     list_devices,
     update_device,
 )
+from app.services.mqtt_gateway import MqttGateway
 
 router = APIRouter(prefix="/devices", tags=["devices"])
 
 CurrentUser = Annotated[UserOut, Depends(get_current_user)]
 AdminUser = Annotated[UserOut, Depends(get_current_admin)]
 Db = Annotated[Database, Depends(get_db)]
+Gateway = Annotated[MqttGateway | None, Depends(get_gateway)]
 
 
 async def _require_device(db: Database, device_id: str) -> dict[str, Any]:
@@ -92,6 +99,7 @@ async def update_device_endpoint(
     request: Request,
     db: Db,
     user: CurrentUser,
+    gateway: Gateway,
 ) -> DeviceOut:
     target = await _require_device(db, device_id)
 
@@ -122,7 +130,67 @@ async def update_device_endpoint(
         after=_snapshot(updated),
         ip=client_ip(request),
     )
+
+    acl_fields = {
+        "locked",
+        "offline_policy",
+        "requires_pin",
+        "stale_acl_hours",
+        "unlock_ms",
+    }
+    if gateway is not None and acl_fields.intersection(updates):
+        await acl_sync.sync_device_if_online(db, gateway, updated["device_id"])
     return device_to_out(updated)
+
+
+@router.post(
+    "/{device_id}/synchronize-access-list",
+    response_model=CommandOut,
+    status_code=status.HTTP_202_ACCEPTED,
+)
+async def synchronize_device_endpoint(
+    device_id: str,
+    request: Request,
+    db: Db,
+    gateway: Gateway,
+    admin: AdminUser,
+) -> CommandOut:
+    target = await _require_device(db, device_id)
+    last_seen = target.get("last_seen")
+    if last_seen is None or datetime.now(UTC) - last_seen >= DEVICE_ONLINE_WINDOW:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="The device is offline",
+        )
+    if gateway is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="MQTT gateway unavailable",
+        )
+
+    try:
+        result = await acl_sync.publish_snapshot(db, gateway, target["device_id"])
+    except acl_sync.GatewayUnavailableError as error:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(error)
+        ) from error
+
+    await record_audit(
+        db,
+        actor_id=actor_object_id(admin),
+        action="device.sync",
+        target=target["device_id"],
+        after={
+            "request_id": result["request_id"],
+            "acl_version": result["acl_version"],
+        },
+        ip=client_ip(request),
+    )
+    return CommandOut(
+        request_id=result["request_id"],
+        expires_at=result["expires_at"],
+        acl_version=result["acl_version"],
+    )
 
 
 @router.delete("/{device_id}", status_code=status.HTTP_204_NO_CONTENT)

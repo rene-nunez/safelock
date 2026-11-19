@@ -2,7 +2,7 @@ from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 
-from app.api.deps import get_current_admin, get_current_user, get_db
+from app.api.deps import get_current_admin, get_current_user, get_db, get_gateway
 from app.api.v1.common import actor_object_id, client_ip
 from app.db.mongo import Database
 from app.schemas.auth import UserOut
@@ -12,6 +12,7 @@ from app.schemas.cardholders import (
     CardholderUpdate,
 )
 from app.schemas.credentials import CredentialCreate, CredentialOut
+from app.services import acl_sync
 from app.services.audit import record_audit
 from app.services.cardholders import (
     cardholder_has_history,
@@ -30,12 +31,14 @@ from app.services.credentials import (
     restore_holder_credentials,
     revoke_holder_credentials,
 )
+from app.services.mqtt_gateway import MqttGateway
 
 router = APIRouter(prefix="/cardholders", tags=["cardholders"])
 
 CurrentUser = Annotated[UserOut, Depends(get_current_user)]
 AdminUser = Annotated[UserOut, Depends(get_current_admin)]
 Db = Annotated[Database, Depends(get_db)]
+Gateway = Annotated[MqttGateway | None, Depends(get_gateway)]
 
 
 async def _require_cardholder(db: Database, cardholder_id: str) -> dict[str, Any]:
@@ -54,6 +57,11 @@ def _snapshot(cardholder: dict[str, Any]) -> dict[str, Any]:
         "unit": cardholder.get("unit"),
         "status": cardholder.get("status", "active"),
     }
+
+
+async def _sync_acl(db: Database, gateway: MqttGateway | None) -> None:
+    if gateway is not None:
+        await acl_sync.sync_all_online(db, gateway)
 
 
 @router.get("", response_model=list[CardholderOut])
@@ -98,6 +106,7 @@ async def update_cardholder_endpoint(
     request: Request,
     db: Db,
     user: CurrentUser,
+    gateway: Gateway,
 ) -> CardholderOut:
     target = await _require_cardholder(db, cardholder_id)
     updates: dict[str, Any] = payload.model_dump(exclude_unset=True)
@@ -157,6 +166,7 @@ async def update_cardholder_endpoint(
                 ip=client_ip(request),
             )
 
+    await _sync_acl(db, gateway)
     return cardholder_to_out(updated)
 
 
@@ -166,6 +176,7 @@ async def activate_and_restore_cardholder(
     request: Request,
     db: Db,
     admin: AdminUser,
+    gateway: Gateway,
 ) -> CardholderOut:
     target = await _require_cardholder(db, cardholder_id)
     if target.get("status", "active") == "active":
@@ -203,6 +214,7 @@ async def activate_and_restore_cardholder(
             ip=client_ip(request),
         )
 
+    await _sync_acl(db, gateway)
     return cardholder_to_out(updated)
 
 
@@ -252,6 +264,7 @@ async def create_holder_credential(
     request: Request,
     db: Db,
     user: CurrentUser,
+    gateway: Gateway,
 ) -> CredentialOut:
     cardholder = await _require_cardholder(db, cardholder_id)
     if cardholder.get("status", "active") != "active":
@@ -279,6 +292,7 @@ async def create_holder_credential(
         },
         ip=client_ip(request),
     )
+    await _sync_acl(db, gateway)
     return credential_to_out(document)
 
 
@@ -291,6 +305,7 @@ async def revoke_all_holder_credentials(
     request: Request,
     db: Db,
     user: CurrentUser,
+    gateway: Gateway,
 ) -> list[CredentialOut]:
     cardholder = await _require_cardholder(db, cardholder_id)
     revoked = await revoke_holder_credentials(db, cardholder["_id"])
@@ -312,4 +327,5 @@ async def revoke_all_holder_credentials(
             after={"count": len(revoked)},
             ip=client_ip(request),
         )
+    await _sync_acl(db, gateway)
     return [credential_to_out(document) for document in revoked]

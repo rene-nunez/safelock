@@ -62,6 +62,12 @@ class DeviceUpdate(BaseModel):
         return self
 
 
+class CommandOut(BaseModel):
+    request_id: str
+    expires_at: int
+    acl_version: int
+
+
 class DeviceOut(BaseModel):
     id: str
     device_id: str
