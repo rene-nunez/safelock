@@ -35,6 +35,7 @@ void Device::begin() {
   clock.begin();
   net.begin(settings.get_wifi_ssid(), settings.get_wifi_password());
   if (net.time_valid()) clock.sync_from_epoch(time(nullptr));
+  mqtt.begin();
 
   indicators.begin();
   indicators.show_locked();
@@ -46,5 +47,6 @@ void Device::begin() {
 
 void Device::run() {
   net.update();
+  mqtt.update();
   tasks.run();
 }

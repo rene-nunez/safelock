@@ -9,6 +9,7 @@
 #include <Indicators.h>
 #include <Settings.h>
 #include <Net.h>
+#include <MqttTransport.h>
 #include <Tasks.h>
 
 class Device {
@@ -23,6 +24,8 @@ class Device {
     Storage storage;
     Lock lock;
     Indicators indicators;
+
+    MqttTransport mqtt;
 
     // Must stay last: it holds references to all the members above
     Tasks tasks;
