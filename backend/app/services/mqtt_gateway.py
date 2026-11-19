@@ -148,7 +148,8 @@ class MqttGateway:
         try:
             await self._dispatch(parsed)
         except Exception:
-            # One bad message (for example a database error) must not stop the consumer. Never log the payload: it may contain a PIN or a UID.
+            # One bad message (for example a database error) must not stop the consumer.
+            # Never log the payload: it may contain a PIN or a UID.
             logger.exception(
                 "MQTT message handling failed id=%s device_id=%s type=%s",
                 parsed.envelope.id,
@@ -180,7 +181,8 @@ class MqttGateway:
             )
             return
 
-        # The LWT is a fixed payload published by the broker, so it must never be discarded as a duplicate.
+        # The LWT is a fixed payload published by the broker,
+        # so it must never be discarded as a duplicate.
         is_lwt = kind == "status" and envelope.data.get("online") is False
         if not is_lwt and not self._remember_id(envelope.id):
             logger.debug(
