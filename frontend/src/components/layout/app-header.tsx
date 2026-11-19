@@ -162,22 +162,24 @@ export function AppHeader({ onOpenMenu }: { onOpenMenu: () => void }) {
   const status = useSystemStatus()
 
   return (
-    <>
-      <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-border bg-zinc-950/40 px-4 backdrop-blur lg:px-6">
+    <header className="sticky top-0 z-30 border-b border-border bg-zinc-950">
+      <div className="flex h-16 items-center gap-3 px-4 lg:px-6">
         <PageHeading onOpenMenu={onOpenMenu} />
         <div className="ml-auto flex shrink-0 items-center gap-2 sm:gap-3">
           <SystemStatus status={status} />
           <AccountMenu />
         </div>
-      </header>
-      {!status.apiOnline && !status.apiChecking ? (
+      </div>
+      {/* Inside the sticky header so it stays visible while scrolling; kept mounted
+          while retrying so each health check does not shift the layout. */}
+      {!status.apiOnline ? (
         <div
           role="status"
-          className="border-b border-amber-500/20 bg-amber-500/10 px-4 py-2 text-center text-xs text-amber-200 lg:px-6"
+          className="border-t border-border bg-secondary px-4 py-2 text-center text-xs text-foreground/90 lg:px-6"
         >
-          Backend unreachable — showing cached data.
+          Connection lost. Trying to reconnect…
         </div>
       ) : null}
-    </>
+    </header>
   )
 }

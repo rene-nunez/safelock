@@ -175,10 +175,12 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
     if (response.status === 401 && path !== '/auth/login') {
       window.dispatchEvent(new Event(UNAUTHORIZED_EVENT))
     }
-    throw new ApiError(
-      (await readErrorDetail(response)) ?? response.statusText,
-      response.status,
-    )
+    const detail = await readErrorDetail(response)
+    const fallback =
+      response.status === 502
+        ? 'Backend unavailable. Try again shortly.'
+        : response.statusText
+    throw new ApiError(detail ?? fallback, response.status)
   }
 
   if (response.status === 204) {

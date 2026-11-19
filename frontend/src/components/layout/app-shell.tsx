@@ -9,7 +9,7 @@ export function AppShell() {
 
   return (
     <div className="flex min-h-screen bg-background text-foreground">
-      <aside className="sticky top-0 hidden h-screen w-60 shrink-0 border-r border-border bg-zinc-950/60 lg:block">
+      <aside className="sticky top-0 hidden h-screen w-60 shrink-0 border-r border-border bg-zinc-950 lg:block">
         <Sidebar />
       </aside>
 
