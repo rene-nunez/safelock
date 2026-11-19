@@ -1,5 +1,6 @@
 from fastapi import APIRouter
 
+from app.api.v1.activity import router as activity_router
 from app.api.v1.audit import router as audit_router
 from app.api.v1.auth import router as auth_router
 from app.api.v1.cardholders import router as cardholders_router
@@ -13,4 +14,5 @@ router.include_router(users_router)
 router.include_router(cardholders_router)
 router.include_router(credentials_router)
 router.include_router(devices_router)
+router.include_router(activity_router)
 router.include_router(audit_router)
