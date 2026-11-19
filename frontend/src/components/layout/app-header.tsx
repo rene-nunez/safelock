@@ -73,7 +73,7 @@ function SystemStatus({ status }: { status: SystemStatusInfo }) {
       <span className="hidden h-3 w-px bg-border md:block" />
       <span
         className="hidden items-center gap-1.5 md:inline-flex"
-        title="Devices online"
+        title="Devices Online"
       >
         <Cpu className="size-3.5" />
         <span className="tabular-nums">{devices.online}/{devices.total}</span>
@@ -120,9 +120,9 @@ function AccountMenu() {
         type="button"
         aria-label="Account menu"
         aria-expanded={open}
-        title={user ? `${user.email} · ${roleLabel(user.role)}` : 'Signed out'}
+        title={user ? `${user.email} (${roleLabel(user.role)})` : 'Signed out'}
         onClick={() => setOpen((value) => !value)}
-        className="grid size-8 shrink-0 place-items-center rounded-full bg-secondary text-xs font-medium ring-1 ring-border transition-all hover:bg-brand/10 hover:text-brand hover:ring-2 hover:ring-brand/40 hover:shadow-md"
+        className="grid size-8 shrink-0 place-items-center rounded-full bg-secondary text-xs font-medium ring-1 ring-border transition-all duration-200 hover:bg-zinc-700 hover:text-brand hover:ring-2 hover:ring-brand/40 hover:shadow-md"
       >
         {user ? userInitials(user.email) : '?'}
       </button>
