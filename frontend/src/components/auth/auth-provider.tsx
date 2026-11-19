@@ -9,7 +9,12 @@ import {
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { useHealth } from '@/hooks/use-health'
-import { ApiError, getCurrentUser, signIn as signInRequest } from '@/lib/api'
+import {
+  ApiError,
+  getCurrentUser,
+  signIn as signInRequest,
+  UNAUTHORIZED_EVENT,
+} from '@/lib/api'
 import { AuthContext } from '@/lib/auth-context'
 import { clearToken, getToken, setToken } from '@/lib/token'
 
@@ -77,6 +82,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setTokenState(null)
     queryClient.clear()
   }, [queryClient])
+
+  useEffect(() => {
+    function handleUnauthorized() {
+      // Several polling queries can fail with 401 in the same tick.
+      if (getToken() === null) return
+      signOut()
+    }
+    window.addEventListener(UNAUTHORIZED_EVENT, handleUnauthorized)
+    return () => window.removeEventListener(UNAUTHORIZED_EVENT, handleUnauthorized)
+  }, [signOut])
 
   const value = useMemo(
     () => ({

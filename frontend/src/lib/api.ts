@@ -1,6 +1,7 @@
 import { getToken } from '@/lib/token'
 
 const API_PREFIX = '/api/v1'
+export const UNAUTHORIZED_EVENT = 'safelock:unauthorized'
 
 export type Role = 'admin' | 'operator'
 
@@ -171,6 +172,9 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   }
 
   if (!response.ok) {
+    if (response.status === 401 && path !== '/auth/login') {
+      window.dispatchEvent(new Event(UNAUTHORIZED_EVENT))
+    }
     throw new ApiError(
       (await readErrorDetail(response)) ?? response.statusText,
       response.status,
