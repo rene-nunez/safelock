@@ -105,3 +105,91 @@ bool Storage::log_access(const String &timestamp, const char *source, const char
 
   return true;
 }
+
+bool Storage::read_file(const char *path, String &output) {
+  if (!ready) return false;
+
+  File file = SD.open(path, FILE_READ);
+  if (!file) return false;
+
+  output = "";
+  while (file.available()) {
+    output += static_cast<char>(file.read());
+  }
+  file.close();
+  return true;
+}
+
+bool Storage::write_file(const char *path, const String &content) {
+  if (!ready) return false;
+
+  File file = SD.open(path, FILE_WRITE);
+  if (!file) return false;
+
+  const size_t written = file.print(content);
+  file.close();
+  if (written != content.length()) {
+    Serial.println("Storage write: short write");
+    return false;
+  }
+  return true;
+}
+
+bool Storage::write_atomic(
+  const char *final_path, const char *temp_path, const String &content
+) {
+  if (!write_file(temp_path, content)) return false;
+  if (SD.exists(final_path) && !SD.remove(final_path)) return false;
+  if (!SD.rename(temp_path, final_path)) {
+    Serial.println("Storage atomic rename failed");
+    return false;
+  }
+  return true;
+}
+
+bool Storage::remove_file(const char *path) {
+  if (!ready || !SD.exists(path)) return false;
+  return SD.remove(path);
+}
+
+bool Storage::rename_file(const char *from, const char *to) {
+  if (!ready) return false;
+  if (SD.exists(to) && !SD.remove(to)) return false;
+  return SD.rename(from, to);
+}
+
+bool Storage::append_line(const char *path, const String &line) {
+  if (!ready) return false;
+
+  File file = SD.open(path, FILE_APPEND);
+  if (!file) return false;
+
+  const size_t written = file.println(line);
+  file.close();
+  return written > 0;
+}
+
+bool Storage::read_lines(const char *path, std::vector<String> &lines) {
+  lines.clear();
+  if (!ready) return false;
+
+  File file = SD.open(path, FILE_READ);
+  if (!file) return false;
+
+  String current;
+  while (file.available()) {
+    const char character = static_cast<char>(file.read());
+    if (character == '\n') {
+      current.trim();
+      if (current.length() > 0) lines.push_back(current);
+      current = "";
+    } else if (character != '\r' && current.length() < 4096) {
+      current += character;
+    }
+  }
+  current.trim();
+  if (current.length() > 0) lines.push_back(current);
+
+  file.close();
+  return true;
+}

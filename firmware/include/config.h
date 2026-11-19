@@ -25,11 +25,3 @@
 
 // Stable time before a new sense level is accepted
 #define LOCK_SENSE_DEBOUNCE_MS 100
-
-// Temporary until the backend owns the PIN and the ACL
-#define PASSWORD_LENGTH   5
-#define DEFAULT_PASSWORD  "12345"
-
-// Canonical UID form
-#define ALLOWED_UID_COUNT 1
-#define ALLOWED_UIDS      { "AA:BB:CC:DD" }

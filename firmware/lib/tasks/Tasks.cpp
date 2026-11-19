@@ -1,5 +1,8 @@
 #include "Tasks.h"
 
+#include <ArduinoJson.h>
+#include <time.h>
+
 Tasks::Tasks(
   RFID &rfid,
   Numpad &numpad,
@@ -7,8 +10,10 @@ Tasks::Tasks(
   Clock &clock,
   Storage &storage,
   Lock &lock,
-  Indicators &indicators
-) : rfid(rfid), numpad(numpad), display(display), clock(clock), storage(storage), lock(lock), indicators(indicators) {
+  Indicators &indicators,
+  Acl &acl,
+  MqttTransport &mqtt
+) : rfid(rfid), numpad(numpad), display(display), clock(clock), storage(storage), lock(lock), indicators(indicators), acl(acl), mqtt(mqtt) {
   state_millis = millis();
   last_sd_attempt = state_millis;
 }
@@ -65,8 +70,7 @@ void Tasks::run_rfid_task() {
     if ((current_millis - last_rfid_recover_millis) < RFID_RECOVER_INTERVAL) return;
     last_rfid_recover_millis = current_millis;
 
-    // Don't block the keypad while the user is typing the password
-    if (entered_digits == 0) rfid.recover();
+    rfid.recover();
     return;
   }
 
@@ -78,23 +82,47 @@ void Tasks::run_rfid_task() {
   Serial.print("RFID card detected: ");
   Serial.println(uid_text);
 
-  const char *allowed[] = ALLOWED_UIDS;
-  bool authorized = false;
+  handle_card(String(uid_text));
+}
 
-  for (uint8_t i = 0; i < ALLOWED_UID_COUNT; i++) {
-    if (strcmp(uid_text, allowed[i]) == 0) {
-      authorized = true;
-      break;
-    }
-  }
+void Tasks::handle_card(const String &uid) {
+  const AclDecision verdict = acl.evaluate(
+    uid, clock.is_valid(), time(nullptr), mqtt.connected()
+  );
+  const String credential_id = acl.credential_id_for(uid);
 
-  if (authorized) {
+  publish_decision(
+    verdict.decision, verdict.reason, "card", uid, credential_id
+  );
+
+  if (strcmp(verdict.decision, "granted") == 0) {
     Serial.println("RFID authorized");
     grant_access("rfid");
   } else {
-    Serial.println("RFID unauthorized");
+    Serial.print("RFID denied: ");
+    Serial.println(verdict.reason);
     deny_access();
   }
+}
+
+void Tasks::publish_decision(
+  const char *decision,
+  const char *reason,
+  const char *source,
+  const String &uid,
+  const String &credential_id
+) {
+  JsonDocument document;
+  JsonObject data = document["data"].to<JsonObject>();
+  data["decision"] = decision;
+  data["reason"] = reason;
+  data["source"] = source;
+  if (uid.length() > 0) data["uid"] = uid;
+  if (credential_id.length() > 0) data["credential_id"] = credential_id;
+  data["acl_version"] = acl.get_version();
+  data["acl_age_s"] = acl.age_s(clock.is_valid(), time(nullptr));
+
+  mqtt.publish_event("events/access-decision", data);
 }
 
 void Tasks::run_numpad_task() {
@@ -106,12 +134,9 @@ void Tasks::run_numpad_task() {
   if (key == NO_KEY) return;
   if (state != ENTERING) return;
 
-  Serial.print("Numpad key pressed: ");
-  Serial.println(key);
-
-  if (key < '0' || key > '9') return;
-
-  add_digit(key);
+  // The backend owns PIN validation. Consume keys so they do not queue up;
+  // no local secret is stored or compared in this milestone.
+  (void)key;
 }
 
 void Tasks::run_lock_task() {
@@ -204,13 +229,10 @@ void Tasks::run_display_task() {
 
 void Tasks::start_entry() {
   state = ENTERING;
-  entered_digits = 0;
   display.show_entry(0);
 }
 
 void Tasks::grant_access(const char *method) {
-  entered_digits = 0;
-  entered_password[0] = '\0';
   unlock_animation_active = true;
   unlock_animation_frame = 0;
   last_unlock_animation_millis = current_millis;
@@ -270,6 +292,8 @@ void Tasks::alert_manual_open() {
     Serial.println(timestamp);
   }
 
+  publish_decision("unknown", "manual_open", "manual", "", "");
+
   // Best effort: the backend owns the audit trail, this is the local copy
   if (storage.is_ready() || storage.begin()) {
     storage.log_access(timestamp, "manual", "unknown");
@@ -319,22 +343,4 @@ void Tasks::finish_log_without_write() {
   state_millis = current_millis;
   display.recover();
   display.show_success();
-}
-
-void Tasks::add_digit(char digit) {
-  if (entered_digits >= PASSWORD_LENGTH) return;
-
-  entered_password[entered_digits] = digit;
-  entered_digits++;
-  entered_password[entered_digits] = '\0';
-
-  display.show_entry(entered_digits);
-
-  if (entered_digits < PASSWORD_LENGTH) return;
-
-  if (strcmp(entered_password, DEFAULT_PASSWORD) == 0) {
-    grant_access("password");
-  } else {
-    deny_access();
-  }
 }

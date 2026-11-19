@@ -79,25 +79,22 @@ void Display::show_error_frame(uint8_t frame) {
 
 void Display::show_entry(uint8_t digits) {
   if (!ready) return;
+  (void)digits; // No digit slots: the PIN is validated by the backend
 
   display.clearDisplay();
+  draw_lock_icon();
 
-  const int16_t slot_width = 14;
-  const int16_t slot_gap = 8;
-  const int16_t total_width =
-    PASSWORD_LENGTH * slot_width + (PASSWORD_LENGTH - 1) * slot_gap;
-  const int16_t start_x = (SCREEN_WIDTH - total_width) / 2;
-  const int16_t line_y = 40;
+  const char *text = "TAP CARD";
+  int16_t x1 = 0;
+  int16_t y1 = 0;
+  uint16_t width = 0;
+  uint16_t height = 0;
 
-  for (uint8_t i = 0; i < PASSWORD_LENGTH; i++) {
-    int16_t x = start_x + i * (slot_width + slot_gap);
-
-    display.drawLine(x, line_y, x + slot_width, line_y, WHITE);
-
-    if (i < digits) {
-      display.fillCircle(x + slot_width / 2, line_y - 9, 4, WHITE);
-    }
-  }
+  display.setTextSize(1);
+  display.setTextColor(WHITE);
+  display.getTextBounds(text, 0, 0, &x1, &y1, &width, &height);
+  display.setCursor((SCREEN_WIDTH - width) / 2, 2);
+  display.print(text);
 
   display.display();
 }

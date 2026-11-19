@@ -8,6 +8,8 @@
 #include <Storage.h>
 #include <Lock.h>
 #include <Indicators.h>
+#include <Acl.h>
+#include <MqttTransport.h>
 #include "config.h"
 
 // Poll and recovery intervals
@@ -41,6 +43,8 @@ class Tasks {
     Storage &storage;
     Lock &lock;
     Indicators &indicators;
+    Acl &acl;
+    MqttTransport &mqtt;
 
     // Loop clock
     unsigned long current_millis = 0;
@@ -48,10 +52,6 @@ class Tasks {
     // State machine
     lock_state state = WAIT_SD;
     unsigned long state_millis = 0;
-
-    // Keypad entry
-    char entered_password[PASSWORD_LENGTH + 1] = "";
-    uint8_t entered_digits = 0;
 
     // Unlock animation
     bool unlock_animation_active = false;
@@ -83,16 +83,21 @@ class Tasks {
 
     // State transitions
     void start_entry();
+    void handle_card(const String &uid);
     void grant_access(const char *method);
     void deny_access();
     void alert_manual_open();
+    void publish_decision(
+      const char *decision,
+      const char *reason,
+      const char *source,
+      const String &uid,
+      const String &credential_id
+    );
 
     // Access log
     bool try_log_access();
     void finish_log_without_write();
-
-    // Input
-    void add_digit(char digit);
 
   public:
     Tasks(
@@ -102,7 +107,9 @@ class Tasks {
       Clock &clock,
       Storage &storage,
       Lock &lock,
-      Indicators &indicators
+      Indicators &indicators,
+      Acl &acl,
+      MqttTransport &mqtt
     );
 
     void run();

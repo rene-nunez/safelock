@@ -1,16 +1,37 @@
 #include "MqttTransport.h"
 
-#include <ArduinoJson.h>
 #include <esp_system.h>
 #include <time.h>
 
 #include "mqtt_config.h"
 
-MqttTransport::MqttTransport(Settings &settings, Net &net, Clock &clock, Lock &lock)
+namespace {
+
+constexpr size_t MAX_COMMAND_SIZE = 4096;
+
+String command_suffix(const char *topic) {
+  const char *marker = "/commands/";
+  const char *position = strstr(topic, marker);
+  if (position == nullptr) return "";
+  return String(position + strlen(marker));
+}
+
+} // namespace
+
+MqttTransport::MqttTransport(
+  Settings &settings,
+  Net &net,
+  Clock &clock,
+  Lock &lock,
+  Acl &acl,
+  LocalOutbox &outbox
+)
   : settings(settings),
     net(net),
     clock(clock),
     lock(lock),
+    acl(acl),
+    outbox(outbox),
     client(espMqttClientTypes::UseInternalTask::YES) {}
 
 String MqttTransport::uuid4() const {
@@ -25,7 +46,7 @@ String MqttTransport::uuid4() const {
   snprintf(
     output,
     sizeof(output),
-    "%02x%02x%02x%02x-%02x%02x-%02x%02x-%02x%02x-%02x%02x%02x%02x%02x%02x",
+    "%02x%02x%02x%02x-%02x%02x-%02x%02x-%02x%02x-%02x%02x%02x%02x%02x%02x%02x",
     bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6],
     bytes[7], bytes[8], bytes[9], bytes[10], bytes[11], bytes[12], bytes[13],
     bytes[14], bytes[15]
@@ -36,16 +57,16 @@ String MqttTransport::uuid4() const {
 String MqttTransport::status_payload(bool online) {
   JsonDocument document;
   document["id"] = uuid4();
-  document["ts"] = net.time_valid() ? static_cast<uint64_t>(time(nullptr)) : 0;
+  document["ts"] = clock.is_valid() ? static_cast<uint64_t>(time(nullptr)) : 0;
   document["device_id"] = device_id;
 
   JsonObject data = document["data"].to<JsonObject>();
   data["online"] = online;
   if (online) {
     data["fw"] = MQTT_FW_VERSION;
-    data["acl_version"] = 0;
-    data["requires_pin"] = false;
-    data["locked"] = false;
+    data["acl_version"] = acl.get_version();
+    data["requires_pin"] = acl.get_requires_pin();
+    data["locked"] = acl.get_locked();
     data["lock"] = lock.is_closed() ? "locked" : "unlocked";
   }
 
@@ -58,8 +79,10 @@ void MqttTransport::begin() {
   device_id = settings.get_device_id();
   mqtt_password = settings.get_mqtt_password();
   status_topic = "safelock/devices/" + device_id + "/status";
-  heartbeat_topic = "safelock/devices/" + device_id + "/heartbeat";
-  commands_topic = "safelock/devices/" + device_id + "/commands/#";
+  event_topic_prefix = "safelock/devices/" + device_id + "/";
+  heartbeat_topic = event_topic_prefix + "heartbeat";
+  commands_topic = event_topic_prefix + "commands/#";
+  response_topic = event_topic_prefix + "response";
 
   client.setCACert(MQTT_CA_PEM);
   client.setClientId(device_id.c_str());
@@ -68,44 +91,95 @@ void MqttTransport::begin() {
   client.setKeepAlive(60);
   client.setCleanSession(true);
 
-  // The library keeps pointers, not copies, so will_payload has to stay alive.
+  // The library keeps pointers, not copies, so these strings have to stay alive.
   will_payload = status_payload(false);
   client.setWill(status_topic.c_str(), MQTT_QOS1, true, will_payload.c_str());
 
   client.onConnect([this](bool session_present) {
     (void)session_present;
     Serial.println("MQTT connected");
+    reset_in_flight_pending.store(true);
+
     if (client.subscribe(commands_topic.c_str(), MQTT_QOS1) == 0) {
       Serial.println("MQTT subscribe failed");
     }
     publish_status();
+    last_flush = 0;
     last_heartbeat.store(millis());
   });
 
-  client.onDisconnect([](espMqttClientTypes::DisconnectReason reason) {
-    Serial.print("MQTT disconnected, reason ");
-    Serial.println(static_cast<uint8_t>(reason));
+  client.onDisconnect([this](espMqttClientTypes::DisconnectReason reason) {
+    (void)reason;
+    Serial.println("MQTT disconnected");
+    reset_in_flight_pending.store(true);
+    command_buffer = "";
+    command_expected = 0;
   });
 
-  client.onMessage([](const espMqttClientTypes::MessageProperties &properties, const char *topic, const uint8_t *payload, size_t len, size_t index, size_t total) {
+  client.onMessage([this](
+    const espMqttClientTypes::MessageProperties &properties,
+    const char *topic,
+    const uint8_t *payload,
+    size_t len,
+    size_t index,
+    size_t total
+  ) {
     (void)properties;
-    (void)payload;
-    (void)len;
-    (void)total;
 
-    // Commands are handled in a later milestone. Never log the payload: it may contain a PIN or a card UID.
-    if (index == 0) {
-      Serial.print("MQTT command ignored: ");
-      Serial.println(topic);
+    if (total == 0 || total > MAX_COMMAND_SIZE) {
+      command_buffer = "";
+      command_expected = 0;
+      return;
     }
+    if (index == 0) {
+      command_buffer = "";
+      command_expected = total;
+    }
+    if (total != command_expected) return;
+
+    command_buffer.concat(reinterpret_cast<const char *>(payload), len);
+    if (index + len < total) return;
+
+    handle_command_payload(topic, reinterpret_cast<const uint8_t *>(command_buffer.c_str()), command_buffer.length());
+    command_buffer = "";
+    command_expected = 0;
   });
+
+  // Only PUBACK/PUBCOMP tokens arrive here; never log the acknowledged payload.
+  client.onPublish([this](uint16_t packet_id) {
+    std::lock_guard<std::mutex> guard(acks_mutex);
+    pending_acks.push_back(packet_id);
+  });
+}
+
+void MqttTransport::drain_acks() {
+  std::vector<uint16_t> acks;
+  {
+    std::lock_guard<std::mutex> guard(acks_mutex);
+    acks.swap(pending_acks);
+  }
+  for (uint16_t token : acks) {
+    outbox.confirm_publish(token);
+  }
 }
 
 void MqttTransport::update() {
   // TLS needs a real clock: without network time the device stays offline.
   if (!net.is_connected() || !net.time_valid()) return;
 
+  drain_acks();
+
+  if (reset_in_flight_pending.exchange(false)) {
+    outbox.reset_in_flight();
+    last_flush = 0;
+  }
+
   if (client.connected()) {
+    if ((millis() - last_flush) >= 1000) {
+      last_flush = millis();
+      outbox.flush(*this);
+    }
+
     if (millis() - last_heartbeat.load() >= MQTT_HEARTBEAT_MS) {
       last_heartbeat.store(millis());
       publish_heartbeat();
@@ -121,6 +195,100 @@ void MqttTransport::update() {
   if (!client.connect()) Serial.println("MQTT connect failed");
 }
 
+bool MqttTransport::connected() const {
+  return client.connected();
+}
+
+uint16_t MqttTransport::publish_queued(
+  const char *topic, const String &payload, uint8_t qos
+) {
+  if (!client.connected()) return 0;
+  return client.publish(topic, qos, false, payload.c_str());
+}
+
+bool MqttTransport::publish_event(
+  const char *suffix, const JsonObject &data, uint8_t qos
+) {
+  JsonDocument document;
+  document["id"] = uuid4();
+  document["ts"] = clock.is_valid() ? static_cast<uint64_t>(time(nullptr)) : 0;
+  document["device_id"] = device_id;
+
+  JsonObject target = document["data"].to<JsonObject>();
+  for (JsonPair pair : data) {
+    target[pair.key()] = pair.value();
+  }
+
+  String payload;
+  serializeJson(document, payload);
+  return outbox.enqueue(event_topic_prefix + suffix, payload, qos);
+}
+
+bool MqttTransport::publish_response(
+  const String &request_id, const char *result, const char *reason
+) {
+  JsonDocument document;
+  document["id"] = uuid4();
+  document["ts"] = clock.is_valid() ? static_cast<uint64_t>(time(nullptr)) : 0;
+  document["device_id"] = device_id;
+
+  JsonObject data = document["data"].to<JsonObject>();
+  data["request_id"] = request_id;
+  data["result"] = result;
+  if (reason != nullptr) data["reason"] = reason;
+
+  String payload;
+  serializeJson(document, payload);
+  return outbox.enqueue(response_topic, payload, MQTT_QOS1);
+}
+
+void MqttTransport::handle_command_payload(
+  const char *topic, const uint8_t *payload, size_t len
+) {
+  JsonDocument document;
+  if (deserializeJson(document, payload, len) != DeserializationError::Ok) {
+    Serial.println("MQTT command: invalid JSON");
+    return;
+  }
+
+  const JsonObject envelope = document.as<JsonObject>();
+  const JsonObject data = envelope["data"].as<JsonObject>();
+  const String request_id = data["request_id"] | "";
+  if (request_id.length() == 0) {
+    Serial.println("MQTT command without request_id");
+    return;
+  }
+
+  const int expires_at = data["expires_at"] | 0;
+  if (clock.is_valid() && expires_at > 0 && time(nullptr) > expires_at) {
+    publish_response(request_id, "expired", "command_expired");
+    return;
+  }
+
+  handle_command(command_suffix(topic), data);
+}
+
+void MqttTransport::handle_command(const String &command, const JsonObject &data) {
+  Serial.print("MQTT command: ");
+  Serial.println(command);
+
+  const String request_id = data["request_id"] | "";
+  if (command == "synchronize-access-list") {
+    const bool applied = acl.apply(data, clock.is_valid(), time(nullptr));
+    if (!applied) {
+      publish_response(request_id, "error", "invalid_snapshot");
+      return;
+    }
+
+    publish_response(request_id, "ok", nullptr);
+    publish_status();
+    return;
+  }
+
+  // Unlock, enrollment and PIN are scheduled for the next milestone.
+  publish_response(request_id, "error", "unsupported_command");
+}
+
 void MqttTransport::publish_status() {
   const String payload = status_payload(true);
   if (client.publish(status_topic.c_str(), MQTT_QOS1, true, payload.c_str()) == 0) {
@@ -131,7 +299,7 @@ void MqttTransport::publish_status() {
 void MqttTransport::publish_heartbeat() {
   JsonDocument document;
   document["id"] = uuid4();
-  document["ts"] = net.time_valid() ? static_cast<uint64_t>(time(nullptr)) : 0;
+  document["ts"] = clock.is_valid() ? static_cast<uint64_t>(time(nullptr)) : 0;
   document["device_id"] = device_id;
 
   JsonObject data = document["data"].to<JsonObject>();

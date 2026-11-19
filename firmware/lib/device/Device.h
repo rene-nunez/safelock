@@ -9,6 +9,8 @@
 #include <Indicators.h>
 #include <Settings.h>
 #include <Net.h>
+#include <Acl.h>
+#include <LocalOutbox.h>
 #include <MqttTransport.h>
 #include <Tasks.h>
 
@@ -25,6 +27,8 @@ class Device {
     Lock lock;
     Indicators indicators;
 
+    Acl acl;
+    LocalOutbox outbox;
     MqttTransport mqtt;
 
     // Must stay last: it holds references to all the members above
