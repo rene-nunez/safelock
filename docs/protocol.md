@@ -151,6 +151,8 @@ Full snapshot of device configuration and access list in one message.
 
 ```json
 {
+  "request_id": "<uuid4>",
+  "expires_at": 1761000180,
   "acl_version": 43,
   "requires_pin": false,
   "locked": false,
@@ -170,12 +172,13 @@ Full snapshot of device configuration and access list in one message.
 }
 ```
 
+- `request_id` and `expires_at` follow the same rules as the other commands; the device answers on `.../response`.
 - `entries` is the complete list. If a UID is not there, it is not allowed.
 - `requires_pin`, `locked`, `offline_policy`, `stale_acl_hours`, and `unlock_ms` are the device settings in this snapshot.
 - `offline_policy`: `allow` or `deny`.
 - `valid_from` / `valid_to`: seconds (UTC) or `null`.
 
-The device saves this snapshot atomically: write to a temporary file, then rename it. It never applies a partial snapshot.
+The device saves this snapshot atomically on the microSD: write `/acl.tmp`, then replace `/acl.json`. It never applies a partial snapshot.
 
 ### `response`
 
@@ -206,7 +209,9 @@ Result of a command.
 - **Card access** is decided by the device using its local access list. This must work even without the backend.
 - **PIN** is checked only by the backend. The device never checks or stores the PIN.
 - Doors with `requires_pin` need the backend. If the backend is not available, access is denied (`offline_no_pin`). There is no "card only" fallback for these doors.
-- For card-only doors, when the backend is not available the device follows `offline_policy` and `stale_acl_hours`.
+- For card-only doors, when the backend is not available the device follows `offline_policy`. An access list older than `stale_acl_hours` is always rejected (`acl_stale`), whether or not the backend is available.
+- Until PIN entry is implemented, doors with `requires_pin` deny card access (`offline_no_pin`).
+- With no access list loaded, all card access is denied.
 - A card not in the access list is denied locally (`acl_absent`) but the event is still sent.
 - Manual opening (key or switch): local alert and an `access-decision` event with `decision: "unknown"`, `source: "manual"`, `reason: "manual_open"`. If there is no power, it is not recorded.
 - Remote lockdown (`locked: true`): deny all access.
@@ -214,7 +219,7 @@ Result of a command.
 
 ### Event Queue
 
-- `events/*` and `response` are saved on the device and sent again after reconnecting. Retries are safe because the backend ignores repeated `id` values.
+- `events/*` and `response` are saved in `/outbox.json` on the microSD and sent again after reconnecting. Retries are safe because the backend ignores repeated `id` values.
 - `heartbeat` and `status` are not queued.
 
 ### Limits

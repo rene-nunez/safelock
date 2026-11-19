@@ -74,15 +74,15 @@ Formato de mensaje (todos los topics):
 
 - `id` duplicado se descarta. `ts` en segundos (UTC); si el reloj no es válido se marca `degraded`.
 - **PIN**: viaja en `events/pin-entry` dentro de TLS. El backend guarda `Argon2id(pin)` y aplica límites de intentos (bloqueo temporal tras 5 fallos).
-- **Sincronización**: snapshot completo (configuración + lista). El dispositivo lo guarda de forma atómica (archivo temporal en LittleFS y renombre). Si un UID no está en la lista, no tiene acceso.
-- **Cola local (outbox)**: `events/*` y `response` se guardan en LittleFS y se reenvían al reconectar (se descartan los más viejos si se llena). `heartbeat` y `status` no se encolan. El backend ignora `id` repetidos.
+- **Sincronización**: snapshot completo (configuración + lista). El dispositivo lo guarda de forma atómica en la microSD (`/acl.tmp` → `/acl.json`). Si un UID no está en la lista, no tiene acceso.
+- **Cola local (outbox)**: `events/*` y `response` se guardan en `/outbox.json` en la microSD y se reenvían al reconectar (se descartan los más viejos si se llena). `heartbeat` y `status` no se encolan. El backend ignora `id` repetidos.
 - **Comandos**: se envían solo si el dispositivo está online (`last_seen` < 90 s), llevan `expires_at` y no se reintentan. Sin `response`, la UI lo marca como fallido.
 
 ## Datos (MongoDB)
 
 | Colección | Campos clave | Índices |
 |---|---|---|
-| `devices` | `device_id`, `name`, `site`, `fw`, `last_seen`, `acl_version`, `last_sync_at`, `offline_policy`, `stale_acl_hours`, `unlock_ms`, `requires_pin`, `locked`, `location` (lat/lng) | `device_id` único |
+| `devices` | `device_id`, `name`, `site`, `fw`, `last_seen`, `acl_version` (versiones que reporta el dispositivo), `desired_acl_version`, `acl_hash`, `pending_sync_request_id`, `last_sync_request_at`, `last_sync_at`, `offline_policy`, `stale_acl_hours`, `unlock_ms`, `requires_pin`, `locked`, `location` (lat/lng) | `device_id` único |
 | `cardholders` | `name`, `email`, `unit`, `status` | `email` |
 | `credentials` | `holder_id`, `uid`, `status`, `valid_from/to`, `revoked_at`, `pin_hash` (Argon2id, opcional), `pin_fails`, `pin_locked_until` | `uid` único entre vigentes (`partialFilterExpression: {status: "active"}`), `holder_id` |
 | `enrollments` | `device_id`, `request_id`, `requested_by`, `created_at` | TTL 60 s |
@@ -129,7 +129,7 @@ Enrolamiento: `POST /enrollments` (TTL 60 s) → el dispositivo envía `events/c
 ## Firmware
 
 Pendientes, en orden:
-1. `outbox`: cola persistente en LittleFS con reenvío al reconectar.
+1. `outbox`: cola persistente en microSD con reenvío al reconectar.
 2. `acl`: lista de acceso + versión desde snapshot completo, guardado atómico.
 3. `lock`: control de cerradura y sensor de pestillo (ya hay base), apertura manual detectada por sensor, topes de seguridad.
 4. `display`: interfaz en OLED (sin mostrar cuántos dígitos tiene el PIN).

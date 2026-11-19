@@ -33,11 +33,13 @@ HELP = """\
 Commands:
   use <device_id>    Select the target device
   scan <UID>         Send an enrollment card scan
-  grant [UID]        Send a granted access decision
+  grant [UID]        Decide card access using the local access list
   deny [UID]         Send a denied access decision
   open               Simulate a remote unlock
   manual             Simulate a manual opening
   offline on|off     Simulate the backend being unavailable
+  stale on|off       Force the access list to look too old
+  acl                Print the local access list
   status             Republish the retained status
   help               Show this help
   quit               Exit
@@ -59,6 +61,9 @@ class DeviceState:
     online: bool = True
     firmware: str = DEFAULT_FIRMWARE
     acl_version: int = 0
+    has_acl: bool = False
+    stale: bool = False
+    acl_received_at: float = 0.0
     requires_pin: bool = False
     locked: bool = False
     lock: str = "locked"
@@ -280,10 +285,22 @@ class SimulatedDevice:
         if command == "scan":
             await self._scan(uid)
         elif command == "grant":
-            await self._publish_decision("granted", "acl_match", "card", uid)
-            await self._unlock(self.state.unlock_ms)
+            await self._card_access(uid)
         elif command == "deny":
             await self._publish_decision("denied", "acl_absent", "card", uid)
+        elif command == "acl":
+            print(
+                f"{self.device_id}: ACL v{self.state.acl_version}, "
+                f"{len(self.state.entries)} entries"
+            )
+            for entry in self.state.entries:
+                print(f"  {entry}")
+        elif command == "stale":
+            if argument not in {"on", "off"}:
+                print("Usage: stale on|off")
+                return
+            self.state.stale = argument == "on"
+            print(f"{self.device_id}: stale={self.state.stale}")
         elif command == "open":
             await self._publish_decision("granted", "remote", "remote", None)
             await self._unlock(self.state.unlock_ms)
@@ -299,6 +316,60 @@ class SimulatedDevice:
             await self._publish_status()
         else:
             print(f"{self.device_id}: unknown console command: {command}")
+
+    def _acl_age_s(self) -> int:
+        if not self.state.has_acl or self.state.acl_received_at == 0.0:
+            return 0
+        if self.state.stale:
+            return self.state.stale_acl_hours * 3600 + 1
+        return max(0, int(time.monotonic() - self.state.acl_received_at))
+
+    async def _card_access(self, uid: str) -> None:
+        normalized = uid.upper()
+        age_s = self._acl_age_s()
+
+        if self.state.locked:
+            reason = "door_locked"
+        elif self.state.requires_pin:
+            reason = "offline_no_pin"
+        elif not self.state.has_acl:
+            reason = "acl_absent"
+        elif age_s > self.state.stale_acl_hours * 3600:
+            reason = "acl_stale"
+        elif not self.state.online and self.state.offline_policy == "deny":
+            reason = "backend_unreachable"
+        else:
+            entry = next(
+                (
+                    item
+                    for item in self.state.entries
+                    if as_str(item.get("uid"), "").upper() == normalized
+                ),
+                None,
+            )
+            if entry is None or as_str(entry.get("status"), "") != "active":
+                reason = "acl_absent"
+            else:
+                now = int(time.time())
+                valid_from = as_int(entry.get("valid_from"), 0)
+                valid_to = entry.get("valid_to")
+                if valid_from > now:
+                    reason = "not_yet_valid"
+                elif isinstance(valid_to, int) and valid_to < now:
+                    reason = "expired"
+                else:
+                    reason = "acl_match"
+
+        granted = reason == "acl_match"
+        await self._publish_decision(
+            "granted" if granted else "denied",
+            reason,
+            "card",
+            normalized,
+            acl_age_s=age_s,
+        )
+        if granted:
+            await self._unlock(self.state.unlock_ms)
 
     async def _scan(self, uid: str) -> None:
         request_id = self.state.pending_enrollment
@@ -318,6 +389,8 @@ class SimulatedDevice:
         reason: str,
         source: str,
         uid: str | None,
+        *,
+        acl_age_s: int | None = None,
     ) -> None:
         data: JsonObject = {
             "decision": decision,
@@ -327,7 +400,7 @@ class SimulatedDevice:
         if uid is not None:
             data["uid"] = uid.upper()
             data["acl_version"] = self.state.acl_version
-            data["acl_age_s"] = 0
+            data["acl_age_s"] = self._acl_age_s() if acl_age_s is None else acl_age_s
             credential_id = self._credential_for(uid)
             if credential_id is not None:
                 data["credential_id"] = credential_id
@@ -358,7 +431,13 @@ class SimulatedDevice:
             self.state.entries = [
                 cast(JsonObject, entry) for entry in entries if isinstance(entry, dict)
             ]
-        print(f"{self.device_id}: access list synchronized")
+        self.state.has_acl = True
+        self.state.stale = False
+        self.state.acl_received_at = time.monotonic()
+        print(
+            f"{self.device_id}: access list synchronized "
+            f"v{self.state.acl_version} ({len(self.state.entries)} entries)"
+        )
 
     async def _unlock(self, duration_ms: int) -> None:
         self.state.lock = "unlocked"
