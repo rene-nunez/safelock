@@ -8,6 +8,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
   Card,
@@ -16,7 +17,9 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
+import { useAccessEvents } from '@/hooks/use-access-events'
 import { useDevices } from '@/hooks/use-devices'
+import { formatDateTime } from '@/lib/format'
 
 const DeviceMap = lazy(async () => {
   const module = await import('@/components/map/device-map')
@@ -50,12 +53,15 @@ function StatCard({ label, value, hint, icon: Icon }: StatCardProps) {
 export function DashboardPage() {
   const [fitRequest, setFitRequest] = useState(0)
   const devicesQuery = useDevices()
+  const eventsQuery = useAccessEvents({ limit: 5 })
   const devices = (devicesQuery.data ?? []).filter(
     (device) => device.status === 'active',
   )
   const online = devices.filter((device) => device.online).length
   const locked = devices.filter((device) => device.locked).length
   const hasLocations = devices.some((device) => device.location !== null)
+  const accessToday = eventsQuery.data?.today_count ?? 0
+  const recentEvents = eventsQuery.data?.items ?? []
 
   return (
     <div className="flex flex-col gap-4 lg:gap-6">
@@ -74,8 +80,8 @@ export function DashboardPage() {
         />
         <StatCard
           label="Access today"
-          value="—"
-          hint="No events yet"
+          value={`${accessToday}`}
+          hint="Access decisions reported"
           icon={Activity}
         />
         <StatCard
@@ -121,10 +127,40 @@ export function DashboardPage() {
             <CardTitle>Recent activity</CardTitle>
             <CardDescription>Last access decisions.</CardDescription>
           </CardHeader>
-          <CardContent className="flex flex-1 items-center justify-center pb-6">
-            <p className="max-w-[16rem] text-center text-sm text-muted-foreground">
-              No access events yet.
-            </p>
+          <CardContent className="flex flex-1 flex-col gap-3 pb-6">
+            {recentEvents.length === 0 ? (
+              <p className="py-6 text-center text-sm text-muted-foreground">
+                No access events yet.
+              </p>
+            ) : (
+              recentEvents.map((event) => (
+                <div
+                  key={event.id}
+                  className="flex items-start justify-between gap-3 border-b border-border/60 pb-2 last:border-0 last:pb-0"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate text-sm">
+                      {devices.find((device) => device.device_id === event.device_id)
+                        ?.name ?? event.device_id}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {formatDateTime(event.ts)} · {event.reason}
+                    </p>
+                  </div>
+                  <Badge
+                    variant={
+                      event.decision === 'granted'
+                        ? 'success'
+                        : event.decision === 'denied'
+                          ? 'danger'
+                          : 'muted'
+                    }
+                  >
+                    {event.decision}
+                  </Badge>
+                </div>
+              ))
+            )}
           </CardContent>
         </Card>
       </section>

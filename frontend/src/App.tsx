@@ -4,13 +4,13 @@ import { AuthProvider } from '@/components/auth/auth-provider'
 import { RequireAdmin } from '@/components/auth/require-admin'
 import { RequireAuth } from '@/components/auth/require-auth'
 import { AppShell } from '@/components/layout/app-shell'
+import { ActivityPage } from '@/pages/activity'
 import { AuditPage } from '@/pages/audit'
 import { CardholdersPage } from '@/pages/cardholders'
 import { DashboardPage } from '@/pages/dashboard'
 import { DevicesPage } from '@/pages/devices'
 import { LoginPage } from '@/pages/login'
 import { NotFoundPage } from '@/pages/not-found'
-import { PlaceholderPage } from '@/pages/placeholder'
 import { UsersPage } from '@/pages/users'
 
 export default function App() {
@@ -24,15 +24,7 @@ export default function App() {
               <Route index element={<DashboardPage />} />
               <Route path="cardholders" element={<CardholdersPage />} />
               <Route path="devices" element={<DevicesPage />} />
-              <Route
-                path="activity"
-                element={
-                  <PlaceholderPage
-                    title="Activity"
-                    description="Every access decision reported by the devices."
-                  />
-                }
-              />
+              <Route path="activity" element={<ActivityPage />} />
               <Route
                 path="audit"
                 element={

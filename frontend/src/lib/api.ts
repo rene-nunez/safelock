@@ -64,6 +64,7 @@ export type Device = {
   unlock_ms: number
   requires_pin: boolean
   locked: boolean
+  lock: 'locked' | 'unlocked' | null
   status: DeviceStatus
   location: DeviceLocation | null
   created_at: string
@@ -91,6 +92,38 @@ export type AuditLogPage = {
   total: number
   limit: number
   offset: number
+}
+
+export type AccessDecision = 'granted' | 'denied' | 'unknown'
+export type AccessSource = 'card' | 'pin' | 'remote' | 'manual'
+
+export type AccessEvent = {
+  id: string
+  device_id: string
+  ts: string
+  uid: string | null
+  credential_id: string | null
+  decision: AccessDecision
+  reason: string
+  source: AccessSource
+  acl_version: number | null
+  acl_age_s: number | null
+  degraded: boolean
+  created_at: string
+}
+
+export type AccessEventPage = {
+  items: AccessEvent[]
+  total: number
+  today_count: number
+  limit: number
+  offset: number
+}
+
+export type AccessEventQuery = {
+  limit?: number
+  offset?: number
+  deviceId?: string
 }
 
 export class ApiError extends Error {
@@ -341,6 +374,17 @@ export function updateDevice(
 
 export function deleteDevice(id: string): Promise<void> {
   return request<void>(`/devices/${id}`, { method: 'DELETE' })
+}
+
+export function listAccessEvents(
+  query: AccessEventQuery = {},
+): Promise<AccessEventPage> {
+  const params = new URLSearchParams()
+  if (query.limit !== undefined) params.set('limit', String(query.limit))
+  if (query.offset !== undefined) params.set('offset', String(query.offset))
+  if (query.deviceId) params.set('device_id', query.deviceId)
+  const suffix = params.size > 0 ? `?${params.toString()}` : ''
+  return request<AccessEventPage>(`/access-events${suffix}`)
 }
 
 export type AuditLogQuery = {
