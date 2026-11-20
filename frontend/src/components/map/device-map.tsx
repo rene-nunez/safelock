@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import L from 'leaflet'
 import { MapPin } from 'lucide-react'
 import { Link } from 'react-router-dom'
@@ -31,24 +31,30 @@ function FitDevices({
   fitRequest: number
 }) {
   const map = useMap()
+  const points = devices.flatMap((device) =>
+    device.location
+      ? [[device.location.lat, device.location.lng] as [number, number]]
+      : [],
+  )
+  const locationsKey = points.map(([lat, lng]) => `${lat},${lng}`).join(';')
+  const pointsRef = useRef(points)
 
   useEffect(() => {
-    const points = devices.flatMap((device) =>
-      device.location
-        ? [[device.location.lat, device.location.lng] as [number, number]]
-        : [],
-    )
+    pointsRef.current = points
+  })
 
-    if (points.length === 0) return
-    if (points.length === 1) {
-      map.setView(points[0], 13)
+  useEffect(() => {
+    const latestPoints = pointsRef.current
+    if (latestPoints.length === 0) return
+    if (latestPoints.length === 1) {
+      map.setView(latestPoints[0], 13)
       return
     }
-    map.fitBounds(L.latLngBounds(points), {
+    map.fitBounds(L.latLngBounds(latestPoints), {
       padding: [48, 48],
       maxZoom: 13,
     })
-  }, [devices, fitRequest, map])
+  }, [locationsKey, fitRequest, map])
 
   return null
 }

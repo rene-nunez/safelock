@@ -13,8 +13,8 @@ import {
 import { ATTRIBUTION, TILE_URL, pinIcon } from './map-config'
 import type { DeviceLocation } from '@/lib/api'
 
-const DEFAULT_CENTER: [number, number] = [-33.4489, -70.6693]
-const DEFAULT_ZOOM = 12
+const DEFAULT_CENTER: [number, number] = [37.422, -122.0841]
+const DEFAULT_ZOOM = 13
 const PICKED_ZOOM = 14
 
 function roundCoordinate(value: number): number {
