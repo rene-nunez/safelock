@@ -33,7 +33,8 @@ bool Clock::is_valid() { return ready && rtc.isrunning(); }
 void Clock::sync_from_epoch(time_t epoch) {
   if (!ready) return;
 
-  // The RTC may hold the compile time from a previous boot; correct it once network time is available instead of trusting that value.
+  // The RTC may hold the compile time from a previous boot;
+  // correct it once network time is available instead of trusting that value.
   const long drift = static_cast<long>(epoch) - static_cast<long>(rtc.now().unixtime());
   if (drift >= -5 && drift <= 5) return;
 

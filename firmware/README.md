@@ -1,8 +1,8 @@
-# Firmware Setup
+# Firmware setup
 
 Before flashing, replace the broker values and the placeholder CA in `include/mqtt_config.h` with the real deployment values. The CA is public; only the broker private key must stay private. `setInsecure()` is never used.
 
-## First Boot
+## First boot
 
 Open the serial monitor at 115200 baud and send one line:
 

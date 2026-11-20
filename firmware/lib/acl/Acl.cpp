@@ -11,9 +11,7 @@ time_t optional_epoch(JsonVariantConst value) {
 
 Acl::Acl(Storage &storage) : storage(storage) {}
 
-bool Acl::parse(
-  const JsonObject &data, bool persist, bool clock_valid, time_t now
-) {
+bool Acl::parse(const JsonObject &data, bool persist, bool clock_valid, time_t now) {
   if (!data["acl_version"].is<int>()) return false;
   if (!data["entries"].is<JsonArray>()) return false;
 
@@ -39,12 +37,14 @@ bool Acl::parse(
     entry.valid_from = optional_epoch(item["valid_from"]);
     entry.valid_to = optional_epoch(item["valid_to"]);
     if (entry.uid.length() == 0 || entry.credential_id.length() == 0) return false;
+
     staged.push_back(entry);
   }
 
-  // A restored snapshot keeps its original receive time: stale detection must
-  // survive a reboot. A fresh snapshot starts the age counter from the RTC.
+  // A restored snapshot keeps its original receive time: stale detection must survive a reboot.
+  // A fresh snapshot starts the age counter from the RTC.
   time_t new_received = 0;
+
   if (persist) {
     new_received = (clock_valid && now > 0) ? now : 0;
   } else if (data["received_at"].is<uint64_t>()) {
@@ -115,9 +115,7 @@ bool Acl::apply(const JsonObject &data, bool clock_valid, time_t now) {
   return parse(data, true, clock_valid, now);
 }
 
-AclDecision Acl::evaluate(
-  const String &uid, bool clock_valid, time_t now, bool backend_available
-) const {
+AclDecision Acl::evaluate(const String &uid, bool clock_valid, time_t now, bool backend_available) const {
   if (locked) return {"denied", "door_locked"};
   if (requires_pin) return {"denied", "offline_no_pin"};
   if (!loaded) return {"denied", "acl_absent"};
@@ -163,15 +161,9 @@ uint32_t Acl::age_s(bool clock_valid, time_t now) const {
 }
 
 bool Acl::is_loaded() const { return loaded; }
-
 uint32_t Acl::get_version() const { return version; }
-
 bool Acl::get_requires_pin() const { return requires_pin; }
-
 bool Acl::get_locked() const { return locked; }
-
 const String &Acl::get_policy() const { return policy; }
-
 uint16_t Acl::get_stale_hours() const { return stale_hours; }
-
 uint16_t Acl::get_unlock_ms() const { return unlock_duration; }
