@@ -1,8 +1,8 @@
 import {
   Activity,
   ClipboardList,
-  Contact,
   Cpu,
+  IdCard,
   LayoutDashboard,
   Users,
   type LucideIcon,
@@ -29,7 +29,7 @@ export const NAV_ITEMS: NavItem[] = [
     to: '/cardholders',
     label: 'Cardholders',
     description: 'Monitor cardholders and access credentials.',
-    icon: Contact,
+    icon: IdCard,
   },
   {
     to: '/devices',
