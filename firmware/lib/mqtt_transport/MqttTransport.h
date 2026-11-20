@@ -51,6 +51,7 @@ class MqttTransport {
     std::vector<uint16_t> pending_acks;
 
     String uuid4() const;
+    String envelope(const JsonObject &data) const;
     String status_payload(bool online);
     void publish_status();
     void publish_heartbeat();

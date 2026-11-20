@@ -54,12 +54,24 @@ String MqttTransport::uuid4() const {
   return String(output);
 }
 
-String MqttTransport::status_payload(bool online) {
+String MqttTransport::envelope(const JsonObject &data) const {
   JsonDocument document;
   document["id"] = uuid4();
   document["ts"] = clock.is_valid() ? static_cast<uint64_t>(time(nullptr)) : 0;
   document["device_id"] = device_id;
 
+  JsonObject target = document["data"].to<JsonObject>();
+  for (JsonPair pair : data) {
+    target[pair.key()] = pair.value();
+  }
+
+  String payload;
+  serializeJson(document, payload);
+  return payload;
+}
+
+String MqttTransport::status_payload(bool online) {
+  JsonDocument document;
   JsonObject data = document["data"].to<JsonObject>();
   data["online"] = online;
   if (online) {
@@ -71,9 +83,7 @@ String MqttTransport::status_payload(bool online) {
     data["lock"] = lock.is_closed() ? "locked" : "unlocked";
   }
 
-  String payload;
-  serializeJson(document, payload);
-  return payload;
+  return envelope(data);
 }
 
 void MqttTransport::begin() {
@@ -210,37 +220,19 @@ uint16_t MqttTransport::publish_queued(
 bool MqttTransport::publish_event(
   const char *suffix, const JsonObject &data, uint8_t qos
 ) {
-  JsonDocument document;
-  document["id"] = uuid4();
-  document["ts"] = clock.is_valid() ? static_cast<uint64_t>(time(nullptr)) : 0;
-  document["device_id"] = device_id;
-
-  JsonObject target = document["data"].to<JsonObject>();
-  for (JsonPair pair : data) {
-    target[pair.key()] = pair.value();
-  }
-
-  String payload;
-  serializeJson(document, payload);
-  return outbox.enqueue(event_topic_prefix + suffix, payload, qos);
+  return outbox.enqueue(event_topic_prefix + suffix, envelope(data), qos);
 }
 
 bool MqttTransport::publish_response(
   const String &request_id, const char *result, const char *reason
 ) {
   JsonDocument document;
-  document["id"] = uuid4();
-  document["ts"] = clock.is_valid() ? static_cast<uint64_t>(time(nullptr)) : 0;
-  document["device_id"] = device_id;
-
   JsonObject data = document["data"].to<JsonObject>();
   data["request_id"] = request_id;
   data["result"] = result;
   if (reason != nullptr) data["reason"] = reason;
 
-  String payload;
-  serializeJson(document, payload);
-  return outbox.enqueue(response_topic, payload, MQTT_QOS1);
+  return outbox.enqueue(response_topic, envelope(data), MQTT_QOS1);
 }
 
 void MqttTransport::handle_command_payload(
@@ -301,18 +293,13 @@ void MqttTransport::publish_status() {
 
 void MqttTransport::publish_heartbeat() {
   JsonDocument document;
-  document["id"] = uuid4();
-  document["ts"] = clock.is_valid() ? static_cast<uint64_t>(time(nullptr)) : 0;
-  document["device_id"] = device_id;
-
   JsonObject data = document["data"].to<JsonObject>();
   data["uptime_s"] = millis() / 1000;
   data["rssi"] = net.rssi();
   data["rtc_valid"] = clock.is_valid();
   data["free_heap"] = ESP.getFreeHeap();
 
-  String payload;
-  serializeJson(document, payload);
+  const String payload = envelope(data);
   if (client.publish(heartbeat_topic.c_str(), MQTT_QOS0, false, payload.c_str()) == 0) {
     Serial.println("MQTT heartbeat publish failed");
   }
