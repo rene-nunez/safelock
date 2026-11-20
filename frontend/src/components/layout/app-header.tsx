@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Cpu, Lock, LogOut, Menu, type LucideIcon } from 'lucide-react'
 import { Link, useLocation } from 'react-router-dom'
 
@@ -47,17 +47,42 @@ function PageHeading({ onOpenMenu }: { onOpenMenu: () => void }) {
   )
 }
 
+type StatusChipProps = {
+  title: string
+  children: ReactNode
+  to?: string
+  className?: string
+}
+
+function StatusChip({ title, children, to, className }: StatusChipProps) {
+  const classes = cn(
+    'inline-flex items-center gap-1.5 rounded-full border border-border px-2 py-1 text-xs text-muted-foreground sm:px-3',
+    to && 'transition-colors hover:bg-accent hover:text-accent-foreground',
+    className,
+  )
+
+  if (to) {
+    return (
+      <Link to={to} title={title} aria-label={title} className={classes}>
+        {children}
+      </Link>
+    )
+  }
+
+  return (
+    <span title={title} className={cn(classes, 'cursor-default select-none')}>
+      {children}
+    </span>
+  )
+}
+
 function SystemStatus({ status }: { status: SystemStatusInfo }) {
   const { apiOnline, apiConnecting, devices } = status
   const apiLabel = apiOnline ? 'Online' : apiConnecting ? 'Connecting…' : 'Offline'
 
   return (
-    <Link
-      to="/devices"
-      aria-label={`System ${apiLabel}. ${devices.online} of ${devices.total} devices online. ${devices.locked} locked.`}
-      className="flex items-center gap-2 rounded-full border border-border px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground sm:px-3"
-    >
-      <span className="inline-flex items-center gap-1.5" title={`System ${apiLabel}`}>
+    <>
+      <StatusChip title={`System ${apiLabel.toLowerCase()}`}>
         <span
           className={cn(
             'size-2 rounded-full',
@@ -69,30 +94,29 @@ function SystemStatus({ status }: { status: SystemStatusInfo }) {
           )}
         />
         <span className="hidden sm:inline">{apiLabel}</span>
-      </span>
-      <span className="hidden h-3 w-px bg-border md:block" />
-      <span
-        className="hidden items-center gap-1.5 md:inline-flex"
-        title="Devices Online"
+        <span className="sr-only sm:hidden">{apiLabel}</span>
+      </StatusChip>
+      <StatusChip
+        to="/devices"
+        title={`${devices.online} of ${devices.total} devices online`}
+        className="hidden md:inline-flex"
       >
         <Cpu className="size-3.5" />
-        <span className="tabular-nums">{devices.online}/{devices.total}</span>
-      </span>
-      {devices.locked > 0 ? (
-        <>
-          <span className="hidden h-3 w-px bg-border md:block" />
-          <span
-            className="hidden items-center gap-1.5 text-muted-foreground md:inline-flex"
-            title="Doors Locked"
-          >
-            <Lock className="size-3.5" />
-            <span className="tabular-nums">
-              {devices.locked}/{devices.total}
-            </span>
-          </span>
-        </>
-      ) : null}
-    </Link>
+        <span className="tabular-nums">
+          {devices.online}/{devices.total}
+        </span>
+      </StatusChip>
+      <StatusChip
+        to="/devices"
+        title={`${devices.locked} of ${devices.total} doors locked`}
+        className="hidden md:inline-flex"
+      >
+        <Lock className="size-3.5" />
+        <span className="tabular-nums">
+          {devices.locked}/{devices.total}
+        </span>
+      </StatusChip>
+    </>
   )
 }
 
