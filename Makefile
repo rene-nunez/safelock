@@ -6,7 +6,7 @@ PYTEST := $(if $(wildcard $(VENV)/bin/pytest),$(VENV)/bin/pytest,pytest)
 RUFF := $(if $(wildcard $(VENV)/bin/ruff),$(VENV)/bin/ruff,ruff)
 MYPY := $(if $(wildcard $(VENV)/bin/mypy),$(VENV)/bin/mypy,mypy)
 
-.PHONY: help venv api create-user seed-demo seed-demo-reset firmware monitor simulator test lint format frontend typecheck mqtt-restart
+.PHONY: help venv backend create-user seed-demo seed-demo-reset firmware monitor simulator test lint format frontend typecheck mqtt-restart
 
 help: ## Help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-14s\033[0m %s\n", $$1, $$2}'
@@ -15,7 +15,7 @@ venv: ## Create backend venv
 	python3 -m venv $(VENV)
 	$(VENV)/bin/pip install -e 'backend[dev]'
 
-api: ## Run backend API
+backend: ## Run backend API
 	$(PYTHON) -m uvicorn app.main:app --reload --app-dir backend
 
 create-user: ## Create an account (admin by default)

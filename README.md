@@ -46,7 +46,7 @@ Set up the backend environment and run the API:
 
 ```bash
 make venv
-make api
+make backend
 ```
 
 Create an account before signing in (administrator by default):
