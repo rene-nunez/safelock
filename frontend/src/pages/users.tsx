@@ -81,7 +81,6 @@ export function UsersPage() {
   const queryClient = useQueryClient()
   const [createOpen, setCreateOpen] = useState(false)
   const [selectedId, setSelectedId] = useState<string | null>(null)
-  const [confirmDeactivate, setConfirmDeactivate] = useState(false)
   const [success, setSuccess] = useState<{
     message: string
     area: NoticeArea
@@ -108,7 +107,6 @@ export function UsersPage() {
   function closeDetail() {
     setSuccess(null)
     resetEditForm()
-    setConfirmDeactivate(false)
     updateMutation.reset()
     setSelectedId(null)
   }
@@ -140,7 +138,6 @@ export function UsersPage() {
     onMutate: () => setSuccess(null),
     onSuccess: (user, { input }) => {
       resetEditForm(user)
-      setConfirmDeactivate(false)
       showSuccess(updateMessage(input), 'detail')
       void queryClient.invalidateQueries({ queryKey: ['users'] })
     },
@@ -148,7 +145,6 @@ export function UsersPage() {
 
   useEffect(() => {
     resetEditForm(selected ?? undefined)
-    setConfirmDeactivate(false)
     updateMutation.reset()
     // Reset only when switching users, not after a background refetch.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -405,34 +401,22 @@ export function UsersPage() {
                     Save changes
                   </Button>
                   {editableUser.active ? (
-                    confirmDeactivate ? (
-                      <>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          onClick={() => setConfirmDeactivate(false)}
-                        >
-                          Cancel
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="destructive"
-                          disabled={updateMutation.isPending}
-                          onClick={() => setActive(false)}
-                        >
-                          Confirm deactivation
-                        </Button>
-                      </>
-                    ) : (
-                      <Button
-                        type="button"
-                        variant="destructive"
-                        disabled={updateMutation.isPending}
-                        onClick={() => setConfirmDeactivate(true)}
-                      >
-                        Deactivate
-                      </Button>
-                    )
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      disabled={updateMutation.isPending}
+                      onClick={() => {
+                        if (
+                          window.confirm(
+                            `Deactivate ${editableUser.email}? Their sessions will be invalidated.`,
+                          )
+                        ) {
+                          setActive(false)
+                        }
+                      }}
+                    >
+                      Deactivate
+                    </Button>
                   ) : (
                     <Button
                       type="button"
