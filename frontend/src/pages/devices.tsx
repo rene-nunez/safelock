@@ -8,7 +8,7 @@ import {
 } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ChevronRight, Plus, RefreshCw, X } from 'lucide-react'
+import { ChevronRight, Lock, LockOpen, Plus, RefreshCw, X } from 'lucide-react'
 import { useForm, useWatch } from 'react-hook-form'
 import { useSearchParams } from 'react-router-dom'
 import { z } from 'zod'
@@ -657,6 +657,11 @@ export function DevicesPage() {
                     <Button
                       variant={selected.locked ? 'secondary' : 'danger'}
                       size="sm"
+                      title={
+                        selected.locked
+                          ? 'Allow access again'
+                          : 'Deny all access while enabled'
+                      }
                       disabled={updateMutation.isPending}
                       onClick={() =>
                         updateMutation.mutate({
@@ -665,9 +670,14 @@ export function DevicesPage() {
                         })
                       }
                     >
+                      {selected.locked ? (
+                        <LockOpen className="size-4" />
+                      ) : (
+                        <Lock className="size-4" />
+                      )}
                       {selected.locked
-                        ? 'Remove remote lock'
-                        : 'Lock remotely'}
+                        ? 'Disable remote lock'
+                        : 'Enable remote lock'}
                     </Button>
                     {isAdmin ? (
                       <Button
