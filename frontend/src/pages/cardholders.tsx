@@ -542,12 +542,7 @@ export function CardholdersPage() {
                     <Input type="email" {...editForm.register('email')} />
                   </FormField>
                   <div className="sm:col-span-2">
-                    <h3 className="text-sm font-medium">
-                      Cardholder state
-                      <span className="ml-2 text-xs font-normal text-muted-foreground">
-                        deactivating revokes all cards
-                      </span>
-                    </h3>
+                    <h3 className="text-sm font-medium">Cardholder state</h3>
                   </div>
                   <FormActions className="sm:col-span-2">
                     <Button
