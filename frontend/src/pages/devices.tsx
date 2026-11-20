@@ -305,7 +305,7 @@ export function DevicesPage() {
     onSuccess: (updated, { input }) => {
       if ('locked' in input) {
         showSuccess(
-          input.locked ? 'Remote lock enabled.' : 'Remote lock removed.',
+          input.locked ? 'Remote lock enabled.' : 'Remote lock disabled.',
           'detail',
         )
       } else if ('status' in input) {
@@ -317,7 +317,7 @@ export function DevicesPage() {
         showSuccess(
           input.requires_pin
             ? 'PIN requirement enabled.'
-            : 'PIN requirement removed.',
+            : 'PIN requirement disabled.',
           'detail',
         )
       } else {
