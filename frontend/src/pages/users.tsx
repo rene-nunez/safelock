@@ -395,30 +395,33 @@ export function UsersPage() {
                     {...editForm.register('password')}
                   />
                 </FormField>
-                <FormActions className="sm:col-span-2">
-                  <Button
-                    type="submit"
-                    disabled={
-                      updateMutation.isPending || !editForm.formState.isDirty
-                    }
-                  >
-                    Save changes
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    disabled={
-                      updateMutation.isPending || !editForm.formState.isDirty
-                    }
-                    onClick={() => {
-                      resetEditForm(selected ?? undefined)
-                      updateMutation.reset()
-                      setSuccess(null)
-                    }}
-                  >
-                    Revert changes
-                  </Button>
-                  {confirmDeactivate ? (
+                <div className="flex flex-col gap-2 sm:col-span-2">
+                  <FormActions className="sm:justify-between">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      disabled={
+                        updateMutation.isPending || !editForm.formState.isDirty
+                      }
+                      onClick={() => {
+                        resetEditForm(selected ?? undefined)
+                        updateMutation.reset()
+                        setSuccess(null)
+                      }}
+                    >
+                      Revert changes
+                    </Button>
+                    <Button
+                      type="submit"
+                      disabled={
+                        updateMutation.isPending || !editForm.formState.isDirty
+                      }
+                    >
+                      Save changes
+                    </Button>
+                  </FormActions>
+                  <FormActions>
+                    {confirmDeactivate ? (
                     <>
                       <Button
                         type="button"
@@ -455,7 +458,8 @@ export function UsersPage() {
                       Activate
                     </Button>
                   )}
-                </FormActions>
+                  </FormActions>
+                </div>
               </form>
             )}
           </CardContent>

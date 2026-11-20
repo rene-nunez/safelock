@@ -864,13 +864,7 @@ export function DevicesPage() {
                         success?.area === 'settings' ? success.message : null
                       }
                     />
-                    <FormActions className="mt-4">
-                      <Button
-                        type="submit"
-                        disabled={updateMutation.isPending}
-                      >
-                        Save settings
-                      </Button>
+                    <FormActions className="mt-4 sm:justify-between">
                       <Button
                         type="button"
                         variant="ghost"
@@ -885,6 +879,12 @@ export function DevicesPage() {
                         }}
                       >
                         Revert changes
+                      </Button>
+                      <Button
+                        type="submit"
+                        disabled={updateMutation.isPending}
+                      >
+                        Save settings
                       </Button>
                     </FormActions>
                   </form>
