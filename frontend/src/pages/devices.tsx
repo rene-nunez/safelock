@@ -161,9 +161,9 @@ function StatusTile({ label, children }: { label: string; children: ReactNode })
 
 function StatusRow({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 py-2 text-xs first:pt-0 last:pb-0">
-      <dt className="text-muted-foreground">{label}</dt>
-      <dd className="text-right">{children}</dd>
+    <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1.5 py-2.5 first:pt-3 last:pb-3">
+      <dt className="text-xs text-muted-foreground">{label}</dt>
+      <dd className="min-w-0 text-right text-sm">{children}</dd>
     </div>
   )
 }
@@ -593,11 +593,6 @@ export function DevicesPage() {
               <CardTitle className="break-words leading-snug">
                 {selected ? selected.name : 'Select a device'}
               </CardTitle>
-              {selected ? (
-                <p className="font-mono text-xs text-muted-foreground">
-                  {selected.device_id}
-                </p>
-              ) : null}
             </div>
             {selected ? (
               <Button
@@ -622,11 +617,19 @@ export function DevicesPage() {
             {selected ? (
               <div className="flex flex-col gap-6">
                 <section aria-label="Device status">
-                  <dl className="divide-y divide-border">
-                    <StatusRow label="Connectivity">
+                  <dl className="divide-y divide-border rounded-lg border border-border px-4">
+                    <StatusRow label="Connection">
                       <Badge variant={selected.online ? 'success' : 'muted'}>
                         {selected.online ? 'Online' : 'Offline'}
                       </Badge>
+                    </StatusRow>
+                    <StatusRow label="Device ID">
+                      <span className="break-all font-mono">
+                        {selected.device_id}
+                      </span>
+                    </StatusRow>
+                    <StatusRow label="Firmware">
+                      <span className="font-mono">{selected.fw ?? 'Unknown'}</span>
                     </StatusRow>
                     <StatusRow label="Last seen">
                       <span className="text-muted-foreground">
@@ -634,9 +637,6 @@ export function DevicesPage() {
                           ? formatDateTime(selected.last_seen)
                           : 'Never connected'}
                       </span>
-                    </StatusRow>
-                    <StatusRow label="Firmware">
-                      <span className="font-mono">{selected.fw ?? 'Unknown'}</span>
                     </StatusRow>
                     <StatusRow label="Access list">
                       <span className="text-muted-foreground">
