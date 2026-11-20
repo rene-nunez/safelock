@@ -128,7 +128,7 @@ Enrolamiento: `POST /enrollments` (TTL 60 s) → el dispositivo envía `events/c
 
 ## Firmware
 
-Ya están `net`, `mqtt_transport`, `settings`, `storage`, `acl` (`lib/acl`), `outbox` (`lib/outbox`, clase `LocalOutbox`, porque `espMqttClient` ya define `Outbox`), `lock`, `display` y `Tasks` (ver `firmware/README.md`). El firmware usa `espMqttClient` (MQTT 3.1.1, TLS y QoS 1): `status` y LWT son retenidos a QoS 1, `heartbeat` va a QoS 0 y `events/*`/`response` van a QoS 1. `espMqttClient` no persiste los paquetes QoS 1 pendientes al reiniciar; la cola local cubre ese vacío.
+Ya están `net`, `mqtt_transport`, `settings`, `storage`, `acl` (`lib/acl`), `outbox` (`lib/outbox`), `lock`, `display` y `Tasks` (ver `firmware/README.md`). El firmware usa `espMqttClient` (MQTT 3.1.1, TLS y QoS 1): `status` y LWT son retenidos a QoS 1, `heartbeat` va a QoS 0 y `events/*`/`response` van a QoS 1. `espMqttClient` no persiste los paquetes QoS 1 pendientes al reiniciar; la cola local cubre ese vacío.
 
 Pendientes para el hito 4: comandos `unlock` y `enroll`, y PIN validado por el backend (el teclado hoy solo se drena, sin contraseña local).
 
@@ -156,7 +156,7 @@ Variables de entorno del backend: `MQTT_URL`, `MQTT_TLS`, `MQTT_CA_PATH`, `MQTT_
 - `.editorconfig`: UTF-8, LF, espacios, 2 de indentación (Python 4). Makefile con tab.
 - Commits en inglés (`feat:`, `fix:`, `chore:`, `docs:`). Mensajes al usuario en español.
 - Código e identificadores en inglés. Comentarios solo cuando el "por qué" no sea obvio.
-- Clases en PascalCase con el nombre de su header. Variables y funciones en `snake_case`.
+- Clases en PascalCase con el nombre de su header, incluidas las siglas (`Rfid`, `Acl`, `MqttTransport`). Variables y funciones en `snake_case`.
 - `device_id`: formato `sl-0001`. UID de tarjeta: `AA:BB:CC:DD` en mayúsculas.
 - El nombre del proyecto se escribe **Safelock**, no `SafeLock`.
 - **Nunca** commitear secretos, `.env`, certificados privados ni `credentials.md`.

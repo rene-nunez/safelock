@@ -18,7 +18,7 @@ struct OutboxEntry {
   uint8_t qos;
 };
 
-class LocalOutbox {
+class Outbox {
   private:
     Storage &storage;
     std::vector<OutboxEntry> entries;
@@ -28,7 +28,7 @@ class LocalOutbox {
     bool persist();
 
   public:
-    explicit LocalOutbox(Storage &storage);
+    explicit Outbox(Storage &storage);
 
     bool begin();
     bool enqueue(const String &topic, const String &payload, uint8_t qos);

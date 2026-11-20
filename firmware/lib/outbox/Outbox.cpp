@@ -1,12 +1,12 @@
-#include "LocalOutbox.h"
+#include "Outbox.h"
 
 #include <ArduinoJson.h>
 
 #include <MqttTransport.h>
 
-LocalOutbox::LocalOutbox(Storage &storage) : storage(storage) {}
+Outbox::Outbox(Storage &storage) : storage(storage) {}
 
-bool LocalOutbox::begin() {
+bool Outbox::begin() {
   if (!storage.is_ready()) return false;
 
   std::vector<String> lines;
@@ -32,7 +32,7 @@ bool LocalOutbox::begin() {
   return true;
 }
 
-bool LocalOutbox::persist() {
+bool Outbox::persist() {
   String payload;
   for (const OutboxEntry &entry : entries) {
     JsonDocument document;
@@ -46,7 +46,7 @@ bool LocalOutbox::persist() {
   return storage.write_file(OUTBOX_FILE, payload);
 }
 
-bool LocalOutbox::enqueue(const String &topic, const String &payload, uint8_t qos) {
+bool Outbox::enqueue(const String &topic, const String &payload, uint8_t qos) {
   while (entries.size() >= OUTBOX_MAX_ENTRIES) {
     entries.erase(entries.begin());
   }
@@ -65,7 +65,7 @@ bool LocalOutbox::enqueue(const String &topic, const String &payload, uint8_t qo
   return true;
 }
 
-void LocalOutbox::flush(MqttTransport &mqtt) {
+void Outbox::flush(MqttTransport &mqtt) {
   for (const OutboxEntry &entry : entries) {
     bool already_sent = false;
     for (const auto &pending : in_flight) {
@@ -83,7 +83,7 @@ void LocalOutbox::flush(MqttTransport &mqtt) {
   }
 }
 
-void LocalOutbox::confirm_publish(uint16_t token) {
+void Outbox::confirm_publish(uint16_t token) {
   const auto pending = in_flight.find(token);
   if (pending == in_flight.end()) return;
 
@@ -99,6 +99,6 @@ void LocalOutbox::confirm_publish(uint16_t token) {
   }
 }
 
-void LocalOutbox::reset_in_flight() {
+void Outbox::reset_in_flight() {
   in_flight.clear();
 }

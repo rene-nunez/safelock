@@ -10,7 +10,8 @@
 #include <Settings.h>
 #include <Net.h>
 #include <Acl.h>
-#include <LocalOutbox.h>
+// Relative path: <Outbox.h> resolves to the one in espMqttClient's libdeps.
+#include "../outbox/Outbox.h"
 #include <MqttTransport.h>
 #include <Tasks.h>
 
@@ -28,7 +29,7 @@ class Device {
     Indicators indicators;
 
     Acl acl;
-    LocalOutbox outbox;
+    Outbox outbox;
     MqttTransport mqtt;
 
     // Must stay last: it holds references to all the members above

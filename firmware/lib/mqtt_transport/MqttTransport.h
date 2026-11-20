@@ -12,7 +12,8 @@
 #include <Clock.h>
 #include <Lock.h>
 #include <Net.h>
-#include <LocalOutbox.h>
+// Relative path: <Outbox.h> resolves to the one in espMqttClient's libdeps.
+#include "../outbox/Outbox.h"
 #include <Settings.h>
 
 #include "mqtt_config.h"
@@ -24,7 +25,7 @@ class MqttTransport {
     Clock &clock;
     Lock &lock;
     Acl &acl;
-    LocalOutbox &outbox;
+    Outbox &outbox;
 
     espMqttClientSecure client;
 
@@ -64,7 +65,7 @@ class MqttTransport {
       Clock &clock,
       Lock &lock,
       Acl &acl,
-      LocalOutbox &outbox
+      Outbox &outbox
     );
 
     void begin();

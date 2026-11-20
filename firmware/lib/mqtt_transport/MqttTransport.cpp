@@ -24,7 +24,7 @@ MqttTransport::MqttTransport(
   Clock &clock,
   Lock &lock,
   Acl &acl,
-  LocalOutbox &outbox
+  Outbox &outbox
 )
   : settings(settings),
     net(net),
