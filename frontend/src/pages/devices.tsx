@@ -719,7 +719,9 @@ export function DevicesPage() {
                           {selected.requires_pin ? 'Remove PIN' : 'Require PIN'}
                         </Button>
                         <Button
-                          variant="outline"
+                          variant={
+                            selected.status === 'active' ? 'outline' : 'secondary'
+                          }
                           size="sm"
                           disabled={updateMutation.isPending}
                           onClick={() =>

@@ -556,6 +556,7 @@ export function CardholdersPage() {
                       <Button
                         type="button"
                         variant="danger"
+                        className="sm:min-w-56"
                         disabled={updateMutation.isPending}
                         onClick={() =>
                           updateMutation.mutate({
@@ -570,6 +571,7 @@ export function CardholdersPage() {
                       <Button
                         type="button"
                         variant="secondary"
+                        className="sm:min-w-56"
                         title="Restores the cards revoked when this cardholder was deactivated"
                         disabled={
                           updateMutation.isPending ||
@@ -585,6 +587,7 @@ export function CardholdersPage() {
                       <Button
                         type="button"
                         variant="secondary"
+                        className="sm:min-w-56"
                         disabled={updateMutation.isPending}
                         onClick={() =>
                           updateMutation.mutate({
@@ -738,7 +741,7 @@ export function CardholdersPage() {
                           </div>
                           <div className="mt-auto flex flex-wrap gap-1.5 border-t border-border pt-3">
                             <Button
-                              variant="ghost"
+                              variant="outline"
                               size="sm"
                               onClick={() => {
                                 pinMutation.reset()
@@ -751,7 +754,7 @@ export function CardholdersPage() {
                             </Button>
                             {credential.status === 'active' ? (
                               <Button
-                                variant="ghost"
+                                variant="danger"
                                 size="sm"
                                 disabled={credentialMutation.isPending}
                                 onClick={() =>
@@ -765,7 +768,7 @@ export function CardholdersPage() {
                               </Button>
                             ) : isAdmin ? (
                               <Button
-                                variant="ghost"
+                                variant="secondary"
                                 size="sm"
                                 title={
                                   selected.status === 'inactive'
@@ -787,7 +790,7 @@ export function CardholdersPage() {
                               </Button>
                             ) : null}
                             <Button
-                              variant="ghost"
+                              variant="destructive"
                               size="sm"
                               disabled={credentialMutation.isPending}
                               onClick={() => {
