@@ -15,6 +15,7 @@ import { Input } from '@/components/ui/input'
 import { PageToolbar } from '@/components/ui/page-toolbar'
 import { PasswordInput } from '@/components/ui/password-input'
 import { useAuth } from '@/hooks/use-auth'
+import { useConfirm } from '@/hooks/use-confirm'
 import {
   ApiError,
   activateAndRestoreCardholder,
@@ -107,6 +108,7 @@ function validityLabel(credential: Credential): string {
 
 export function CardholdersPage() {
   const { user } = useAuth()
+  const { confirm, dialog } = useConfirm()
   const isAdmin = user?.role === 'admin'
   const queryClient = useQueryClient()
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -604,15 +606,14 @@ export function CardholdersPage() {
                         type="button"
                         variant="destructive"
                         disabled={deleteMutation.isPending}
-                        onClick={() => {
-                          if (
-                            window.confirm(
-                              `Delete ${selected.name}? Only possible if they have no credentials or history.`,
-                            )
-                          ) {
-                            deleteMutation.mutate(selected.id)
-                          }
-                        }}
+                        onClick={() =>
+                          confirm({
+                            title: 'Delete cardholder?',
+                            description: `${selected.name} can only be deleted if they have no credentials or history.`,
+                            confirmLabel: 'Delete',
+                            onConfirm: () => deleteMutation.mutate(selected.id),
+                          })
+                        }
                       >
                         Delete permanently
                       </Button>
@@ -660,15 +661,15 @@ export function CardholdersPage() {
                           revokeAllMutation.isPending ||
                           !credentials.some((item) => item.status === 'active')
                         }
-                        onClick={() => {
-                          if (
-                            window.confirm(
-                              'Revoke every active credential for this cardholder?',
-                            )
-                          ) {
-                            revokeAllMutation.mutate()
-                          }
-                        }}
+                        onClick={() =>
+                          confirm({
+                            title: 'Revoke all credentials?',
+                            description:
+                              'Every active credential for this cardholder will be revoked.',
+                            confirmLabel: 'Revoke all',
+                            onConfirm: () => revokeAllMutation.mutate(),
+                          })
+                        }
                       >
                         Revoke all
                       </Button>
@@ -793,18 +794,18 @@ export function CardholdersPage() {
                               variant="destructive"
                               size="sm"
                               disabled={credentialMutation.isPending}
-                              onClick={() => {
-                                if (
-                                  window.confirm(
-                                    `Delete ${credential.uid}? This only works if it was never used.`,
-                                  )
-                                ) {
-                                  credentialMutation.mutate({
-                                    id: credential.id,
-                                    action: 'delete',
-                                  })
-                                }
-                              }}
+                              onClick={() =>
+                                confirm({
+                                  title: 'Delete credential?',
+                                  description: `${credential.uid} can only be deleted if it was never used.`,
+                                  confirmLabel: 'Delete',
+                                  onConfirm: () =>
+                                    credentialMutation.mutate({
+                                      id: credential.id,
+                                      action: 'delete',
+                                    }),
+                                })
+                              }
                             >
                               Delete
                             </Button>
@@ -959,6 +960,7 @@ export function CardholdersPage() {
           </CardContent>
         </Card>
       </div>
+      {dialog}
     </div>
   )
 }

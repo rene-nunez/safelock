@@ -16,6 +16,7 @@ import { PageToolbar } from '@/components/ui/page-toolbar'
 import { PasswordInput } from '@/components/ui/password-input'
 import { Select } from '@/components/ui/select'
 import { useAuth } from '@/hooks/use-auth'
+import { useConfirm } from '@/hooks/use-confirm'
 import {
   ApiError,
   createUser,
@@ -78,6 +79,7 @@ function updateMessage(input: UpdateUserInput): string {
 
 export function UsersPage() {
   const { user: currentUser } = useAuth()
+  const { confirm, dialog } = useConfirm()
   const queryClient = useQueryClient()
   const [createOpen, setCreateOpen] = useState(false)
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -406,15 +408,14 @@ export function UsersPage() {
                       type="button"
                       variant="danger"
                       disabled={updateMutation.isPending}
-                      onClick={() => {
-                        if (
-                          window.confirm(
-                            `Deactivate ${editableUser.email}? Their sessions will be invalidated.`,
-                          )
-                        ) {
-                          setActive(false)
-                        }
-                      }}
+                      onClick={() =>
+                        confirm({
+                          title: 'Deactivate user?',
+                          description: `Deactivating ${editableUser.email} will invalidate their sessions.`,
+                          confirmLabel: 'Deactivate',
+                          onConfirm: () => setActive(false),
+                        })
+                      }
                     >
                       Deactivate
                     </Button>
@@ -434,6 +435,7 @@ export function UsersPage() {
           </CardContent>
         </Card>
       </div>
+      {dialog}
     </div>
   )
 }

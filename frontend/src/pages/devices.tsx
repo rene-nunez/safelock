@@ -29,6 +29,7 @@ import { Input } from '@/components/ui/input'
 import { PageToolbar } from '@/components/ui/page-toolbar'
 import { Select } from '@/components/ui/select'
 import { useAuth } from '@/hooks/use-auth'
+import { useConfirm } from '@/hooks/use-confirm'
 import {
   ApiError,
   createDevice,
@@ -171,6 +172,7 @@ function StatusRow({ label, children }: { label: string; children: ReactNode }) 
 
 export function DevicesPage() {
   const { user } = useAuth()
+  const { confirm, dialog } = useConfirm()
   const isAdmin = user?.role === 'admin'
   const queryClient = useQueryClient()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -755,15 +757,14 @@ export function DevicesPage() {
                           variant="destructive"
                           size="sm"
                           disabled={deleteMutation.isPending}
-                          onClick={() => {
-                            if (
-                              window.confirm(
-                                `Delete ${selected.device_id}? This only works if it never connected and has no history.`,
-                              )
-                            ) {
-                              deleteMutation.mutate(selected.id)
-                            }
-                          }}
+                          onClick={() =>
+                            confirm({
+                              title: 'Delete device?',
+                              description: `${selected.device_id} can only be deleted if it never connected and has no history.`,
+                              confirmLabel: 'Delete',
+                              onConfirm: () => deleteMutation.mutate(selected.id),
+                            })
+                          }
                         >
                           Delete permanently
                         </Button>
@@ -963,6 +964,7 @@ export function DevicesPage() {
           </CardContent>
         </Card>
       </div>
+      {dialog}
     </div>
   )
 }
