@@ -16,13 +16,12 @@ import { buttonVariants } from '@/components/ui/button-variants'
 import { formatDateTime } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import type { Device } from '@/types/device'
-import { ATTRIBUTION, TILE_URL, pinIcon } from './map-config'
-
-function markerColor(device: Device) {
-  if (device.locked) return '#ef4444'
-  if (!device.online) return '#71717a'
-  return '#22c55e'
-}
+import {
+  ATTRIBUTION,
+  TILE_URL,
+  deviceMarkerColor,
+  pinIcon,
+} from './map-config'
 
 function FitDevices({
   devices,
@@ -80,7 +79,7 @@ export function DeviceMap({ devices, fitRequest }: DeviceMapProps) {
             <Marker
               key={device.id}
               position={[device.location.lat, device.location.lng]}
-              icon={pinIcon(markerColor(device))}
+              icon={pinIcon(deviceMarkerColor(device))}
             >
               <Popup>
                 <div className="space-y-2">

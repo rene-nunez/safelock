@@ -46,10 +46,12 @@ function LocationHandler({
   value,
   onChange,
   disabled,
+  markerColor,
 }: {
   value: DeviceLocation | null
   onChange: (value: DeviceLocation) => void
   disabled: boolean
+  markerColor: string | undefined
 }) {
   const map = useMap()
   const lat = value?.lat
@@ -76,7 +78,7 @@ function LocationHandler({
     <Marker
       position={[value.lat, value.lng]}
       draggable={!disabled}
-      icon={pinIcon(disabled ? '#71717a' : '#22c55e')}
+      icon={pinIcon(markerColor ?? (disabled ? '#71717a' : '#22c55e'))}
       eventHandlers={{
         dragend(event) {
           const position = (event.target as L.Marker).getLatLng()
@@ -94,6 +96,7 @@ type LocationPickerProps = {
   value: DeviceLocation | null
   onChange: (value: DeviceLocation | null) => void
   disabled?: boolean
+  markerColor?: string
   className?: string
 }
 
@@ -101,6 +104,7 @@ export function LocationPicker({
   value,
   onChange,
   disabled = false,
+  markerColor,
   className = 'h-64',
 }: LocationPickerProps) {
   const mapRef = useRef<L.Map | null>(null)
@@ -138,6 +142,7 @@ export function LocationPicker({
           value={value}
           onChange={onChange}
           disabled={disabled}
+          markerColor={markerColor}
         />
       </MapContainer>
 

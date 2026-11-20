@@ -13,6 +13,7 @@ import { useForm, useWatch } from 'react-hook-form'
 import { useSearchParams } from 'react-router-dom'
 import { z } from 'zod'
 
+import { deviceMarkerColor } from '@/components/map/map-config'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -830,6 +831,7 @@ export function DevicesPage() {
                         <LazyMapPicker
                           value={settingsLocation}
                           onChange={applySettingsLocation}
+                          markerColor={deviceMarkerColor(selected)}
                           className="h-64"
                         />
                         <div className="mt-4 grid gap-2 sm:grid-cols-2">
@@ -936,6 +938,7 @@ export function DevicesPage() {
                         value={selected.location}
                         onChange={() => undefined}
                         disabled
+                        markerColor={deviceMarkerColor(selected)}
                         className="h-56"
                       />
                     </div>
