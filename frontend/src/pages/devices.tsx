@@ -270,12 +270,12 @@ export function DevicesPage() {
   const createMutation = useMutation({
     mutationFn: createDevice,
     onMutate: () => setSuccess(null),
-    onSuccess: async (device) => {
+    onSuccess: (device) => {
       createForm.reset()
       setCreateOpen(false)
       setSelectedId(device.id)
       showSuccess('Device added.')
-      await invalidate()
+      void invalidate()
     },
   })
 
@@ -286,7 +286,7 @@ export function DevicesPage() {
       setSuccess(null)
       resetDetailMutations('update')
     },
-    onSuccess: async (_device, { input }) => {
+    onSuccess: (_device, { input }) => {
       if ('locked' in input) {
         showSuccess(
           input.locked ? 'Remote lock enabled.' : 'Remote lock removed.',
@@ -307,7 +307,7 @@ export function DevicesPage() {
       } else {
         showSuccess('Device settings saved.', 'settings')
       }
-      await invalidate()
+      void invalidate()
     },
   })
 
@@ -317,10 +317,10 @@ export function DevicesPage() {
       setSuccess(null)
       resetDetailMutations('delete')
     },
-    onSuccess: async () => {
+    onSuccess: () => {
       setSelectedId(null)
       showSuccess('Device deleted.', 'detail')
-      await invalidate()
+      void invalidate()
     },
   })
 
@@ -330,12 +330,12 @@ export function DevicesPage() {
       setSuccess(null)
       resetDetailMutations('sync')
     },
-    onSuccess: async (command) => {
+    onSuccess: (command) => {
       showSuccess(
         `Access list v${command.acl_version} sent to the device.`,
         'detail',
       )
-      await invalidate()
+      void invalidate()
     },
   })
 

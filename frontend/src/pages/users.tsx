@@ -112,12 +112,12 @@ export function UsersPage() {
   const createMutation = useMutation({
     mutationFn: createUser,
     onMutate: () => setSuccess(null),
-    onSuccess: async (user) => {
+    onSuccess: (user) => {
       createForm.reset()
       setCreateOpen(false)
       setSelectedId(user.id)
       showSuccess('User added.')
-      await queryClient.invalidateQueries({ queryKey: ['users'] })
+      void queryClient.invalidateQueries({ queryKey: ['users'] })
     },
   })
 
@@ -125,11 +125,11 @@ export function UsersPage() {
     mutationFn: ({ id, input }: { id: string; input: UpdateUserInput }) =>
       updateUser(id, input),
     onMutate: () => setSuccess(null),
-    onSuccess: async (user, { input }) => {
+    onSuccess: (user, { input }) => {
       editForm.reset({ role: user.role, password: '' })
       setConfirmDeactivate(false)
       showSuccess(updateMessage(input), 'detail')
-      await queryClient.invalidateQueries({ queryKey: ['users'] })
+      void queryClient.invalidateQueries({ queryKey: ['users'] })
     },
   })
 

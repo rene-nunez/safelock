@@ -137,7 +137,7 @@ export function CardholdersPage() {
   const credentials = credentialsQuery.data ?? []
 
   const invalidateCardholders = () =>
-    queryClient.invalidateQueries({ queryKey: ['cardholders'] })
+    queryClient.invalidateQueries({ queryKey: ['cardholders'], exact: true })
   const invalidateCredentials = () =>
     queryClient.invalidateQueries({
       queryKey: ['cardholders', selectedId, 'credentials'],
@@ -173,12 +173,12 @@ export function CardholdersPage() {
   const createMutation = useMutation({
     mutationFn: createCardholder,
     onMutate: () => setSuccess(null),
-    onSuccess: async (cardholder) => {
+    onSuccess: (cardholder) => {
       createForm.reset()
       setCreateOpen(false)
       setSelectedId(cardholder.id)
       showSuccess('Cardholder added.')
-      await invalidateCardholders()
+      void invalidateCardholders()
     },
   })
 
@@ -194,9 +194,10 @@ export function CardholdersPage() {
       setSuccess(null)
       resetDetailMutations('update')
     },
-    onSuccess: async () => {
+    onSuccess: () => {
       showSuccess('Cardholder updated.', 'detail')
-      await Promise.all([invalidateCardholders(), invalidateCredentials()])
+      void invalidateCardholders()
+      void invalidateCredentials()
     },
   })
 
@@ -206,9 +207,10 @@ export function CardholdersPage() {
       setSuccess(null)
       resetDetailMutations('activate')
     },
-    onSuccess: async () => {
+    onSuccess: () => {
       showSuccess('Cardholder activated and cards restored.', 'detail')
-      await Promise.all([invalidateCardholders(), invalidateCredentials()])
+      void invalidateCardholders()
+      void invalidateCredentials()
     },
   })
 
@@ -218,10 +220,10 @@ export function CardholdersPage() {
       setSuccess(null)
       resetDetailMutations('delete')
     },
-    onSuccess: async () => {
+    onSuccess: () => {
       setSelectedId(null)
       showSuccess('Cardholder deleted.')
-      await invalidateCardholders()
+      void invalidateCardholders()
     },
   })
 
@@ -229,11 +231,11 @@ export function CardholdersPage() {
     mutationFn: (input: CreateCredentialInput) =>
       createCredential(selectedId ?? '', input),
     onMutate: () => setSuccess(null),
-    onSuccess: async () => {
+    onSuccess: () => {
       credentialForm.reset()
       setCredentialOpen(false)
       showSuccess('Card added.', 'credentials')
-      await invalidateCredentials()
+      void invalidateCredentials()
     },
   })
 
@@ -253,7 +255,7 @@ export function CardholdersPage() {
     },
     onSuccess: (_credential, { action }) => {
       showSuccess(CREDENTIAL_MESSAGES[action], 'credentials')
-      return invalidateCredentials()
+      void invalidateCredentials()
     },
   })
 
@@ -263,9 +265,9 @@ export function CardholdersPage() {
       setSuccess(null)
       resetCredentialMutations('revokeAll')
     },
-    onSuccess: async () => {
+    onSuccess: () => {
       showSuccess('All active credentials revoked.', 'credentials')
-      await invalidateCredentials()
+      void invalidateCredentials()
     },
   })
 
@@ -278,14 +280,14 @@ export function CardholdersPage() {
       input: { pin: string } | { clear_pin: true }
     }) => updateCredential(id, input),
     onMutate: () => setSuccess(null),
-    onSuccess: async (_credential, { input }) => {
+    onSuccess: (_credential, { input }) => {
       setPinTarget(null)
       setPinValue('')
       showSuccess(
         'clear_pin' in input ? 'PIN removed.' : 'PIN updated.',
         'credentials',
       )
-      await invalidateCredentials()
+      void invalidateCredentials()
     },
   })
 
