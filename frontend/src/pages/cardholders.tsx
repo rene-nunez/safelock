@@ -29,6 +29,7 @@ import {
   revokeCredential,
   updateCardholder,
   updateCredential,
+  type Cardholder,
   type Credential,
   type CreateCredentialInput,
   type UpdateCardholderInput,
@@ -122,6 +123,23 @@ export function CardholdersPage() {
     setSuccess({ message, area })
   }
 
+  function resetEditForm(holder: Cardholder) {
+    editForm.reset({
+      name: holder.name,
+      email: holder.email ?? '',
+      unit: holder.unit ?? '',
+    })
+  }
+
+  function closeDetail() {
+    setSuccess(null)
+    resetPanelMutations()
+    editForm.reset()
+    setCredentialOpen(false)
+    setPinTarget(null)
+    setSelectedId(null)
+  }
+
   const cardholdersQuery = useQuery({
     queryKey: ['cardholders'],
     queryFn: listCardholders,
@@ -159,11 +177,7 @@ export function CardholdersPage() {
   useEffect(() => {
     resetPanelMutations()
     if (!selected) return
-    editForm.reset({
-      name: selected.name,
-      email: selected.email ?? '',
-      unit: selected.unit ?? '',
-    })
+    resetEditForm(selected)
     setCredentialOpen(false)
     setPinTarget(null)
     // Reset only when switching cardholders, not after a background refetch.
@@ -194,8 +208,9 @@ export function CardholdersPage() {
       setSuccess(null)
       resetDetailMutations('update')
     },
-    onSuccess: () => {
+    onSuccess: (updated) => {
       showSuccess('Cardholder updated.', 'detail')
+      resetEditForm(updated)
       void invalidateCardholders()
       void invalidateCredentials()
     },
@@ -479,8 +494,20 @@ export function CardholdersPage() {
         </Card>
 
         <Card>
-          <CardHeader>
-            <CardTitle>{selected ? selected.name : 'Select a cardholder'}</CardTitle>
+          <CardHeader className="flex-row items-start justify-between gap-4">
+            <CardTitle className="min-w-0 flex-1 truncate">
+              {selected ? selected.name : 'Select a cardholder'}
+            </CardTitle>
+            {selected ? (
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label="Close details"
+                onClick={closeDetail}
+              >
+                <X className="size-4" />
+              </Button>
+            ) : null}
           </CardHeader>
           <CardContent className="flex flex-col">
             <InlineNotice
@@ -528,6 +555,20 @@ export function CardholdersPage() {
                       disabled={updateMutation.isPending}
                     >
                       Save changes
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      disabled={
+                        updateMutation.isPending || !editForm.formState.isDirty
+                      }
+                      onClick={() => {
+                        if (selected) resetEditForm(selected)
+                        updateMutation.reset()
+                        setSuccess(null)
+                      }}
+                    >
+                      Revert changes
                     </Button>
                     {selected.status === 'active' ? (
                       <Button

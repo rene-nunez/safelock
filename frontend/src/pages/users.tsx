@@ -24,6 +24,7 @@ import {
   PASSWORD_MAX_LENGTH,
   PASSWORD_MIN_LENGTH,
   type UpdateUserInput,
+  type User,
 } from '@/lib/api'
 import { formatDateTime } from '@/lib/format'
 import { roleLabel, userInitials } from '@/lib/user'
@@ -100,6 +101,18 @@ export function UsersPage() {
     setSuccess({ message, area })
   }
 
+  function resetEditForm(user?: User) {
+    editForm.reset({ role: user?.role ?? 'operator', password: '' })
+  }
+
+  function closeDetail() {
+    setSuccess(null)
+    resetEditForm()
+    setConfirmDeactivate(false)
+    updateMutation.reset()
+    setSelectedId(null)
+  }
+
   const createForm = useForm<CreateValues>({
     resolver: zodResolver(createUserSchema),
     defaultValues: { email: '', password: '', role: 'operator' },
@@ -126,7 +139,7 @@ export function UsersPage() {
       updateUser(id, input),
     onMutate: () => setSuccess(null),
     onSuccess: (user, { input }) => {
-      editForm.reset({ role: user.role, password: '' })
+      resetEditForm(user)
       setConfirmDeactivate(false)
       showSuccess(updateMessage(input), 'detail')
       void queryClient.invalidateQueries({ queryKey: ['users'] })
@@ -134,7 +147,7 @@ export function UsersPage() {
   })
 
   useEffect(() => {
-    editForm.reset({ role: selected?.role ?? 'operator', password: '' })
+    resetEditForm(selected ?? undefined)
     setConfirmDeactivate(false)
     updateMutation.reset()
     // Reset only when switching users, not after a background refetch.
@@ -328,10 +341,20 @@ export function UsersPage() {
         </Card>
 
         <Card>
-          <CardHeader>
-            <CardTitle className="truncate">
+          <CardHeader className="flex-row items-start justify-between gap-4">
+            <CardTitle className="min-w-0 flex-1 truncate">
               {selected ? selected.email : 'Select a user'}
             </CardTitle>
+            {selected ? (
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label="Close details"
+                onClick={closeDetail}
+              >
+                <X className="size-4" />
+              </Button>
+            ) : null}
           </CardHeader>
           <CardContent className="flex flex-col gap-4">
             <InlineNotice
@@ -380,6 +403,20 @@ export function UsersPage() {
                     }
                   >
                     Save changes
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    disabled={
+                      updateMutation.isPending || !editForm.formState.isDirty
+                    }
+                    onClick={() => {
+                      resetEditForm(selected ?? undefined)
+                      updateMutation.reset()
+                      setSuccess(null)
+                    }}
+                  >
+                    Revert changes
                   </Button>
                   {confirmDeactivate ? (
                     <>

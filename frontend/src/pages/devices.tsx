@@ -36,6 +36,7 @@ import {
   synchronizeAccessList,
   updateDevice,
   type CreateDeviceInput,
+  type Device,
   type DeviceLocation,
   type UpdateDeviceInput,
 } from '@/lib/api'
@@ -183,6 +184,26 @@ export function DevicesPage() {
     setSuccess({ message, area })
   }
 
+  function resetSettingsForm(device: Device) {
+    settingsForm.reset({
+      name: device.name,
+      site: device.site ?? '',
+      lat: device.location ? String(device.location.lat) : '',
+      lng: device.location ? String(device.location.lng) : '',
+      offline_policy: device.offline_policy,
+      stale_acl_hours: String(device.stale_acl_hours),
+      unlock_ms: String(device.unlock_ms),
+    })
+  }
+
+  function closeDetail() {
+    setSuccess(null)
+    resetPanelMutations()
+    settingsForm.reset()
+    setSelectedId(null)
+    if (requestedDevice) setSearchParams({}, { replace: true })
+  }
+
   const devicesQuery = useQuery({ queryKey: ['devices'], queryFn: listDevices })
   const devices = devicesQuery.data ?? []
   const selected = devices.find((device) => device.id === selectedId) ?? null
@@ -254,15 +275,7 @@ export function DevicesPage() {
   useEffect(() => {
     resetPanelMutations()
     if (!selected) return
-    settingsForm.reset({
-      name: selected.name,
-      site: selected.site ?? '',
-      lat: selected.location ? String(selected.location.lat) : '',
-      lng: selected.location ? String(selected.location.lng) : '',
-      offline_policy: selected.offline_policy,
-      stale_acl_hours: String(selected.stale_acl_hours),
-      unlock_ms: String(selected.unlock_ms),
-    })
+    resetSettingsForm(selected)
     // Reset only when switching devices, not after a background refetch.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selected?.id])
@@ -286,7 +299,7 @@ export function DevicesPage() {
       setSuccess(null)
       resetDetailMutations('update')
     },
-    onSuccess: (_device, { input }) => {
+    onSuccess: (updated, { input }) => {
       if ('locked' in input) {
         showSuccess(
           input.locked ? 'Remote lock enabled.' : 'Remote lock removed.',
@@ -306,6 +319,7 @@ export function DevicesPage() {
         )
       } else {
         showSuccess('Device settings saved.', 'settings')
+        resetSettingsForm(updated)
       }
       void invalidate()
     },
@@ -572,12 +586,26 @@ export function DevicesPage() {
         </Card>
 
         <Card>
-          <CardHeader>
-            <CardTitle>{selected ? selected.name : 'Select a device'}</CardTitle>
+          <CardHeader className="flex-row items-start justify-between gap-4">
+            <div className="min-w-0 flex-1">
+              <CardTitle className="truncate">
+                {selected ? selected.name : 'Select a device'}
+              </CardTitle>
+              {selected ? (
+                <p className="font-mono text-xs text-muted-foreground">
+                  {selected.device_id}
+                </p>
+              ) : null}
+            </div>
             {selected ? (
-              <p className="font-mono text-xs text-muted-foreground">
-                {selected.device_id}
-              </p>
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label="Close details"
+                onClick={closeDetail}
+              >
+                <X className="size-4" />
+              </Button>
             ) : null}
           </CardHeader>
           <CardContent className="flex flex-col">
@@ -841,6 +869,21 @@ export function DevicesPage() {
                         disabled={updateMutation.isPending}
                       >
                         Save settings
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        disabled={
+                          updateMutation.isPending ||
+                          !settingsForm.formState.isDirty
+                        }
+                        onClick={() => {
+                          if (selected) resetSettingsForm(selected)
+                          updateMutation.reset()
+                          setSuccess(null)
+                        }}
+                      >
+                        Revert changes
                       </Button>
                     </FormActions>
                   </form>
