@@ -137,7 +137,6 @@ export function UsersPage() {
     editForm.reset({ role: selected?.role ?? 'operator', password: '' })
     setConfirmDeactivate(false)
     updateMutation.reset()
-    setSuccess(null)
     // Reset only when switching users, not after a background refetch.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selected?.id])

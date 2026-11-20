@@ -247,7 +247,10 @@ export function CardholdersPage() {
         await revokeCredential(id)
       }
     },
-    onMutate: () => setSuccess(null),
+    onMutate: () => {
+      setSuccess(null)
+      resetCredentialMutations('credential')
+    },
     onSuccess: (_credential, { action }) => {
       showSuccess(CREDENTIAL_MESSAGES[action], 'credentials')
       return invalidateCredentials()
@@ -256,7 +259,10 @@ export function CardholdersPage() {
 
   const revokeAllMutation = useMutation({
     mutationFn: () => revokeAllCredentials(selectedId ?? ''),
-    onMutate: () => setSuccess(null),
+    onMutate: () => {
+      setSuccess(null)
+      resetCredentialMutations('revokeAll')
+    },
     onSuccess: async () => {
       showSuccess('All active credentials revoked.', 'credentials')
       await invalidateCredentials()
@@ -289,10 +295,14 @@ export function CardholdersPage() {
     if (skip !== 'delete') deleteMutation.reset()
   }
 
+  function resetCredentialMutations(skip?: 'credential' | 'revokeAll') {
+    if (skip !== 'credential') credentialMutation.reset()
+    if (skip !== 'revokeAll') revokeAllMutation.reset()
+  }
+
   function resetPanelMutations() {
     resetDetailMutations()
-    credentialMutation.reset()
-    revokeAllMutation.reset()
+    resetCredentialMutations()
     pinMutation.reset()
     createCredentialMutation.reset()
   }
@@ -330,7 +340,10 @@ export function CardholdersPage() {
     <div className="flex flex-col gap-4 lg:gap-6">
       <PageToolbar>
         <Button
-          onClick={() => setCreateOpen((value) => !value)}
+          onClick={() => {
+            createMutation.reset()
+            setCreateOpen((value) => !value)
+          }}
           aria-expanded={createOpen}
         >
           {createOpen ? <X className="size-4" /> : <UserPlus className="size-4" />}
@@ -600,7 +613,10 @@ export function CardholdersPage() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => setCredentialOpen((value) => !value)}
+                        onClick={() => {
+                          createCredentialMutation.reset()
+                          setCredentialOpen((value) => !value)
+                        }}
                         aria-expanded={credentialOpen}
                       >
                         {credentialOpen ? (
@@ -701,6 +717,7 @@ export function CardholdersPage() {
                               variant="ghost"
                               size="sm"
                               onClick={() => {
+                                pinMutation.reset()
                                 setPinTarget(credential)
                                 setPinValue('')
                               }}
@@ -799,7 +816,10 @@ export function CardholdersPage() {
                         <Button
                           type="button"
                           variant="ghost"
-                          onClick={() => setPinTarget(null)}
+                          onClick={() => {
+                            pinMutation.reset()
+                            setPinTarget(null)
+                          }}
                         >
                           Cancel
                         </Button>
@@ -878,7 +898,10 @@ export function CardholdersPage() {
                         <Button
                           type="button"
                           variant="ghost"
-                          onClick={() => setCredentialOpen(false)}
+                          onClick={() => {
+                            createCredentialMutation.reset()
+                            setCredentialOpen(false)
+                          }}
                         >
                           Cancel
                         </Button>
