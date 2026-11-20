@@ -31,7 +31,7 @@ firmware: ## Build firmware
 	pio run -d firmware
 
 monitor: ## Serial monitor
-	pio device monitor -d firmware
+	pio device monitor -d firmware -b 115200
 
 simulator: ## Run simulator
 	$(PYTHON) backend/scripts/simulator.py $(SIM_ARGS)
