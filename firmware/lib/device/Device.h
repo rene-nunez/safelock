@@ -1,6 +1,6 @@
 #pragma once
 
-#include <RFID.h>
+#include <Rfid.h>
 #include <Numpad.h>
 #include <Display.h>
 #include <Clock.h>
@@ -19,7 +19,7 @@ class Device {
     Settings settings;
     Net net;
 
-    RFID rfid;
+    Rfid rfid;
     Numpad numpad;
     Display display;
     Clock clock;

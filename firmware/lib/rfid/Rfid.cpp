@@ -1,4 +1,4 @@
-#include "RFID.h"
+#include "Rfid.h"
 #include "pins.h"
 
 static const uint8_t ANTENNA_MASK = 0x03;
@@ -9,9 +9,9 @@ static bool version_supported(uint8_t version) {
 }
 
 // NRSTPD is driven by reset_and_init(), the library must not touch it
-RFID::RFID() : mfrc522(RFID_SS, MFRC522::UNUSED_PIN) {}
+Rfid::Rfid() : mfrc522(RFID_SS, MFRC522::UNUSED_PIN) {}
 
-void RFID::reset_and_init() {
+void Rfid::reset_and_init() {
   // NRSTPD is active low: 20 ms in power-down and the rising edge starts the
   // internal reset. 100 ms cover oscillator startup and bus settling.
   pinMode(RFID_RST, OUTPUT);
@@ -25,13 +25,13 @@ void RFID::reset_and_init() {
   delay(100);
 }
 
-void RFID::begin() {
+void Rfid::begin() {
   SPI.begin();
   reset_and_init();
   log_status("begin", read_status());
 }
 
-RFID::Status RFID::read_status() {
+Rfid::Status Rfid::read_status() {
   Status status;
   status.version = mfrc522.PCD_ReadRegister(MFRC522::VersionReg);
   status.tx_control = mfrc522.PCD_ReadRegister(MFRC522::TxControlReg);
@@ -41,12 +41,12 @@ RFID::Status RFID::read_status() {
   return status;
 }
 
-bool RFID::healthy() {
+bool Rfid::healthy() {
   Status status = read_status();
   return status.responds && status.antenna_on;
 }
 
-void RFID::log_status(const char *event, const Status &status) {
+void Rfid::log_status(const char *event, const Status &status) {
   if (!status.responds) {
     Serial.printf(
       "RFID %s: no response (version=0x%02X, tx_control=0x%02X)\n",
@@ -66,7 +66,7 @@ void RFID::log_status(const char *event, const Status &status) {
   );
 }
 
-bool RFID::recover() {
+bool Rfid::recover() {
   Status status = read_status();
   if (status.responds && status.antenna_on) return true;
 
@@ -104,7 +104,7 @@ bool RFID::recover() {
   return false;
 }
 
-RFID::ScanResult RFID::poll() {
+Rfid::ScanResult Rfid::poll() {
   if (!healthy()) return UNHEALTHY;
 
   if (!mfrc522.PICC_IsNewCardPresent()) return NO_CARD;
@@ -118,6 +118,6 @@ RFID::ScanResult RFID::poll() {
   return CARD;
 }
 
-const CardUid &RFID::last_uid() const {
+const CardUid &Rfid::last_uid() const {
   return uid;
 }

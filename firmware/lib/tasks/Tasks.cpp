@@ -4,7 +4,7 @@
 #include <time.h>
 
 Tasks::Tasks(
-  RFID &rfid,
+  Rfid &rfid,
   Numpad &numpad,
   Display &display,
   Clock &clock,
@@ -64,9 +64,9 @@ void Tasks::run_rfid_task() {
 
   if (state != ENTERING) return;
 
-  RFID::ScanResult scan = rfid.poll();
+  Rfid::ScanResult scan = rfid.poll();
 
-  if (scan == RFID::UNHEALTHY) {
+  if (scan == Rfid::UNHEALTHY) {
     if ((current_millis - last_rfid_recover_millis) < RFID_RECOVER_INTERVAL) return;
     last_rfid_recover_millis = current_millis;
 
@@ -74,7 +74,7 @@ void Tasks::run_rfid_task() {
     return;
   }
 
-  if (scan == RFID::NO_CARD) return;
+  if (scan == Rfid::NO_CARD) return;
 
   char uid_text[32];
   rfid.last_uid().format(uid_text, sizeof(uid_text));

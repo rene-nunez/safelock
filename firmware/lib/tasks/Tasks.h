@@ -1,7 +1,7 @@
 #pragma once
 
 #include <Arduino.h>
-#include <RFID.h>
+#include <Rfid.h>
 #include <Numpad.h>
 #include <Display.h>
 #include <Clock.h>
@@ -36,7 +36,7 @@ class Tasks {
   private:
     enum lock_state { WAIT_SD, ENTERING, SUCCESS, LOGGING, ERROR, ALERT };
 
-    RFID &rfid;
+    Rfid &rfid;
     Numpad &numpad;
     Display &display;
     Clock &clock;
@@ -101,7 +101,7 @@ class Tasks {
 
   public:
     Tasks(
-      RFID &rfid,
+      Rfid &rfid,
       Numpad &numpad,
       Display &display,
       Clock &clock,

@@ -6,11 +6,11 @@
 
 #include "card_uid.h"
 
-class RFID {
+class Rfid {
   public:
     enum ScanResult { NO_CARD, CARD, UNHEALTHY };
 
-    RFID();
+    Rfid();
 
     void begin();
     bool recover();
