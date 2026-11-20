@@ -11,7 +11,7 @@ export function FormActions({ children, className }: FormActionsProps) {
   return (
     <div
       className={cn(
-        'flex flex-col gap-2 [&>*]:w-full sm:flex-row sm:items-center sm:justify-end sm:[&>*]:w-auto',
+        'flex flex-col flex-wrap gap-2 [&>*]:w-full sm:flex-row sm:items-center sm:justify-end sm:[&>*]:w-auto',
         className,
       )}
     >
