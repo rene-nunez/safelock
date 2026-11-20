@@ -266,9 +266,11 @@ export function DevicesPage() {
   function applySettingsLocation(next: DeviceLocation | null) {
     settingsForm.setValue('lat', next ? String(next.lat) : '', {
       shouldValidate: true,
+      shouldDirty: true,
     })
     settingsForm.setValue('lng', next ? String(next.lng) : '', {
       shouldValidate: true,
+      shouldDirty: true,
     })
   }
 
@@ -864,7 +866,7 @@ export function DevicesPage() {
                         success?.area === 'settings' ? success.message : null
                       }
                     />
-                    <FormActions className="mt-4 sm:justify-between">
+                    <FormActions className="mt-4">
                       <Button
                         type="button"
                         variant="ghost"
