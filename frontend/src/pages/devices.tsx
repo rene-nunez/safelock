@@ -252,6 +252,7 @@ export function DevicesPage() {
   }
 
   useEffect(() => {
+    resetPanelMutations()
     if (!selected) return
     settingsForm.reset({
       name: selected.name,
@@ -281,7 +282,10 @@ export function DevicesPage() {
   const updateMutation = useMutation({
     mutationFn: ({ id, input }: { id: string; input: UpdateDeviceInput }) =>
       updateDevice(id, input),
-    onMutate: () => setSuccess(null),
+    onMutate: () => {
+      setSuccess(null)
+      resetDetailMutations('update')
+    },
     onSuccess: async (_device, { input }) => {
       if ('locked' in input) {
         showSuccess(
@@ -309,7 +313,10 @@ export function DevicesPage() {
 
   const deleteMutation = useMutation({
     mutationFn: deleteDevice,
-    onMutate: () => setSuccess(null),
+    onMutate: () => {
+      setSuccess(null)
+      resetDetailMutations('delete')
+    },
     onSuccess: async () => {
       setSelectedId(null)
       showSuccess('Device deleted.', 'detail')
@@ -319,7 +326,10 @@ export function DevicesPage() {
 
   const syncMutation = useMutation({
     mutationFn: synchronizeAccessList,
-    onMutate: () => setSuccess(null),
+    onMutate: () => {
+      setSuccess(null)
+      resetDetailMutations('sync')
+    },
     onSuccess: async (command) => {
       showSuccess(
         `Access list v${command.acl_version} sent to the device.`,
@@ -328,6 +338,17 @@ export function DevicesPage() {
       await invalidate()
     },
   })
+
+  function resetDetailMutations(skip?: 'update' | 'delete' | 'sync') {
+    if (skip !== 'update') updateMutation.reset()
+    if (skip !== 'delete') deleteMutation.reset()
+    if (skip !== 'sync') syncMutation.reset()
+  }
+
+  function resetPanelMutations() {
+    resetDetailMutations()
+    createMutation.reset()
+  }
 
   function onCreate(values: CreateValues) {
     const input: CreateDeviceInput = {
@@ -359,7 +380,10 @@ export function DevicesPage() {
       <PageToolbar>
         {isAdmin ? (
           <Button
-            onClick={() => setCreateOpen((value) => !value)}
+            onClick={() => {
+              createMutation.reset()
+              setCreateOpen((value) => !value)
+            }}
             aria-expanded={createOpen}
           >
             {createOpen ? <X className="size-4" /> : <Plus className="size-4" />}
