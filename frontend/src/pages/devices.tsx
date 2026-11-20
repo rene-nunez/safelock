@@ -651,9 +651,10 @@ export function DevicesPage() {
 
                 <section className="border-t border-border pt-5">
                   <h3 className="text-sm font-medium">Actions</h3>
-                  <div className="mt-3 flex flex-wrap gap-2">
+                  <p className="mt-3 text-xs text-muted-foreground">Operation</p>
+                  <div className="mt-2 flex flex-wrap gap-2">
                     <Button
-                      variant={selected.locked ? 'secondary' : 'destructive'}
+                      variant={selected.locked ? 'secondary' : 'danger'}
                       size="sm"
                       disabled={updateMutation.isPending}
                       onClick={() =>
@@ -668,23 +669,30 @@ export function DevicesPage() {
                         : 'Lock remotely'}
                     </Button>
                     {isAdmin ? (
-                      <>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          title={
-                            selected.online
-                              ? 'Send the full access list now'
-                              : 'The device must be online to receive the access list'
-                          }
-                          disabled={!selected.online || syncMutation.isPending}
-                          onClick={() => syncMutation.mutate(selected.id)}
-                        >
-                          <RefreshCw className="size-4" />
-                          {syncMutation.isPending
-                            ? 'Syncing...'
-                            : 'Sync access list'}
-                        </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        title={
+                          selected.online
+                            ? 'Send the full access list now'
+                            : 'The device must be online to receive the access list'
+                        }
+                        disabled={!selected.online || syncMutation.isPending}
+                        onClick={() => syncMutation.mutate(selected.id)}
+                      >
+                        <RefreshCw className="size-4" />
+                        {syncMutation.isPending
+                          ? 'Syncing ACL...'
+                          : 'Sync ACL'}
+                      </Button>
+                    ) : null}
+                  </div>
+                  {isAdmin ? (
+                    <>
+                      <p className="mt-4 text-xs text-muted-foreground">
+                        Configuration
+                      </p>
+                      <div className="mt-2 flex flex-wrap gap-2">
                         <Button
                           variant={
                             selected.requires_pin ? 'secondary' : 'outline'
@@ -746,9 +754,9 @@ export function DevicesPage() {
                         >
                           Delete permanently
                         </Button>
-                      </>
-                    ) : null}
-                  </div>
+                      </div>
+                    </>
+                  ) : null}
                   <InlineNotice
                     tone="success"
                     message={success?.area === 'detail' ? success.message : null}
