@@ -5,7 +5,7 @@ namespace {
 constexpr size_t MAX_COMMAND_LENGTH = 256;
 
 bool valid_device_id(const String &value) {
-  if (value.length() != 8 || !value.startsWith("sl-")) return false;
+  if (value.length() != 7 || !value.startsWith("sl-")) return false;
   for (unsigned int i = 3; i < value.length(); i++) {
     if (value[i] < '0' || value[i] > '9') return false;
   }
