@@ -157,6 +157,7 @@ export function CardholdersPage() {
   })
 
   useEffect(() => {
+    resetPanelMutations()
     if (!selected) return
     editForm.reset({
       name: selected.name,
@@ -189,7 +190,10 @@ export function CardholdersPage() {
       id: string
       input: UpdateCardholderInput
     }) => updateCardholder(id, input),
-    onMutate: () => setSuccess(null),
+    onMutate: () => {
+      setSuccess(null)
+      resetDetailMutations('update')
+    },
     onSuccess: async () => {
       showSuccess('Cardholder updated.', 'detail')
       await Promise.all([invalidateCardholders(), invalidateCredentials()])
@@ -198,7 +202,10 @@ export function CardholdersPage() {
 
   const activateRestoreMutation = useMutation({
     mutationFn: activateAndRestoreCardholder,
-    onMutate: () => setSuccess(null),
+    onMutate: () => {
+      setSuccess(null)
+      resetDetailMutations('activate')
+    },
     onSuccess: async () => {
       showSuccess('Cardholder activated and cards restored.', 'detail')
       await Promise.all([invalidateCardholders(), invalidateCredentials()])
@@ -207,7 +214,10 @@ export function CardholdersPage() {
 
   const deleteMutation = useMutation({
     mutationFn: deleteCardholder,
-    onMutate: () => setSuccess(null),
+    onMutate: () => {
+      setSuccess(null)
+      resetDetailMutations('delete')
+    },
     onSuccess: async () => {
       setSelectedId(null)
       showSuccess('Cardholder deleted.')
@@ -272,6 +282,20 @@ export function CardholdersPage() {
       await invalidateCredentials()
     },
   })
+
+  function resetDetailMutations(skip?: 'update' | 'activate' | 'delete') {
+    if (skip !== 'update') updateMutation.reset()
+    if (skip !== 'activate') activateRestoreMutation.reset()
+    if (skip !== 'delete') deleteMutation.reset()
+  }
+
+  function resetPanelMutations() {
+    resetDetailMutations()
+    credentialMutation.reset()
+    revokeAllMutation.reset()
+    pinMutation.reset()
+    createCredentialMutation.reset()
+  }
 
   function onCreate(values: CreateValues) {
     createMutation.mutate({
