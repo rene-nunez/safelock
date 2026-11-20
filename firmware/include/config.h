@@ -17,7 +17,8 @@
 // Pin level read on LOCK_SENSE_PIN when the bolt is closed
 #define LOCK_SENSE_CLOSED_LEVEL LOW
 
-// Coil pulse per unlock; keep it as short as the latch reliably needs
+// Initial coil pulse per unlock; the backend can override it with unlock_ms in the ACL snapshot.
+// Keep it as short as the latch reliably needs.
 #define LOCK_OPEN_MS 3000
 
 // Window after the command where an open is still attributed to it, not to a manual release

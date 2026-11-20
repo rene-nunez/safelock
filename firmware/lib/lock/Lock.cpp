@@ -26,6 +26,10 @@ void Lock::begin() {
   Serial.println(sense_stable ? "closed" : "open");
 }
 
+void Lock::set_unlock_ms(uint16_t ms) {
+  unlock_ms = ms;
+}
+
 void Lock::unlock() {
   set_coil(true);
   active = true;
@@ -49,13 +53,13 @@ void Lock::update() {
 
     // A bolt that opens without a recent command was released by hand
     if (!sense_stable) {
-      bool commanded = has_command && (now - command_millis) <= (LOCK_OPEN_MS + LOCK_CMD_GRACE_MS);
+      bool commanded = has_command && (now - command_millis) <= (unlock_ms + LOCK_CMD_GRACE_MS);
       manual_open = !commanded;
     }
   }
 
   if (!active) return;
-  if ((now - activated_millis) < LOCK_OPEN_MS) return;
+  if ((now - activated_millis) < unlock_ms) return;
 
   set_coil(false);
   active = false;

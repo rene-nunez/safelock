@@ -1,5 +1,7 @@
 #include "Acl.h"
 
+#include "config.h"
+
 namespace {
 
 time_t optional_epoch(JsonVariantConst value) {
@@ -9,7 +11,7 @@ time_t optional_epoch(JsonVariantConst value) {
 
 } // namespace
 
-Acl::Acl(Storage &storage) : storage(storage) {}
+Acl::Acl(Storage &storage) : storage(storage), unlock_duration(LOCK_OPEN_MS) {}
 
 bool Acl::parse(const JsonObject &data, bool persist, bool clock_valid, time_t now) {
   if (!data["acl_version"].is<int>()) return false;
@@ -22,8 +24,9 @@ bool Acl::parse(const JsonObject &data, bool persist, bool clock_valid, time_t n
   if (new_policy != "allow" && new_policy != "deny") return false;
 
   const uint16_t new_stale_hours = data["stale_acl_hours"] | 72;
-  const uint16_t new_unlock_ms = data["unlock_ms"] | 3000;
-  if (new_stale_hours == 0 || new_unlock_ms == 0) return false;
+  const uint16_t new_unlock_ms = data["unlock_ms"] | LOCK_OPEN_MS;
+  if (new_stale_hours == 0) return false;
+  if (new_unlock_ms < 100 || new_unlock_ms > 30000) return false;
 
   std::vector<AclEntry> staged;
   for (JsonObject item : data["entries"].as<JsonArray>()) {

@@ -101,6 +101,21 @@ async def test_snapshot_is_complete_and_versioned_only_on_change(
     assert revoked["entries"] == []
 
 
+async def test_snapshot_uses_configured_unlock_ms(db: Database) -> None:
+    await make_device(db)
+    first = await acl_sync.build_snapshot(db, DEVICE_ID)
+    assert first is not None
+    assert first["unlock_ms"] == 3000
+
+    await db.devices.update_one(
+        {"device_id": DEVICE_ID}, {"$set": {"unlock_ms": 750}}
+    )
+    updated = await acl_sync.build_snapshot(db, DEVICE_ID)
+    assert updated is not None
+    assert updated["acl_version"] == 2
+    assert updated["unlock_ms"] == 750
+
+
 async def test_snapshot_excludes_inactive_holders(db: Database) -> None:
     await make_device(db)
     holder = await create_cardholder(db, CardholderCreate(name="Ada"))

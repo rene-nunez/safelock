@@ -36,7 +36,7 @@ class Acl {
     bool locked = false;
     String policy = "allow";
     uint16_t stale_hours = 72;
-    uint16_t unlock_duration = 3000;
+    uint16_t unlock_duration;
     bool loaded = false;
 
     bool parse(const JsonObject &data, bool persist, bool clock_valid, time_t now);

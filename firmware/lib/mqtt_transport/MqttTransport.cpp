@@ -280,6 +280,7 @@ void MqttTransport::handle_command(const String &command, const JsonObject &data
       return;
     }
 
+    lock.set_unlock_ms(acl.get_unlock_ms());
     publish_response(request_id, "ok", nullptr);
     publish_status();
     return;
