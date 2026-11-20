@@ -79,13 +79,18 @@ function SystemStatus({ status }: { status: SystemStatusInfo }) {
         <span className="tabular-nums">{devices.online}/{devices.total}</span>
       </span>
       {devices.locked > 0 ? (
-        <span
-          className="inline-flex items-center gap-1 text-amber-500"
-          title={`${devices.locked} doors locked remotely`}
-        >
-          <Lock className="size-3.5" />
-          <span className="tabular-nums">{devices.locked}</span>
-        </span>
+        <>
+          <span className="hidden h-3 w-px bg-border md:block" />
+          <span
+            className="hidden items-center gap-1.5 text-muted-foreground md:inline-flex"
+            title="Doors Locked"
+          >
+            <Lock className="size-3.5" />
+            <span className="tabular-nums">
+              {devices.locked}/{devices.total}
+            </span>
+          </span>
+        </>
       ) : null}
     </Link>
   )
