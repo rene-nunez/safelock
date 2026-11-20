@@ -77,8 +77,20 @@ function StatusChip({ title, children, to, className }: StatusChipProps) {
 }
 
 function SystemStatus({ status }: { status: SystemStatusInfo }) {
-  const { apiOnline, apiConnecting, devices } = status
+  const { apiOnline, apiConnecting, devices, devicesLoading } = status
   const apiLabel = apiOnline ? 'Online' : apiConnecting ? 'Connecting…' : 'Offline'
+  const onlineValue = devicesLoading
+    ? '—'
+    : `${devices.online}/${devices.total}`
+  const lockedValue = devicesLoading
+    ? '—'
+    : `${devices.locked}/${devices.total}`
+  const devicesTitle = devicesLoading
+    ? 'Loading devices…'
+    : `${devices.online} of ${devices.total} devices online`
+  const lockedTitle = devicesLoading
+    ? 'Loading doors…'
+    : `${devices.locked} of ${devices.total} doors locked`
 
   return (
     <>
@@ -98,23 +110,19 @@ function SystemStatus({ status }: { status: SystemStatusInfo }) {
       </StatusChip>
       <StatusChip
         to="/devices"
-        title={`${devices.online} of ${devices.total} devices online`}
+        title={devicesTitle}
         className="hidden md:inline-flex"
       >
         <Cpu className="size-3.5" />
-        <span className="tabular-nums">
-          {devices.online}/{devices.total}
-        </span>
+        <span className="tabular-nums">{onlineValue}</span>
       </StatusChip>
       <StatusChip
         to="/devices"
-        title={`${devices.locked} of ${devices.total} doors locked`}
+        title={lockedTitle}
         className="hidden md:inline-flex"
       >
         <Lock className="size-3.5" />
-        <span className="tabular-nums">
-          {devices.locked}/{devices.total}
-        </span>
+        <span className="tabular-nums">{lockedValue}</span>
       </StatusChip>
     </>
   )

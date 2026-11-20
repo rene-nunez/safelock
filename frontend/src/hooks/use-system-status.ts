@@ -7,6 +7,7 @@ export type SystemStatusInfo = {
   apiOnline: boolean
   apiConnecting: boolean
   devices: DeviceSummary
+  devicesLoading: boolean
 }
 
 export function useSystemStatus(): SystemStatusInfo {
@@ -22,5 +23,6 @@ export function useSystemStatus(): SystemStatusInfo {
     apiOnline,
     apiConnecting: health.isPending,
     devices: deviceSummary,
+    devicesLoading: devices.isPending,
   }
 }
