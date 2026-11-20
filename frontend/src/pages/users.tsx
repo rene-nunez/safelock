@@ -397,7 +397,6 @@ export function UsersPage() {
                 <FormActions className="sm:col-span-2">
                   <Button
                     type="submit"
-                    variant="outline"
                     disabled={
                       updateMutation.isPending || !editForm.formState.isDirty
                     }

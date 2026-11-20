@@ -551,7 +551,6 @@ export function CardholdersPage() {
                   <FormActions className="sm:col-span-2">
                     <Button
                       type="submit"
-                      variant="outline"
                       disabled={updateMutation.isPending}
                     >
                       Save changes
