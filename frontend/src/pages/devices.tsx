@@ -586,9 +586,9 @@ export function DevicesPage() {
         </Card>
 
         <Card>
-          <CardHeader className="flex-row items-start justify-between gap-4">
+          <CardHeader className="flex-row items-center justify-between gap-4">
             <div className="min-w-0 flex-1">
-              <CardTitle className="truncate">
+              <CardTitle className="break-words leading-snug">
                 {selected ? selected.name : 'Select a device'}
               </CardTitle>
               {selected ? (
@@ -599,6 +599,7 @@ export function DevicesPage() {
             </div>
             {selected ? (
               <Button
+                className="shrink-0"
                 variant="ghost"
                 size="icon"
                 aria-label="Close details"

@@ -494,12 +494,13 @@ export function CardholdersPage() {
         </Card>
 
         <Card>
-          <CardHeader className="flex-row items-start justify-between gap-4">
-            <CardTitle className="min-w-0 flex-1 truncate">
+          <CardHeader className="flex-row items-center justify-between gap-4">
+            <CardTitle className="min-w-0 flex-1 break-words leading-snug">
               {selected ? selected.name : 'Select a cardholder'}
             </CardTitle>
             {selected ? (
               <Button
+                className="shrink-0"
                 variant="ghost"
                 size="icon"
                 aria-label="Close details"
