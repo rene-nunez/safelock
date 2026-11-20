@@ -6,6 +6,10 @@ export const buttonVariants = cva(
     variants: {
       variant: {
         default: 'bg-primary text-primary-foreground hover:bg-primary/90',
+        brand:
+          'bg-brand text-brand-foreground hover:bg-brand/90 focus-visible:ring-brand/40',
+        danger:
+          'border border-red-500/40 bg-transparent text-red-400 hover:bg-red-500/10 hover:text-red-300 focus-visible:ring-red-500/40',
         secondary:
           'bg-secondary text-secondary-foreground hover:bg-secondary/80',
         outline:

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import L from 'leaflet'
 import { Crosshair } from 'lucide-react'
 import {
@@ -27,6 +27,17 @@ function MapBridge({ onReady }: { onReady: (map: L.Map) => void }) {
   useEffect(() => {
     onReady(map)
   }, [map, onReady])
+
+  return null
+}
+
+function MapInteractionTracker({ onInteract }: { onInteract: () => void }) {
+  useMapEvents({
+    click: onInteract,
+    mousedown: onInteract,
+    dragstart: onInteract,
+    zoomstart: onInteract,
+  })
 
   return null
 }
@@ -93,6 +104,8 @@ export function LocationPicker({
   className = 'h-64',
 }: LocationPickerProps) {
   const mapRef = useRef<L.Map | null>(null)
+  const [interacted, setInteracted] = useState(false)
+  const markInteracted = useCallback(() => setInteracted(true), [])
   const handleMapReady = useCallback((map: L.Map) => {
     mapRef.current = map
   }, [])
@@ -120,6 +133,7 @@ export function LocationPicker({
         <TileLayer url={TILE_URL} attribution={ATTRIBUTION} />
         <AttributionControl position="bottomright" prefix={false} />
         <MapBridge onReady={handleMapReady} />
+        <MapInteractionTracker onInteract={markInteracted} />
         <LocationHandler
           value={value}
           onChange={onChange}
@@ -138,7 +152,7 @@ export function LocationPicker({
         <Crosshair className="size-4" />
       </button>
 
-      {value === null ? (
+      {value === null && (disabled || !interacted) ? (
         <div className="pointer-events-none absolute inset-0 z-[1000] grid place-items-center p-4">
           <div className="rounded-lg border border-border bg-zinc-950/85 px-4 py-3 text-center text-xs text-muted-foreground backdrop-blur">
             {disabled

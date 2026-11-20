@@ -394,6 +394,7 @@ export function UsersPage() {
                 <FormActions className="sm:col-span-2">
                   <Button
                     type="submit"
+                    variant="brand"
                     disabled={
                       updateMutation.isPending || !editForm.formState.isDirty
                     }
@@ -403,7 +404,7 @@ export function UsersPage() {
                   {editableUser.active ? (
                     <Button
                       type="button"
-                      variant="destructive"
+                      variant="danger"
                       disabled={updateMutation.isPending}
                       onClick={() => {
                         if (

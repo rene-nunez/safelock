@@ -731,7 +731,7 @@ export function DevicesPage() {
                             : 'Reactivate'}
                         </Button>
                         <Button
-                          variant="ghost"
+                          variant="destructive"
                           size="sm"
                           disabled={deleteMutation.isPending}
                           onClick={() => {
@@ -884,6 +884,7 @@ export function DevicesPage() {
                       </Button>
                       <Button
                         type="submit"
+                        variant="brand"
                         disabled={updateMutation.isPending}
                       >
                         Save settings

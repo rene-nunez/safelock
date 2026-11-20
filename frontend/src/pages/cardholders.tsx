@@ -547,6 +547,7 @@ export function CardholdersPage() {
                   <FormActions className="sm:col-span-2">
                     <Button
                       type="submit"
+                      variant="brand"
                       disabled={updateMutation.isPending}
                     >
                       Save changes
@@ -554,7 +555,7 @@ export function CardholdersPage() {
                     {selected.status === 'active' ? (
                       <Button
                         type="button"
-                        variant="destructive"
+                        variant="danger"
                         disabled={updateMutation.isPending}
                         onClick={() =>
                           updateMutation.mutate({
@@ -598,7 +599,7 @@ export function CardholdersPage() {
                     {isAdmin ? (
                       <Button
                         type="button"
-                        variant="ghost"
+                        variant="destructive"
                         disabled={deleteMutation.isPending}
                         onClick={() => {
                           if (
@@ -635,7 +636,6 @@ export function CardholdersPage() {
                     </h3>
                     <div className="flex flex-wrap gap-2">
                       <Button
-                        variant="outline"
                         size="sm"
                         onClick={() => {
                           createCredentialMutation.reset()
@@ -648,7 +648,7 @@ export function CardholdersPage() {
                         ) : (
                           <Plus className="size-4" />
                         )}
-                        {credentialOpen ? 'Close' : 'Add card'}
+                        {credentialOpen ? 'Close form' : 'Add card'}
                       </Button>
                       <Button
                         variant="ghost"
@@ -862,6 +862,7 @@ export function CardholdersPage() {
                         </Button>
                         <Button
                           type="submit"
+                          variant="brand"
                           disabled={
                             pinMutation.isPending || !/^\d{6,32}$/.test(pinValue)
                           }
