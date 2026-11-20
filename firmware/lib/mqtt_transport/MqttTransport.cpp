@@ -64,7 +64,8 @@ String MqttTransport::status_payload(bool online) {
   data["online"] = online;
   if (online) {
     data["fw"] = MQTT_FW_VERSION;
-    data["acl_version"] = acl.get_version();
+    // Report 0 when the snapshot has no usable timestamp so the backend resends it.
+    data["acl_version"] = acl.has_received_at() ? acl.get_version() : 0;
     data["requires_pin"] = acl.get_requires_pin();
     data["locked"] = acl.get_locked();
     data["lock"] = lock.is_closed() ? "locked" : "unlocked";
@@ -260,7 +261,8 @@ void MqttTransport::handle_command_payload(
   }
 
   const int expires_at = data["expires_at"] | 0;
-  if (clock.is_valid() && expires_at > 0 && time(nullptr) > expires_at) {
+  const time_t now = time(nullptr);
+  if (now > 0 && expires_at > 0 && now > expires_at) {
     publish_response(request_id, "expired", "command_expired");
     return;
   }
@@ -274,7 +276,7 @@ void MqttTransport::handle_command(const String &command, const JsonObject &data
 
   const String request_id = data["request_id"] | "";
   if (command == "synchronize-access-list") {
-    const bool applied = acl.apply(data, clock.is_valid(), time(nullptr));
+    const bool applied = acl.apply(data, time(nullptr));
     if (!applied) {
       publish_response(request_id, "error", "invalid_snapshot");
       return;

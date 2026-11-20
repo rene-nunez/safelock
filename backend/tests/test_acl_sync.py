@@ -284,6 +284,54 @@ async def test_offline_change_is_sent_on_reconnect_status(
     assert published == [acl_sync.SYNC_COMMAND]
 
 
+async def test_untimestamped_acl_is_resent_after_status_reports_zero(
+    db: Database, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    await make_device(db)
+    holder = await create_cardholder(db, CardholderCreate(name="Ada"))
+    await create_credential(
+        db, holder["_id"], CredentialCreate(uid="AA:BB:CC:DD")
+    )
+    await db.devices.update_one(
+        {"device_id": DEVICE_ID},
+        {
+            "$set": {
+                "acl_version": 1,
+                "desired_acl_version": 1,
+                "last_seen": datetime.now(UTC),
+            }
+        },
+    )
+
+    published: list[str] = []
+
+    async def publish_command(
+        device_id: str, command: str, data: dict[str, Any]
+    ) -> bool:
+        published.append(command)
+        return True
+
+    net = MqttGateway(db, Settings(mqtt_url="mqtt://127.0.0.1:1883"))
+    monkeypatch.setattr(net, "publish_command", publish_command)
+    await net.handle_message(
+        f"safelock/devices/{DEVICE_ID}/status",
+        envelope(
+            {
+                "online": True,
+                "fw": "0.2.0",
+                "acl_version": 0,
+                "requires_pin": False,
+                "locked": False,
+                "lock": "locked",
+            }
+        ),
+    )
+    assert published == [acl_sync.SYNC_COMMAND]
+    device = await db.devices.find_one({"device_id": DEVICE_ID})
+    assert device is not None
+    assert device["acl_version"] == 0
+
+
 async def test_credential_creation_triggers_sync(
     api: AsyncClient,
     db: Database,

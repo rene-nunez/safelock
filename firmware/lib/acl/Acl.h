@@ -39,13 +39,13 @@ class Acl {
     uint16_t unlock_duration;
     bool loaded = false;
 
-    bool parse(const JsonObject &data, bool persist, bool clock_valid, time_t now);
+    bool parse(const JsonObject &data, bool persist, time_t now);
 
   public:
     explicit Acl(Storage &storage);
 
     bool begin();
-    bool apply(const JsonObject &data, bool clock_valid, time_t now);
+    bool apply(const JsonObject &data, time_t now);
 
     AclDecision evaluate(
       const String &uid, bool clock_valid, time_t now, bool backend_available
@@ -54,6 +54,7 @@ class Acl {
     uint32_t age_s(bool clock_valid, time_t now) const;
 
     bool is_loaded() const;
+    bool has_received_at() const;
     uint32_t get_version() const;
     bool get_requires_pin() const;
     bool get_locked() const;

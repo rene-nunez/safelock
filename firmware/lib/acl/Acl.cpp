@@ -13,7 +13,7 @@ time_t optional_epoch(JsonVariantConst value) {
 
 Acl::Acl(Storage &storage) : storage(storage), unlock_duration(LOCK_OPEN_MS) {}
 
-bool Acl::parse(const JsonObject &data, bool persist, bool clock_valid, time_t now) {
+bool Acl::parse(const JsonObject &data, bool persist, time_t now) {
   if (!data["acl_version"].is<int>()) return false;
   if (!data["entries"].is<JsonArray>()) return false;
 
@@ -45,11 +45,12 @@ bool Acl::parse(const JsonObject &data, bool persist, bool clock_valid, time_t n
   }
 
   // A restored snapshot keeps its original receive time: stale detection must survive a reboot.
-  // A fresh snapshot starts the age counter from the RTC.
+  // Stamp fresh snapshots from the network epoch (now), not from the RTC flag: the DS1307 can
+  // be missing while SNTP still provides a trustworthy timestamp. A zero would disable aging.
   time_t new_received = 0;
 
   if (persist) {
-    new_received = (clock_valid && now > 0) ? now : 0;
+    new_received = (now > 0) ? now : 0;
   } else if (data["received_at"].is<uint64_t>()) {
     new_received = static_cast<time_t>(data["received_at"].as<uint64_t>());
   }
@@ -111,11 +112,11 @@ bool Acl::begin() {
 
   JsonDocument document;
   if (deserializeJson(document, payload) != DeserializationError::Ok) return false;
-  return parse(document.as<JsonObject>(), false, true, time(nullptr));
+  return parse(document.as<JsonObject>(), false, time(nullptr));
 }
 
-bool Acl::apply(const JsonObject &data, bool clock_valid, time_t now) {
-  return parse(data, true, clock_valid, now);
+bool Acl::apply(const JsonObject &data, time_t now) {
+  return parse(data, true, now);
 }
 
 AclDecision Acl::evaluate(const String &uid, bool clock_valid, time_t now, bool backend_available) const {
@@ -164,6 +165,7 @@ uint32_t Acl::age_s(bool clock_valid, time_t now) const {
 }
 
 bool Acl::is_loaded() const { return loaded; }
+bool Acl::has_received_at() const { return received_at > 0; }
 uint32_t Acl::get_version() const { return version; }
 bool Acl::get_requires_pin() const { return requires_pin; }
 bool Acl::get_locked() const { return locked; }

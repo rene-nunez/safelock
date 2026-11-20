@@ -31,6 +31,8 @@ The backend sends the full snapshot on `commands/synchronize-access-list`. The d
 
 The `unlock_ms` value in the snapshot overrides the initial `LOCK_OPEN_MS` from `include/config.h`, which is only a boot default. The manual-open attribution window follows the active duration.
 
+Snapshots are stamped with the network epoch even when the RTC is degraded. A restored snapshot without a usable timestamp is reported as `acl_version: 0` in `status` so the backend resends it. Validity windows and `acl_stale` are still evaluated only while the RTC is valid; command expiry uses the network epoch.
+
 Every `events/*` and `response` message is queued in `/outbox.json` and resent when the broker is reachable. The broker deduplicates by message `id`, so a reboot can safely replay in-flight messages. `status` and `heartbeat` are never queued.
 
 The firmware uses `espMqttClient`, which supports MQTT 3.1.1 with TLS and QoS 1. `status` and the LWT are retained at QoS 1, `heartbeat` is QoS 0, and `events/*` and `response` are published at QoS 1. The library does not persist QoS 1 packets across a reboot, so the local outbox covers that gap.
