@@ -8,7 +8,7 @@ import {
 } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ChevronRight, Cpu, Plus, RefreshCw, X } from 'lucide-react'
+import { ChevronRight, Plus, RefreshCw, X } from 'lucide-react'
 import { useForm, useWatch } from 'react-hook-form'
 import { useSearchParams } from 'react-router-dom'
 import { z } from 'zod'
@@ -538,9 +538,6 @@ export function DevicesPage() {
                           active && 'bg-accent',
                         )}
                       >
-                        <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-secondary text-muted-foreground">
-                          <Cpu className="size-4" />
-                        </span>
                         <div className="min-w-0 flex-1">
                           <p className="truncate font-medium">{device.name}</p>
                         </div>
