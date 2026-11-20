@@ -395,59 +395,44 @@ export function UsersPage() {
                     {...editForm.register('password')}
                   />
                 </FormField>
-                <div className="flex flex-col gap-2 sm:col-span-2">
-                  <FormActions className="sm:justify-between">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      disabled={
-                        updateMutation.isPending || !editForm.formState.isDirty
-                      }
-                      onClick={() => {
-                        resetEditForm(selected ?? undefined)
-                        updateMutation.reset()
-                        setSuccess(null)
-                      }}
-                    >
-                      Revert changes
-                    </Button>
-                    <Button
-                      type="submit"
-                      disabled={
-                        updateMutation.isPending || !editForm.formState.isDirty
-                      }
-                    >
-                      Save changes
-                    </Button>
-                  </FormActions>
-                  <FormActions>
-                    {confirmDeactivate ? (
-                    <>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        onClick={() => setConfirmDeactivate(false)}
-                      >
-                        Cancel
-                      </Button>
+                <FormActions className="sm:col-span-2">
+                  <Button
+                    type="submit"
+                    disabled={
+                      updateMutation.isPending || !editForm.formState.isDirty
+                    }
+                  >
+                    Save changes
+                  </Button>
+                  {editableUser.active ? (
+                    confirmDeactivate ? (
+                      <>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          onClick={() => setConfirmDeactivate(false)}
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          disabled={updateMutation.isPending}
+                          onClick={() => setActive(false)}
+                        >
+                          Confirm deactivation
+                        </Button>
+                      </>
+                    ) : (
                       <Button
                         type="button"
                         variant="destructive"
                         disabled={updateMutation.isPending}
-                        onClick={() => setActive(false)}
+                        onClick={() => setConfirmDeactivate(true)}
                       >
-                        Confirm deactivation
+                        Deactivate
                       </Button>
-                    </>
-                  ) : editableUser.active ? (
-                    <Button
-                      type="button"
-                      variant="destructive"
-                      disabled={updateMutation.isPending}
-                      onClick={() => setConfirmDeactivate(true)}
-                    >
-                      Deactivate
-                    </Button>
+                    )
                   ) : (
                     <Button
                       type="button"
@@ -458,8 +443,7 @@ export function UsersPage() {
                       Activate
                     </Button>
                   )}
-                  </FormActions>
-                </div>
+                </FormActions>
               </form>
             )}
           </CardContent>

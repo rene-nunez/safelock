@@ -549,31 +549,14 @@ export function CardholdersPage() {
                       </span>
                     </h3>
                   </div>
-                  <div className="flex flex-col gap-2 sm:col-span-2">
-                    <FormActions className="sm:justify-between">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        disabled={
-                          updateMutation.isPending || !editForm.formState.isDirty
-                        }
-                        onClick={() => {
-                          if (selected) resetEditForm(selected)
-                          updateMutation.reset()
-                          setSuccess(null)
-                        }}
-                      >
-                        Revert changes
-                      </Button>
-                      <Button
-                        type="submit"
-                        disabled={updateMutation.isPending}
-                      >
-                        Save changes
-                      </Button>
-                    </FormActions>
-                    <FormActions>
-                      {selected.status === 'active' ? (
+                  <FormActions className="sm:col-span-2">
+                    <Button
+                      type="submit"
+                      disabled={updateMutation.isPending}
+                    >
+                      Save changes
+                    </Button>
+                    {selected.status === 'active' ? (
                       <Button
                         type="button"
                         variant="destructive"
@@ -635,8 +618,7 @@ export function CardholdersPage() {
                         Delete permanently
                       </Button>
                     ) : null}
-                    </FormActions>
-                  </div>
+                  </FormActions>
                   <InlineNotice
                     message={errorMessage(
                       updateMutation.error ??
