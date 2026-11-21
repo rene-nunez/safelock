@@ -74,18 +74,17 @@ void Provisioning::poll() {
 
 void Provisioning::print_help() const {
   Serial.println("Commands:");
-  Serial.println("  show                                  Show settings (passwords masked)");
-  Serial.println("  set device-id sl-0001                 Stage a device ID");
-  Serial.println("  set wifi \"<ssid>\" \"<password>\"        Stage WiFi credentials");
-  Serial.println("  set mqtt \"<password>\"                 Stage the MQTT password");
-  Serial.println("  commit                                Validate, save and restart");
-  Serial.println("  factory-reset                         Erase settings and restart");
-  Serial.println("  reboot                                Restart without changes");
+  Serial.println("  show                                    Show settings (passwords masked)");
+  Serial.println("  set device-id sl-0001                   Stage a device ID");
+  Serial.println("  set wifi \"<ssid>\" \"<password>\"          Stage WiFi credentials");
+  Serial.println("  set mqtt \"<password>\"                   Stage the MQTT password");
+  Serial.println("  commit                                  Validate, save and restart");
+  Serial.println("  factory-reset                           Erase settings and restart");
+  Serial.println("  reboot                                  Restart without changes");
   Serial.println("  provision sl-0001 <ssid> <wifi> <mqtt>  Save all and restart");
 }
 
-void Provisioning::print_value(const String &label, const String &current,
-                               const String &pending, bool secret) const {
+void Provisioning::print_value(const String &label, const String &current, const String &pending, bool secret) const {
   const String &effective = pending.length() > 0 ? pending : current;
   Serial.print("  ");
   Serial.print(label);
@@ -121,14 +120,10 @@ void Provisioning::restart() {
 }
 
 void Provisioning::commit() {
-  const String device_id =
-      pending_device_id.length() > 0 ? pending_device_id : settings.get_device_id();
-  const String wifi_ssid =
-      pending_wifi_ssid.length() > 0 ? pending_wifi_ssid : settings.get_wifi_ssid();
-  const String wifi_password =
-      pending_wifi_password.length() > 0 ? pending_wifi_password : settings.get_wifi_password();
-  const String mqtt_password =
-      pending_mqtt_password.length() > 0 ? pending_mqtt_password : settings.get_mqtt_password();
+  const String device_id = pending_device_id.length() > 0 ? pending_device_id : settings.get_device_id();
+  const String wifi_ssid = pending_wifi_ssid.length() > 0 ? pending_wifi_ssid : settings.get_wifi_ssid();
+  const String wifi_password = pending_wifi_password.length() > 0 ? pending_wifi_password : settings.get_wifi_password();
+  const String mqtt_password = pending_mqtt_password.length() > 0 ? pending_mqtt_password : settings.get_mqtt_password();
 
   const String error = settings.set(device_id, wifi_ssid, wifi_password, mqtt_password);
   if (error.length() > 0) {

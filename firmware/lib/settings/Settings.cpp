@@ -20,8 +20,7 @@ bool Settings::is_provisioned() const {
          safelock::valid_mqtt_password(mqtt_password.c_str(), mqtt_password.length());
 }
 
-String Settings::set(const String &new_device_id, const String &new_wifi_ssid,
-                     const String &new_wifi_password, const String &new_mqtt_password) {
+String Settings::set(const String &new_device_id, const String &new_wifi_ssid, const String &new_wifi_password, const String &new_mqtt_password) {
   if (!safelock::valid_device_id(new_device_id.c_str(), new_device_id.length())) {
     return "Invalid device_id; use the format sl-0001";
   }

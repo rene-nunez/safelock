@@ -17,8 +17,7 @@ class Provisioning {
     void commit();
     void print_help() const;
     void print_status() const;
-    void print_value(const String &label, const String &current,
-                     const String &pending, bool secret) const;
+    void print_value(const String &label, const String &current, const String &pending, bool secret) const;
     void clear_pending();
     static void restart();
 
