@@ -1071,6 +1071,7 @@ export function CardholdersPage() {
                         label={`PIN for ${pinTarget.uid}`}
                         htmlFor="pin-value"
                         className="sm:col-span-2"
+                        reserveMessage={false}
                       >
                         <PasswordInput
                           inputMode="numeric"
