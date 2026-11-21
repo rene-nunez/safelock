@@ -795,6 +795,7 @@ export function CardholdersPage() {
                             label="Device"
                             htmlFor="credential-device"
                             error={credentialForm.formState.errors.device_id?.message}
+                            reserveMessage={false}
                           >
                             <div className="flex gap-2">
                               <Select
@@ -848,6 +849,7 @@ export function CardholdersPage() {
                           htmlFor="credential-uid"
                           error={credentialForm.formState.errors.uid?.message}
                           className="sm:col-span-2"
+                          reserveMessage={false}
                         >
                           <Input
                             placeholder="AA:BB:CC:DD"
