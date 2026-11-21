@@ -210,7 +210,7 @@ Result of a command.
 - **PIN** is checked only by the backend. The device never checks or stores the PIN.
 - Doors with `requires_pin` need the backend. If the backend is not available, access is denied (`offline_no_pin`). There is no "card only" fallback for these doors.
 - For card-only doors, when the backend is not available the device follows `offline_policy`. An access list older than `stale_acl_hours` is always rejected (`acl_stale`), whether or not the backend is available.
-- Until PIN entry is implemented, doors with `requires_pin` deny card access (`offline_no_pin`).
+- On doors with `requires_pin`, a card match starts PIN entry instead of granting access directly. The device sends `events/pin-entry`; the backend validates the PIN and, on success, sends `commands/unlock`. The device may publish a card `access-decision` with `offline_no_pin` to record that the card alone is not enough.
 - With no access list loaded, all card access is denied.
 - A card not in the access list is denied locally (`acl_absent`) but the event is still sent.
 - Manual opening (key or switch): local alert and an `access-decision` event with `decision: "unknown"`, `source: "manual"`, `reason: "manual_open"`. If there is no power, it is not recorded.
