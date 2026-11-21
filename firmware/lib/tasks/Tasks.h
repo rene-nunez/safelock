@@ -32,7 +32,7 @@
 #define SD_RETRY_MS 1000
 #define SD_MAX_ATTEMPTS 10
 
-class Tasks {
+class Tasks : public MqttCommandHandler {
   private:
     enum lock_state { WAIT_SD, ENTERING, SUCCESS, LOGGING, ERROR, ALERT };
 
@@ -130,6 +130,6 @@ class Tasks {
     );
 
     void run();
-    bool begin_enrollment(const String &request_id, uint32_t ttl_s);
-    void handle_remote_unlock(uint16_t duration_ms);
+    bool begin_enrollment(const String &request_id, uint32_t ttl_s) override;
+    void handle_remote_unlock(uint16_t duration_ms) override;
 };

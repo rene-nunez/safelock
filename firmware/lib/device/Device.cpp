@@ -45,7 +45,7 @@ void Device::begin() {
   net.begin(settings.get_wifi_ssid(), settings.get_wifi_password());
   if (net.time_valid()) clock.sync_from_epoch(time(nullptr));
   mqtt.begin();
-  mqtt.set_tasks(tasks);
+  mqtt.set_command_handler(tasks);
 
   indicators.begin();
   indicators.show_locked();

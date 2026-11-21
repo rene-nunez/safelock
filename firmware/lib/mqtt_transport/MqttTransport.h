@@ -18,7 +18,11 @@
 
 #include "mqtt_config.h"
 
-class Tasks;
+class MqttCommandHandler {
+  public:
+    virtual bool begin_enrollment(const String &request_id, uint32_t ttl_s) = 0;
+    virtual void handle_remote_unlock(uint16_t duration_ms) = 0;
+};
 
 class MqttTransport {
   private:
@@ -28,7 +32,7 @@ class MqttTransport {
     Lock &lock;
     Acl &acl;
     Outbox &outbox;
-    Tasks *tasks = nullptr;
+    MqttCommandHandler *command_handler = nullptr;
 
     espMqttClientSecure client;
 
@@ -74,7 +78,7 @@ class MqttTransport {
 
     void begin();
     void update();
-    void set_tasks(Tasks &tasks);
+    void set_command_handler(MqttCommandHandler &handler);
 
     bool connected() const;
     uint16_t publish_queued(

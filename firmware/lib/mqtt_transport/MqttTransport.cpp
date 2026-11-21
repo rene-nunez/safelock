@@ -1,5 +1,4 @@
 #include "MqttTransport.h"
-#include <Tasks.h>
 
 #include <esp_system.h>
 #include <time.h>
@@ -87,7 +86,9 @@ String MqttTransport::status_payload(bool online) {
   return envelope(data);
 }
 
-void MqttTransport::set_tasks(Tasks &t) { tasks = &t; }
+void MqttTransport::set_command_handler(MqttCommandHandler &handler) {
+  command_handler = &handler;
+}
 
 void MqttTransport::begin() {
   device_id = settings.get_device_id();
@@ -284,24 +285,24 @@ void MqttTransport::handle_command(const String &command, const JsonObject &data
   }
 
   if (command == "unlock") {
-    if (tasks == nullptr) {
+    if (command_handler == nullptr) {
       publish_response(request_id, "error", "not_ready");
       return;
     }
     const uint16_t duration_ms = data["duration_ms"] | acl.get_unlock_ms();
-    tasks->handle_remote_unlock(duration_ms);
+    command_handler->handle_remote_unlock(duration_ms);
     publish_response(request_id, "ok", nullptr);
     publish_status();
     return;
   }
 
   if (command == "enroll") {
-    if (tasks == nullptr) {
+    if (command_handler == nullptr) {
       publish_response(request_id, "error", "not_ready");
       return;
     }
     const uint32_t ttl_s = data["ttl_s"] | 60;
-    if (tasks->begin_enrollment(request_id, ttl_s)) {
+    if (command_handler->begin_enrollment(request_id, ttl_s)) {
       publish_response(request_id, "ok", nullptr);
     } else {
       publish_response(request_id, "error", "busy");
