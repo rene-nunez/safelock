@@ -19,11 +19,15 @@ import { useConfirm } from '@/hooks/use-confirm'
 import {
   ApiError,
   activateAndRestoreCardholder,
+  confirmEnrollment,
   createCardholder,
   createCredential,
+  createEnrollment,
   deleteCardholder,
   deleteCredential,
   listCardholders,
+  listDevices,
+  listEnrollments,
   listHolderCredentials,
   restoreCredential,
   revokeAllCredentials,
@@ -33,6 +37,7 @@ import {
   type Cardholder,
   type Credential,
   type CreateCredentialInput,
+  type Enrollment,
   type UpdateCardholderInput,
 } from '@/lib/api'
 import { formatDateTime } from '@/lib/format'
@@ -61,7 +66,9 @@ const editSchema = z.object({
 })
 
 const credentialSchema = z.object({
-  uid: z.string().trim().min(1, 'Enter the card UID'),
+  mode: z.enum(['enroll', 'manual']),
+  device_id: z.string().trim(),
+  uid: z.string().trim(),
   pin: z
     .string()
     .trim()
@@ -70,6 +77,13 @@ const credentialSchema = z.object({
     }),
   valid_from: z.string(),
   valid_to: z.string(),
+}).superRefine((values, ctx) => {
+  if (values.mode === 'manual' && values.uid.length === 0) {
+    ctx.addIssue({ code: 'custom', path: ['uid'], message: 'Enter the card UID' })
+  }
+  if (values.mode === 'enroll' && values.device_id.length === 0) {
+    ctx.addIssue({ code: 'custom', path: ['device_id'], message: 'Select a device' })
+  }
 })
 
 type CreateValues = z.infer<typeof createSchema>
@@ -116,6 +130,7 @@ export function CardholdersPage() {
   const [credentialOpen, setCredentialOpen] = useState(false)
   const [pinTarget, setPinTarget] = useState<Credential | null>(null)
   const [pinValue, setPinValue] = useState('')
+  const [activeEnrollment, setActiveEnrollment] = useState<Enrollment | null>(null)
   const [success, setSuccess] = useState<{
     message: string
     area: NoticeArea
@@ -173,8 +188,34 @@ export function CardholdersPage() {
   })
   const credentialForm = useForm<CredentialValues>({
     resolver: zodResolver(credentialSchema),
-    defaultValues: { uid: '', pin: '', valid_from: '', valid_to: '' },
+    defaultValues: {
+      mode: 'enroll',
+      device_id: '',
+      uid: '',
+      pin: '',
+      valid_from: '',
+      valid_to: '',
+    },
   })
+  const credentialMode = credentialForm.watch('mode')
+  const enrollmentDeviceId = credentialForm.watch('device_id')
+
+  const devicesQuery = useQuery({
+    queryKey: ['devices'],
+    queryFn: listDevices,
+    enabled: credentialOpen,
+  })
+  const enrollmentQuery = useQuery({
+    queryKey: ['enrollments', enrollmentDeviceId],
+    queryFn: () => listEnrollments(enrollmentDeviceId),
+    enabled: credentialOpen && credentialMode === 'enroll' && enrollmentDeviceId !== '',
+    refetchInterval: 3000,
+  })
+  const enrollments = enrollmentQuery.data ?? []
+  const pendingEnrollment =
+    activeEnrollment
+      ? enrollments.find((item) => item.id === activeEnrollment.id) ?? activeEnrollment
+      : null
 
   useEffect(() => {
     resetPanelMutations()
@@ -182,6 +223,8 @@ export function CardholdersPage() {
     resetEditForm(selected)
     setCredentialOpen(false)
     setPinTarget(null)
+    setActiveEnrollment(null)
+    credentialForm.reset({ mode: 'enroll', device_id: '', uid: '', pin: '', valid_from: '', valid_to: '' })
     // Reset only when switching cardholders, not after a background refetch.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selected?.id])
@@ -249,10 +292,40 @@ export function CardholdersPage() {
       createCredential(selectedId ?? '', input),
     onMutate: () => setSuccess(null),
     onSuccess: () => {
-      credentialForm.reset()
+      credentialForm.reset({ mode: 'enroll', device_id: '', uid: '', pin: '', valid_from: '', valid_to: '' })
+      setActiveEnrollment(null)
       setCredentialOpen(false)
       showSuccess('Card added.', 'credentials')
       void invalidateCredentials()
+    },
+  })
+
+  const startEnrollmentMutation = useMutation({
+    mutationFn: (deviceId: string) => createEnrollment(deviceId),
+    onMutate: () => setSuccess(null),
+    onSuccess: (enrollment) => {
+      setActiveEnrollment(enrollment)
+      void queryClient.invalidateQueries({ queryKey: ['enrollments'] })
+    },
+  })
+
+  const confirmEnrollmentMutation = useMutation({
+    mutationFn: (input: { id: string; values: CredentialValues }) =>
+      confirmEnrollment(input.id, {
+        holder_id: selectedId ?? '',
+        valid_from: toIso(input.values.valid_from),
+        valid_to: toIso(input.values.valid_to),
+        pin: input.values.pin === '' ? undefined : input.values.pin,
+      }),
+    onMutate: () => setSuccess(null),
+    onSuccess: () => {
+      credentialForm.reset({ mode: 'enroll', device_id: '', uid: '', pin: '', valid_from: '', valid_to: '' })
+      setActiveEnrollment(null)
+      setCredentialOpen(false)
+      showSuccess('Card enrolled.', 'credentials')
+      void invalidateCredentials()
+      void queryClient.invalidateQueries({ queryKey: ['enrollments'] })
+      void queryClient.invalidateQueries({ queryKey: ['devices'] })
     },
   })
 
@@ -347,12 +420,20 @@ export function CardholdersPage() {
   }
 
   function onAddCredential(values: CredentialValues) {
-    createCredentialMutation.mutate({
-      uid: values.uid,
-      pin: values.pin === '' ? undefined : values.pin,
-      valid_from: toIso(values.valid_from),
-      valid_to: toIso(values.valid_to),
-    })
+    setSuccess(null)
+    createCredentialMutation.reset()
+    confirmEnrollmentMutation.reset()
+    if (values.mode === 'manual') {
+      createCredentialMutation.mutate({
+        uid: values.uid,
+        pin: values.pin === '' ? undefined : values.pin,
+        valid_from: toIso(values.valid_from),
+        valid_to: toIso(values.valid_to),
+      })
+      return
+    }
+    if (!pendingEnrollment || pendingEnrollment.status !== 'scanned') return
+    confirmEnrollmentMutation.mutate({ id: pendingEnrollment.id, values })
   }
 
   return (
@@ -887,17 +968,97 @@ export function CardholdersPage() {
                       className="mt-4 grid gap-4 rounded-lg border border-border p-3 sm:grid-cols-2"
                       onSubmit={credentialForm.handleSubmit(onAddCredential)}
                     >
-                      <FormField
-                        label="Card UID"
-                        htmlFor="credential-uid"
-                        hint="AA:BB:CC:DD"
-                        error={credentialForm.formState.errors.uid?.message}
-                      >
-                        <Input
-                          placeholder="AA:BB:CC:DD"
-                          {...credentialForm.register('uid')}
-                        />
-                      </FormField>
+                      <div className="flex flex-wrap gap-2 sm:col-span-2">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant={credentialMode === 'enroll' ? 'secondary' : 'ghost'}
+                          onClick={() => {
+                            credentialForm.setValue('mode', 'enroll')
+                            setActiveEnrollment(null)
+                          }}
+                        >
+                          Enroll by touch
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant={credentialMode === 'manual' ? 'secondary' : 'ghost'}
+                          onClick={() => {
+                            credentialForm.setValue('mode', 'manual')
+                            setActiveEnrollment(null)
+                          }}
+                        >
+                          Enter UID manually
+                        </Button>
+                      </div>
+
+                      {credentialMode === 'enroll' ? (
+                        <>
+                          <FormField
+                            label="Device"
+                            htmlFor="credential-device"
+                            error={credentialForm.formState.errors.device_id?.message}
+                            className="sm:col-span-2"
+                          >
+                            <select
+                              id="credential-device"
+                              className="flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                              {...credentialForm.register('device_id', {
+                                onChange: () => setActiveEnrollment(null),
+                              })}
+                            >
+                              <option value="">Select a device</option>
+                              {(devicesQuery.data ?? [])
+                                .filter((d) => d.status === 'active')
+                                .map((d) => (
+                                  <option key={d.id} value={d.device_id}>
+                                    {d.name} ({d.device_id}){d.online ? '' : ' — offline'}
+                                  </option>
+                                ))}
+                            </select>
+                          </FormField>
+                          <div className="flex flex-wrap items-center gap-2 sm:col-span-2">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              disabled={
+                                !enrollmentDeviceId ||
+                                startEnrollmentMutation.isPending ||
+                                !(devicesQuery.data ?? []).find((d) => d.device_id === enrollmentDeviceId)?.online
+                              }
+                              onClick={() => startEnrollmentMutation.mutate(enrollmentDeviceId)}
+                            >
+                              {startEnrollmentMutation.isPending ? 'Starting…' : 'Start enrollment'}
+                            </Button>
+                            {pendingEnrollment ? (
+                              <Badge variant={pendingEnrollment.status === 'scanned' ? 'secondary' : 'muted'}>
+                                {pendingEnrollment.status === 'scanned'
+                                  ? `Scanned: ${pendingEnrollment.uid}`
+                                  : 'Waiting for card…'}
+                              </Badge>
+                            ) : null}
+                          </div>
+                          <InlineNotice
+                            message={errorMessage(startEnrollmentMutation.error)}
+                            className="sm:col-span-2"
+                          />
+                        </>
+                      ) : (
+                        <FormField
+                          label="Card UID"
+                          htmlFor="credential-uid"
+                          hint="AA:BB:CC:DD"
+                          error={credentialForm.formState.errors.uid?.message}
+                          className="sm:col-span-2"
+                        >
+                          <Input
+                            placeholder="AA:BB:CC:DD"
+                            {...credentialForm.register('uid')}
+                          />
+                        </FormField>
+                      )}
+
                       <FormField
                         label="PIN (optional)"
                         htmlFor="credential-pin"
@@ -911,13 +1072,14 @@ export function CardholdersPage() {
                           {...credentialForm.register('pin')}
                         />
                       </FormField>
-                      <FormField label="Valid from" htmlFor="credential-from">
+                      <div className="hidden sm:block" />
+                      <FormField label="Valid from" htmlFor="credential-from" hint="Leave empty to activate immediately">
                         <Input
                           type="datetime-local"
                           {...credentialForm.register('valid_from')}
                         />
                       </FormField>
-                      <FormField label="Valid to" htmlFor="credential-to">
+                      <FormField label="Valid to" htmlFor="credential-to" hint="Leave empty for no expiry">
                         <Input
                           type="datetime-local"
                           {...credentialForm.register('valid_to')}
@@ -929,6 +1091,9 @@ export function CardholdersPage() {
                           variant="ghost"
                           onClick={() => {
                             createCredentialMutation.reset()
+                            confirmEnrollmentMutation.reset()
+                            startEnrollmentMutation.reset()
+                            setActiveEnrollment(null)
                             setCredentialOpen(false)
                           }}
                         >
@@ -936,16 +1101,22 @@ export function CardholdersPage() {
                         </Button>
                         <Button
                           type="submit"
-                          disabled={createCredentialMutation.isPending}
+                          disabled={
+                            createCredentialMutation.isPending ||
+                            confirmEnrollmentMutation.isPending ||
+                            (credentialMode === 'enroll' && pendingEnrollment?.status !== 'scanned')
+                          }
                         >
                           <Plus className="size-4" />
-                          {createCredentialMutation.isPending
+                          {createCredentialMutation.isPending || confirmEnrollmentMutation.isPending
                             ? 'Adding card…'
-                            : 'Add card'}
+                            : credentialMode === 'enroll'
+                              ? 'Confirm card'
+                              : 'Add card'}
                         </Button>
                       </FormActions>
                       <InlineNotice
-                        message={errorMessage(createCredentialMutation.error)}
+                        message={errorMessage(createCredentialMutation.error ?? confirmEnrollmentMutation.error)}
                         className="sm:col-span-2"
                       />
                     </form>
