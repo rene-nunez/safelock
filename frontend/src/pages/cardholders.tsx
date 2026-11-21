@@ -790,12 +790,11 @@ export function CardholdersPage() {
                       </div>
 
                       {credentialMode === 'enroll' ? (
-                        <>
+                        <div className="flex flex-col gap-3 sm:col-span-2">
                           <FormField
                             label="Device"
                             htmlFor="credential-device"
                             error={credentialForm.formState.errors.device_id?.message}
-                            className="sm:col-span-2"
                           >
                             <div className="flex gap-2">
                               <Select
@@ -833,7 +832,7 @@ export function CardholdersPage() {
                             </div>
                           </FormField>
                           {pendingEnrollment ? (
-                            <div className="sm:col-span-2">
+                            <div>
                               <Badge variant={pendingEnrollment.status === 'scanned' ? 'secondary' : 'muted'}>
                                 {pendingEnrollment.status === 'scanned'
                                   ? `Scanned: ${pendingEnrollment.uid}`
@@ -841,11 +840,8 @@ export function CardholdersPage() {
                               </Badge>
                             </div>
                           ) : null}
-                          <InlineNotice
-                            message={errorMessage(startEnrollmentMutation.error)}
-                            className="sm:col-span-2"
-                          />
-                        </>
+                          <InlineNotice message={errorMessage(startEnrollmentMutation.error)} />
+                        </div>
                       ) : (
                         <FormField
                           label="Card UID"
@@ -866,6 +862,7 @@ export function CardholdersPage() {
                         htmlFor="credential-pin"
                         hint="Leave empty for no PIN"
                         error={credentialForm.formState.errors.pin?.message}
+                        className="sm:col-span-2"
                       >
                         <PasswordInput
                           inputMode="numeric"
@@ -874,7 +871,6 @@ export function CardholdersPage() {
                           {...credentialForm.register('pin')}
                         />
                       </FormField>
-                      <div className="hidden sm:block" />
                       <FormField label="Valid from" htmlFor="credential-from" hint="Leave empty to activate immediately">
                         <Input
                           type="datetime-local"
@@ -1063,7 +1059,7 @@ export function CardholdersPage() {
 
                   {pinTarget ? (
                     <form
-                      className="mt-4 grid gap-3 rounded-lg border border-border p-3 sm:grid-cols-2"
+                      className="mt-4 grid gap-4 rounded-lg border border-border p-3 sm:grid-cols-2"
                       onSubmit={(event) => {
                         event.preventDefault()
                         pinMutation.mutate({
