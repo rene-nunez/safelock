@@ -68,6 +68,11 @@ class CommandOut(BaseModel):
     acl_version: int
 
 
+class UnlockCommandOut(BaseModel):
+    request_id: str
+    expires_at: int
+
+
 class DeviceOut(BaseModel):
     id: str
     device_id: str

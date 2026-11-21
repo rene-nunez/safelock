@@ -7,7 +7,13 @@ from app.api.deps import get_current_admin, get_current_user, get_db, get_gatewa
 from app.api.v1.common import actor_object_id, client_ip
 from app.db.mongo import Database
 from app.schemas.auth import UserOut
-from app.schemas.devices import CommandOut, DeviceCreate, DeviceOut, DeviceUpdate
+from app.schemas.devices import (
+    CommandOut,
+    DeviceCreate,
+    DeviceOut,
+    DeviceUpdate,
+    UnlockCommandOut,
+)
 from app.services import acl_sync
 from app.services.audit import record_audit
 from app.services.devices import (
@@ -191,6 +197,57 @@ async def synchronize_device_endpoint(
         expires_at=result["expires_at"],
         acl_version=result["acl_version"],
     )
+
+
+@router.post(
+    "/{device_id}/unlock",
+    response_model=UnlockCommandOut,
+    status_code=status.HTTP_202_ACCEPTED,
+)
+async def unlock_device_endpoint(
+    device_id: str,
+    request: Request,
+    db: Db,
+    gateway: Gateway,
+    user: CurrentUser,
+) -> UnlockCommandOut:
+    target = await _require_device(db, device_id)
+    last_seen = target.get("last_seen")
+    if last_seen is None or datetime.now(UTC) - last_seen >= DEVICE_ONLINE_WINDOW:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail="The device is offline"
+        )
+    if gateway is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="MQTT gateway unavailable",
+        )
+
+    import time
+    import uuid
+    request_id = str(uuid.uuid4())
+    expires_at = int(time.time()) + 30
+    payload = {
+        "request_id": request_id,
+        "duration_ms": int(target.get("unlock_ms", 3000)),
+        "expires_at": expires_at,
+    }
+    ok = await gateway.publish_command(target["device_id"], "unlock", payload)
+    if not ok:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="MQTT gateway could not publish the command",
+        )
+
+    await record_audit(
+        db,
+        actor_id=actor_object_id(user),
+        action="device.unlock",
+        target=target["device_id"],
+        after={"request_id": request_id, "duration_ms": payload["duration_ms"]},
+        ip=client_ip(request),
+    )
+    return UnlockCommandOut(request_id=request_id, expires_at=expires_at)
 
 
 @router.delete("/{device_id}", status_code=status.HTTP_204_NO_CONTENT)

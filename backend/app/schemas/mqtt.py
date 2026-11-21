@@ -45,6 +45,21 @@ class StatusData(BaseModel):
     lock: Literal["locked", "unlocked"] | None = None
 
 
+class CardScanData(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    uid: str = Field(min_length=1, max_length=32)
+    request_id: str = Field(min_length=1, max_length=64)
+
+
+class PinEntryData(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    uid: str = Field(min_length=1, max_length=32)
+    pin: str = Field(min_length=6, max_length=32)
+    request_id: str = Field(min_length=1, max_length=64)
+
+
 class HeartbeatData(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
@@ -97,3 +112,19 @@ class CommandResponseData(BaseModel):
     request_id: str = Field(min_length=1, max_length=64)
     result: Literal["ok", "error", "expired"]
     reason: str | None = Field(default=None, max_length=60)
+
+
+class UnlockCommandData(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    request_id: str = Field(min_length=1, max_length=64)
+    duration_ms: int = Field(ge=100, le=30_000)
+    expires_at: int = Field(ge=0)
+
+
+class EnrollCommandData(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    request_id: str = Field(min_length=1, max_length=64)
+    ttl_s: int = Field(default=60, ge=1, le=300)
+    expires_at: int = Field(ge=0)

@@ -23,9 +23,11 @@ from app.core.identifiers import InvalidUidError, normalize_uid
 from app.db.mongo import Database
 from app.schemas.mqtt import (
     AccessDecisionData,
+    CardScanData,
     CommandResponseData,
     HeartbeatData,
     MessageEnvelope,
+    PinEntryData,
     StatusData,
 )
 from app.services import acl_sync
@@ -33,7 +35,14 @@ from app.services import acl_sync
 logger = logging.getLogger(__name__)
 
 TOPIC_PREFIX = "safelock/devices"
-KNOWN_KINDS = {"status", "heartbeat", "events/access-decision", "response"}
+KNOWN_KINDS = {
+    "status",
+    "heartbeat",
+    "events/access-decision",
+    "events/card-scan",
+    "events/pin-entry",
+    "response",
+}
 MAX_SEEN_IDS = 10_000
 FUTURE_TS_TOLERANCE_S = 300
 RECONNECT_DELAY_S = 5.0
@@ -249,8 +258,12 @@ class MqttGateway:
             await acl_sync.sync_on_heartbeat(self.db, self, device_id)
         elif kind == "response":
             await self._handle_response(device_id, envelope)
-        else:
+        elif kind == "events/access-decision":
             await self._handle_access_decision(device_id, envelope)
+        elif kind == "events/card-scan":
+            await self._handle_card_scan(device_id, envelope)
+        elif kind == "events/pin-entry":
+            await self._handle_pin_entry(device_id, envelope)
 
     async def _handle_status(self, device_id: str, envelope: MessageEnvelope) -> None:
         try:
@@ -323,6 +336,69 @@ class MqttGateway:
 
         await acl_sync.handle_response(
             self.db, device_id, response.request_id, response.result
+        )
+
+    async def _handle_card_scan(
+        self, device_id: str, envelope: MessageEnvelope
+    ) -> None:
+        try:
+            scan = CardScanData.model_validate(envelope.data)
+        except ValidationError:
+            logger.warning(
+                "Invalid MQTT card-scan id=%s device_id=%s", envelope.id, device_id
+            )
+            return
+        try:
+            uid = normalize_uid(scan.uid)
+        except InvalidUidError:
+            logger.warning(
+                "Invalid card-scan UID id=%s device_id=%s", envelope.id, device_id
+            )
+            return
+
+        from app.services import enrollments
+
+        updated = await enrollments.mark_scanned(
+            self.db, device_id, scan.request_id, uid
+        )
+        if updated is None:
+            logger.info(
+                "Card scan ignored id=%s device_id=%s", envelope.id, device_id
+            )
+            return
+        logger.info(
+            "Card scan stored device_id=%s request_id=%s",
+            device_id,
+            scan.request_id,
+        )
+
+    async def _handle_pin_entry(
+        self, device_id: str, envelope: MessageEnvelope
+    ) -> None:
+        try:
+            entry = PinEntryData.model_validate(envelope.data)
+        except ValidationError:
+            logger.warning(
+                "Invalid MQTT pin-entry id=%s device_id=%s", envelope.id, device_id
+            )
+            return
+        try:
+            uid = normalize_uid(entry.uid)
+        except InvalidUidError:
+            logger.warning(
+                "Invalid pin-entry UID id=%s device_id=%s", envelope.id, device_id
+            )
+            return
+
+        from app.services.pin_access import handle_pin_entry
+
+        await handle_pin_entry(
+            self,
+            device_id=device_id,
+            envelope=envelope,
+            uid=uid,
+            pin=entry.pin,
+            request_id=entry.request_id,
         )
 
     async def _handle_access_decision(
