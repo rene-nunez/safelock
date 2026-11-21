@@ -864,13 +864,13 @@ export function CardholdersPage() {
                       <FormField
                         label="PIN (optional)"
                         htmlFor="credential-pin"
-                        hint="6–32 digits."
+                        hint="Leave empty for no PIN"
                         error={credentialForm.formState.errors.pin?.message}
                       >
                         <PasswordInput
                           inputMode="numeric"
                           autoComplete="new-password"
-                          placeholder="Leave empty for no PIN"
+                          placeholder="6–32 digits"
                           {...credentialForm.register('pin')}
                         />
                       </FormField>
@@ -1075,7 +1075,6 @@ export function CardholdersPage() {
                       <FormField
                         label={`PIN for ${pinTarget.uid}`}
                         htmlFor="pin-value"
-                        hint="6–32 digits."
                         className="sm:col-span-2"
                       >
                         <PasswordInput
