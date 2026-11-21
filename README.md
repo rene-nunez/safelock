@@ -115,7 +115,7 @@ Run the checks:
 
 ```bash
 make lint
-make test
+make test-backend
 make typecheck
 ```
 

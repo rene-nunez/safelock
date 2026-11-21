@@ -6,7 +6,7 @@ PYTEST := $(if $(wildcard $(VENV)/bin/pytest),$(VENV)/bin/pytest,pytest)
 RUFF := $(if $(wildcard $(VENV)/bin/ruff),$(VENV)/bin/ruff,ruff)
 MYPY := $(if $(wildcard $(VENV)/bin/mypy),$(VENV)/bin/mypy,mypy)
 
-.PHONY: help venv backend create-user seed-demo seed-demo-reset provision firmware test-firmware monitor simulator test lint format frontend typecheck mqtt-restart
+.PHONY: help venv backend create-user seed-demo seed-demo-reset provision firmware test-firmware monitor simulator test-backend lint format frontend typecheck mqtt-restart
 
 help: ## Help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2}'
@@ -43,7 +43,7 @@ monitor: ## Serial monitor
 simulator: ## Run simulator
 	$(PYTHON) backend/scripts/simulator.py $(SIM_ARGS)
 
-test: ## Backend tests
+test-backend: ## Backend tests
 	$(PYTEST) backend/tests -q
 
 lint: ## Lint backend

@@ -177,7 +177,7 @@ make firmware      # compilar firmware
 make test-firmware # pruebas nativas de validación del firmware
 make monitor       # monitor serial
 make simulator     # simulador
-make test          # pruebas backend
+make test-backend # pruebas backend
 make lint          # lint backend
 make format        # formatear backend
 make frontend      # frontend en desarrollo
