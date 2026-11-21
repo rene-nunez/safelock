@@ -14,23 +14,23 @@ bool Settings::begin() {
 }
 
 bool Settings::is_provisioned() const {
-  return loaded && safelock::valid_device_id(device_id.c_str(), device_id.length()) &&
-         safelock::valid_wifi_ssid(wifi_ssid.c_str(), wifi_ssid.length()) &&
-         safelock::valid_wifi_password(wifi_password.c_str(), wifi_password.length()) &&
-         safelock::valid_mqtt_password(mqtt_password.c_str(), mqtt_password.length());
+  return loaded && validators::valid_device_id(device_id.c_str(), device_id.length()) &&
+         validators::valid_wifi_ssid(wifi_ssid.c_str(), wifi_ssid.length()) &&
+         validators::valid_wifi_password(wifi_password.c_str(), wifi_password.length()) &&
+         validators::valid_mqtt_password(mqtt_password.c_str(), mqtt_password.length());
 }
 
 String Settings::set(const String &new_device_id, const String &new_wifi_ssid, const String &new_wifi_password, const String &new_mqtt_password) {
-  if (!safelock::valid_device_id(new_device_id.c_str(), new_device_id.length())) {
+  if (!validators::valid_device_id(new_device_id.c_str(), new_device_id.length())) {
     return "Invalid device_id; use the format sl-0001";
   }
-  if (!safelock::valid_wifi_ssid(new_wifi_ssid.c_str(), new_wifi_ssid.length())) {
+  if (!validators::valid_wifi_ssid(new_wifi_ssid.c_str(), new_wifi_ssid.length())) {
     return "Invalid WiFi SSID; use 1-32 printable characters";
   }
-  if (!safelock::valid_wifi_password(new_wifi_password.c_str(), new_wifi_password.length())) {
+  if (!validators::valid_wifi_password(new_wifi_password.c_str(), new_wifi_password.length())) {
     return "Invalid WiFi password; use 8-63 printable characters";
   }
-  if (!safelock::valid_mqtt_password(new_mqtt_password.c_str(), new_mqtt_password.length())) {
+  if (!validators::valid_mqtt_password(new_mqtt_password.c_str(), new_mqtt_password.length())) {
     return "Invalid MQTT password; use 1-128 printable characters";
   }
 

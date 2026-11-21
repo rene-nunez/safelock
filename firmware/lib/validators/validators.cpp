@@ -18,7 +18,7 @@ bool valid_text(const char *value, size_t length) {
 
 } // namespace
 
-namespace safelock {
+namespace validators {
 
 bool valid_device_id(const char *value, size_t length) {
   if (length != 7 || value[0] != 's' || value[1] != 'l' || value[2] != '-') return false;
@@ -41,4 +41,4 @@ bool valid_mqtt_password(const char *value, size_t length) {
   return length > 0 && length <= MAX_MQTT_PASSWORD_LENGTH && valid_text(value, length);
 }
 
-} // namespace safelock
+} // namespace validators
