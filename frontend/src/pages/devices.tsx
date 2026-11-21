@@ -32,15 +32,21 @@ import { useAuth } from '@/hooks/use-auth'
 import { useConfirm } from '@/hooks/use-confirm'
 import {
   ApiError,
+  confirmEnrollment,
   createDevice,
+  createEnrollment,
   deleteDevice,
+  listCardholders,
   listDevices,
+  listEnrollments,
   synchronizeAccessList,
   unlockDevice,
   updateDevice,
+  type Cardholder,
   type CreateDeviceInput,
   type Device,
   type DeviceLocation,
+  type Enrollment,
   type UpdateDeviceInput,
 } from '@/lib/api'
 import { formatDateTime } from '@/lib/format'
@@ -179,6 +185,7 @@ export function DevicesPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [createOpen, setCreateOpen] = useState(false)
+  const [enrollHolderId, setEnrollHolderId] = useState('')
   const [success, setSuccess] = useState<{
     message: string
     area: NoticeArea
@@ -211,6 +218,19 @@ export function DevicesPage() {
   const devicesQuery = useQuery({ queryKey: ['devices'], queryFn: listDevices })
   const devices = devicesQuery.data ?? []
   const selected = devices.find((device) => device.id === selectedId) ?? null
+  const enrollmentsQuery = useQuery({
+    queryKey: ['enrollments', selected?.device_id],
+    queryFn: () => listEnrollments(selected?.device_id),
+    enabled: selected !== null,
+    refetchInterval: 3000,
+  })
+  const cardholdersQuery = useQuery({
+    queryKey: ['cardholders'],
+    queryFn: listCardholders,
+    enabled: selected !== null,
+  })
+  const enrollments = enrollmentsQuery.data ?? []
+  const cardholders = cardholdersQuery.data ?? []
   const onlineCount = devices.filter((device) => device.online).length
 
   const requestedDevice = searchParams.get('device')
@@ -225,8 +245,10 @@ export function DevicesPage() {
     setSearchParams({}, { replace: true })
   }, [devicesQuery.data, requestedDevice, setSearchParams])
 
-  const invalidate = () =>
-    queryClient.invalidateQueries({ queryKey: ['devices'] })
+  const invalidate = () => {
+    void queryClient.invalidateQueries({ queryKey: ['devices'] })
+    void queryClient.invalidateQueries({ queryKey: ['enrollments'] })
+  }
 
   const createForm = useForm<CreateValues>({
     resolver: zodResolver(createSchema),
@@ -367,6 +389,29 @@ export function DevicesPage() {
     },
     onSuccess: () => {
       showSuccess('Unlock command sent. Waiting for device response.', 'detail')
+      void invalidate()
+    },
+  })
+
+  const enrollConfirmMutation = useMutation({
+    mutationFn: ({ id, holderId }: { id: string; holderId: string }) =>
+      confirmEnrollment(id, { holder_id: holderId }),
+    onMutate: () => setSuccess(null),
+    onSuccess: () => {
+      setEnrollHolderId('')
+      showSuccess('Credential created and access list sync requested.', 'detail')
+      void invalidate()
+    },
+  })
+
+  const enrollMutation = useMutation({
+    mutationFn: (deviceId: string) => createEnrollment(deviceId),
+    onMutate: () => {
+      setSuccess(null)
+      enrollConfirmMutation.reset()
+    },
+    onSuccess: () => {
+      showSuccess('Enrollment started. Scan a card on the device.', 'detail')
       void invalidate()
     },
   })
@@ -664,6 +709,46 @@ export function DevicesPage() {
                       </span>
                     </StatusRow>
                   </dl>
+                </section>
+
+                <section className="border-t border-border pt-5">
+                  <h3 className="text-sm font-medium">Enrollment</h3>
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={!selected.online || enrollMutation.isPending}
+                      onClick={() => enrollMutation.mutate(selected.device_id)}
+                    >
+                      <Plus className="size-4" />
+                      {enrollMutation.isPending ? 'Starting...' : 'Start enrollment'}
+                    </Button>
+                  </div>
+                  <InlineNotice message={errorMessage(enrollMutation.error) ?? errorMessage(enrollConfirmMutation.error)} className="mt-3" />
+                  {enrollments.filter((e: Enrollment) => e.status === 'pending' || e.status === 'scanned').slice(0, 1).map((enrollment: Enrollment) => (
+                    <div key={enrollment.id} className="mt-3 rounded-lg border border-border p-3 text-sm">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-medium">{enrollment.status === 'scanned' ? 'Card scanned' : 'Waiting for card'}</span>
+                        <Badge variant={enrollment.status === 'scanned' ? 'secondary' : 'muted'}>{enrollment.status}</Badge>
+                      </div>
+                      <p className="mt-1 text-xs text-muted-foreground">UID: {enrollment.uid ?? '—'}</p>
+                      {enrollment.status === 'scanned' ? (
+                        <div className="mt-3 flex flex-col gap-2">
+                          <Select value={enrollHolderId} onChange={(e) => setEnrollHolderId(e.target.value)}>
+                            <option value="">Select cardholder</option>
+                            {cardholders.filter((h: Cardholder) => h.status === 'active').map((h: Cardholder) => <option key={h.id} value={h.id}>{h.name}</option>)}
+                          </Select>
+                          <Button
+                            size="sm"
+                            disabled={!enrollHolderId || enrollConfirmMutation.isPending}
+                            onClick={() => enrollConfirmMutation.mutate({ id: enrollment.id, holderId: enrollHolderId })}
+                          >
+                            {enrollConfirmMutation.isPending ? 'Confirming...' : 'Confirm credential'}
+                          </Button>
+                        </div>
+                      ) : null}
+                    </div>
+                  ))}
                 </section>
 
                 <section className="border-t border-border pt-5">

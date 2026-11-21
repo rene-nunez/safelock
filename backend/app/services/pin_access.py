@@ -90,7 +90,18 @@ async def handle_pin_entry(
             credential_id=credential_id,
         )
 
+    if device.get("locked", False):
+        await deny("door_locked")
+        return
+
     if credential is None:
+        await deny("acl_absent")
+        return
+
+    holder = await db.cardholders.find_one(
+        {"_id": credential["holder_id"], "status": "active"}
+    )
+    if holder is None:
         await deny("acl_absent")
         return
 

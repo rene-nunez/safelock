@@ -19,7 +19,9 @@ import {
 } from '@/components/ui/card'
 import { useAccessEvents } from '@/hooks/use-access-events'
 import { useDevices } from '@/hooks/use-devices'
+import { listEnrollments } from '@/lib/api'
 import { formatDateTime } from '@/lib/format'
+import { useQuery } from '@tanstack/react-query'
 
 const DeviceMap = lazy(async () => {
   const module = await import('@/components/map/device-map')
@@ -54,6 +56,11 @@ export function DashboardPage() {
   const [fitRequest, setFitRequest] = useState(0)
   const devicesQuery = useDevices()
   const eventsQuery = useAccessEvents({ limit: 5 })
+  const enrollmentsQuery = useQuery({
+    queryKey: ['enrollments'],
+    queryFn: () => listEnrollments(),
+    refetchInterval: 3000,
+  })
   const devices = (devicesQuery.data ?? []).filter(
     (device) => device.status === 'active',
   )
@@ -62,6 +69,9 @@ export function DashboardPage() {
   const hasLocations = devices.some((device) => device.location !== null)
   const accessToday = eventsQuery.data?.today_count ?? 0
   const recentEvents = eventsQuery.data?.items ?? []
+  const pendingEnrollments = (enrollmentsQuery.data ?? []).filter(
+    (e: { status: string }) => e.status === 'pending' || e.status === 'scanned',
+  ).length
 
   return (
     <div className="flex flex-col gap-4 lg:gap-6">
@@ -86,8 +96,8 @@ export function DashboardPage() {
         />
         <StatCard
           label="Pending enrollments"
-          value="—"
-          hint="No enrollment in progress"
+          value={`${pendingEnrollments}`}
+          hint={pendingEnrollments ? 'Awaiting card or confirmation' : 'No enrollment in progress'}
           icon={UserPlus}
         />
       </section>

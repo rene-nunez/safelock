@@ -227,3 +227,152 @@ async def test_message_handler_failure_does_not_stop_consumer(
         message({"uptime_s": 1, "rssi": -50, "rtc_valid": True}),
     )
     assert "MQTT message handling failed" in caplog.text
+
+
+async def test_card_scan_marks_pending_enrollment_scanned(db: Database) -> None:
+    await make_device(db)
+    now = datetime.now(UTC)
+    request_id = str(uuid.uuid4())
+    await db.enrollments.insert_one(
+        {
+            "device_id": DEVICE_ID,
+            "request_id": request_id,
+            "requested_by": None,
+            "status": "pending",
+            "uid": None,
+            "scanned_at": None,
+            "created_at": now,
+            "updated_at": now,
+        }
+    )
+
+    await gateway(db).handle_message(
+        f"{BASE}/events/card-scan",
+        message({"uid": "AA:BB:CC:DD", "request_id": request_id}),
+    )
+
+    enrollment = await db.enrollments.find_one({"request_id": request_id})
+    assert enrollment is not None
+    assert enrollment["status"] == "scanned"
+    assert enrollment["uid"] == "AA:BB:CC:DD"
+
+
+async def test_pin_entry_grants_and_publishes_unlock(
+    db: Database, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    await make_device(db)
+    await db.devices.update_one(
+        {"device_id": DEVICE_ID}, {"$set": {"requires_pin": True}}
+    )
+    from app.core.security import hash_password
+
+    holder = await db.cardholders.insert_one(
+        {
+            "name": "Ada",
+            "email": None,
+            "unit": None,
+            "status": "active",
+            "created_at": datetime.now(UTC),
+            "updated_at": datetime.now(UTC),
+        }
+    )
+    await db.credentials.insert_one(
+        {
+            "holder_id": holder.inserted_id,
+            "uid": "AA:BB:CC:DD",
+            "status": "active",
+            "valid_from": None,
+            "valid_to": None,
+            "revoked_at": None,
+            "revoked_reason": None,
+            "pin_hash": hash_password("123456"),
+            "pin_fails": 0,
+            "pin_locked_until": None,
+            "created_at": datetime.now(UTC),
+            "updated_at": datetime.now(UTC),
+        }
+    )
+
+    net = gateway(db)
+    published: list[tuple[str, str, dict[str, Any]]] = []
+
+    async def fake_publish(
+        device_id: str, command: str, payload: dict[str, Any]
+    ) -> bool:
+        published.append((device_id, command, payload))
+        return True
+
+    monkeypatch.setattr(net, "publish_command", fake_publish)
+
+    await net.handle_message(
+        f"{BASE}/events/pin-entry",
+        message({"uid": "AA:BB:CC:DD", "pin": "123456", "request_id": "req-1"}),
+    )
+
+    event = await db.access_events.find_one({"source": "pin"})
+    assert event is not None
+    assert event["decision"] == "granted"
+    assert event["reason"] == "pin_ok"
+    assert published == [
+        (
+            DEVICE_ID,
+            "unlock",
+            {
+                "request_id": "req-1",
+                "duration_ms": 3000,
+                "expires_at": published[0][2]["expires_at"],
+            },
+        )
+    ]
+
+
+async def test_pin_entry_invalid_pin_increments_fails_and_locks(
+    db: Database,
+) -> None:
+    await make_device(db)
+    await db.devices.update_one(
+        {"device_id": DEVICE_ID}, {"$set": {"requires_pin": True}}
+    )
+    from app.core.security import hash_password
+
+    holder = await db.cardholders.insert_one(
+        {
+            "name": "Ada",
+            "email": None,
+            "unit": None,
+            "status": "active",
+            "created_at": datetime.now(UTC),
+            "updated_at": datetime.now(UTC),
+        }
+    )
+    cred = await db.credentials.insert_one(
+        {
+            "holder_id": holder.inserted_id,
+            "uid": "AA:BB:CC:DD",
+            "status": "active",
+            "valid_from": None,
+            "valid_to": None,
+            "revoked_at": None,
+            "revoked_reason": None,
+            "pin_hash": hash_password("123456"),
+            "pin_fails": 4,
+            "pin_locked_until": None,
+            "created_at": datetime.now(UTC),
+            "updated_at": datetime.now(UTC),
+        }
+    )
+
+    net = gateway(db)
+    await net.handle_message(
+        f"{BASE}/events/pin-entry",
+        message({"uid": "AA:BB:CC:DD", "pin": "000000", "request_id": "req-2"}),
+    )
+
+    event = await db.access_events.find_one({"source": "pin"})
+    assert event is not None
+    assert event["decision"] == "denied"
+    assert event["reason"] == "pin_locked"
+    updated = await db.credentials.find_one({"_id": cred.inserted_id})
+    assert updated is not None
+    assert updated["pin_fails"] == 0
+    assert updated["pin_locked_until"] is not None
