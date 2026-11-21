@@ -14,6 +14,7 @@ import { InlineNotice } from '@/components/ui/inline-notice'
 import { Input } from '@/components/ui/input'
 import { PageToolbar } from '@/components/ui/page-toolbar'
 import { PasswordInput } from '@/components/ui/password-input'
+import { Select } from '@/components/ui/select'
 import { useAuth } from '@/hooks/use-auth'
 import { useConfirm } from '@/hooks/use-confirm'
 import {
@@ -978,7 +979,7 @@ export function CardholdersPage() {
                             setActiveEnrollment(null)
                           }}
                         >
-                          Enroll by touch
+                          Enroll on device
                         </Button>
                         <Button
                           type="button"
@@ -1001,44 +1002,50 @@ export function CardholdersPage() {
                             error={credentialForm.formState.errors.device_id?.message}
                             className="sm:col-span-2"
                           >
-                            <select
-                              id="credential-device"
-                              className="flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
-                              {...credentialForm.register('device_id', {
-                                onChange: () => setActiveEnrollment(null),
-                              })}
-                            >
-                              <option value="">Select a device</option>
-                              {(devicesQuery.data ?? [])
-                                .filter((d) => d.status === 'active')
-                                .map((d) => (
-                                  <option key={d.id} value={d.device_id}>
-                                    {d.name} ({d.device_id}){d.online ? '' : ' — offline'}
-                                  </option>
-                                ))}
-                            </select>
+                            <div className="flex gap-2">
+                              <Select
+                                id="credential-device"
+                                className="flex-1"
+                                {...credentialForm.register('device_id', {
+                                  onChange: () => setActiveEnrollment(null),
+                                })}
+                              >
+                                <option value="" className="text-muted-foreground">
+                                  Select a device
+                                </option>
+                                {(devicesQuery.data ?? [])
+                                  .filter((d) => d.status === 'active' && d.online)
+                                  .map((d) => (
+                                    <option key={d.id} value={d.device_id}>
+                                      {d.name} ({d.device_id})
+                                    </option>
+                                  ))}
+                              </Select>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                disabled={
+                                  !enrollmentDeviceId ||
+                                  startEnrollmentMutation.isPending ||
+                                  !(devicesQuery.data ?? []).some(
+                                    (d) => d.device_id === enrollmentDeviceId && d.online,
+                                  )
+                                }
+                                onClick={() => startEnrollmentMutation.mutate(enrollmentDeviceId)}
+                              >
+                                {startEnrollmentMutation.isPending ? 'Starting…' : 'Start enrollment'}
+                              </Button>
+                            </div>
                           </FormField>
-                          <div className="flex flex-wrap items-center gap-2 sm:col-span-2">
-                            <Button
-                              type="button"
-                              variant="outline"
-                              disabled={
-                                !enrollmentDeviceId ||
-                                startEnrollmentMutation.isPending ||
-                                !(devicesQuery.data ?? []).find((d) => d.device_id === enrollmentDeviceId)?.online
-                              }
-                              onClick={() => startEnrollmentMutation.mutate(enrollmentDeviceId)}
-                            >
-                              {startEnrollmentMutation.isPending ? 'Starting…' : 'Start enrollment'}
-                            </Button>
-                            {pendingEnrollment ? (
+                          {pendingEnrollment ? (
+                            <div className="sm:col-span-2">
                               <Badge variant={pendingEnrollment.status === 'scanned' ? 'secondary' : 'muted'}>
                                 {pendingEnrollment.status === 'scanned'
                                   ? `Scanned: ${pendingEnrollment.uid}`
                                   : 'Waiting for card…'}
                               </Badge>
-                            ) : null}
-                          </div>
+                            </div>
+                          ) : null}
                           <InlineNotice
                             message={errorMessage(startEnrollmentMutation.error)}
                             className="sm:col-span-2"
