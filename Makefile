@@ -6,7 +6,7 @@ PYTEST := $(if $(wildcard $(VENV)/bin/pytest),$(VENV)/bin/pytest,pytest)
 RUFF := $(if $(wildcard $(VENV)/bin/ruff),$(VENV)/bin/ruff,ruff)
 MYPY := $(if $(wildcard $(VENV)/bin/mypy),$(VENV)/bin/mypy,mypy)
 
-.PHONY: help venv backend create-user seed-demo seed-demo-reset firmware monitor simulator test lint format frontend typecheck mqtt-restart
+.PHONY: help venv backend create-user seed-demo seed-demo-reset provision firmware test-firmware monitor simulator test lint format frontend typecheck mqtt-restart
 
 help: ## Help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2}'
@@ -27,8 +27,15 @@ seed-demo: ## Seed demo data (development databases only)
 seed-demo-reset: ## Remove demo data
 	PYTHONPATH=backend $(PYTHON) -m app.cli seed-demo --reset
 
+provision: ## Provision a device over serial (PORT=/dev/ttyUSB0)
+	@test -n "$(PORT)" || (echo "Usage: make provision PORT=/dev/ttyUSB0"; exit 1)
+	$(PYTHON) backend/scripts/provision.py --port $(PORT)
+
 firmware: ## Build firmware
 	pio run -d firmware
+
+test-firmware: ## Test firmware validators (host build)
+	cd firmware && pio test -c native.ini
 
 monitor: ## Serial monitor
 	pio device monitor -d firmware -b 115200

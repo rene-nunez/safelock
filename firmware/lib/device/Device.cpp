@@ -4,7 +4,8 @@
 #include <time.h>
 
 Device::Device()
-  : acl(storage),
+  : provisioning(settings),
+    acl(storage),
     outbox(storage),
     mqtt(settings, net, clock, lock, acl, outbox),
     tasks(rfid, numpad, display, clock, storage, lock, indicators, acl, mqtt) {}
@@ -12,11 +13,12 @@ Device::Device()
 void Device::begin() {
   // Serial is up before begin(): the installer provisions the device over USB.
   settings.begin();
+  provisioning.begin();
   if (!settings.is_provisioned()) {
     Serial.println("Waiting for provisioning over serial");
-    Serial.println("provision sl-0001 <wifi_ssid> <wifi_password> <mqtt_password>");
+    Serial.println("Type 'help' for commands");
     while (!settings.is_provisioned()) {
-      settings.poll_provisioning();
+      provisioning.poll();
       delay(20);
     }
   }
@@ -53,6 +55,7 @@ void Device::begin() {
 }
 
 void Device::run() {
+  provisioning.poll();
   net.update();
   mqtt.update();
   tasks.run();

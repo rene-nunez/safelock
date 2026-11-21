@@ -172,7 +172,9 @@ make backend       # API en desarrollo
 make create-user   # crear una cuenta (admin por defecto)
 make seed-demo     # sembrar datos de demo (solo dev)
 make seed-demo-reset # eliminar datos de demo
+make provision PORT=/dev/ttyUSB0 # aprovisionar dispositivo por serie
 make firmware      # compilar firmware
+make test-firmware # pruebas nativas de validación del firmware
 make monitor       # monitor serial
 make simulator     # simulador
 make test          # pruebas backend

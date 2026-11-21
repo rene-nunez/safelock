@@ -8,6 +8,7 @@
 #include <Lock.h>
 #include <Indicators.h>
 #include <Settings.h>
+#include <Provisioning.h>
 #include <Net.h>
 #include <Acl.h>
 // Relative path: <Outbox.h> resolves to the one in espMqttClient's libdeps.
@@ -18,6 +19,7 @@
 class Device {
   private:
     Settings settings;
+    Provisioning provisioning;
     Net net;
 
     Rfid rfid;

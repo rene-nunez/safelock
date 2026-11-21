@@ -4,24 +4,25 @@
 #include <Preferences.h>
 
 class Settings {
- private:
-  String device_id;
-  String wifi_ssid;
-  String wifi_password;
-  String mqtt_password;
-  String serial_buffer;
-  bool loaded = false;
-  bool line_too_long = false;
+  private:
+    String device_id;
+    String wifi_ssid;
+    String wifi_password;
+    String mqtt_password;
+    bool loaded = false;
 
-  void handle_line(const String &line);
+  public:
+    bool begin();
+    bool is_provisioned() const;
 
- public:
-  bool begin();
-  bool is_provisioned() const;
-  void poll_provisioning();
+    // Returns an empty string on success, or a validation error. All fields are
+    // checked before anything is written, so a bad value cannot leave NVS half-set.
+    String set(const String &device_id, const String &wifi_ssid,
+               const String &wifi_password, const String &mqtt_password);
+    void clear();
 
-  const String &get_device_id() const;
-  const String &get_wifi_ssid() const;
-  const String &get_wifi_password() const;
-  const String &get_mqtt_password() const;
+    const String &get_device_id() const;
+    const String &get_wifi_ssid() const;
+    const String &get_wifi_password() const;
+    const String &get_mqtt_password() const;
 };

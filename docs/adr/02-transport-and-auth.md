@@ -15,7 +15,7 @@ We need a simple and secure way for devices and the backend to communicate. The 
 - Do not add message signatures or extra security fields inside the payload. TLS, broker credentials, and topic permissions are enough for this design.
 - Use a retained `status` message and a Last Will (LWT) to know if a device is online.
 - Publish `status`, `events/*` and `response` at QoS 1; publish `heartbeat` at QoS 0. Subscribe to `commands/#` at QoS 1. The LWT uses QoS 1 and retain.
-- Set up device credentials once over serial/USB during installation. There is no factory credential and no network provisioning flow.
+- Set up device credentials over serial/USB during installation; they can be corrected over that same link without reflashing. There is no factory credential and no network provisioning flow.
 
 ## Consequences
 

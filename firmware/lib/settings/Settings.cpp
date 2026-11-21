@@ -1,43 +1,5 @@
 #include "Settings.h"
-
-namespace {
-
-constexpr size_t MAX_COMMAND_LENGTH = 256;
-
-bool valid_device_id(const String &value) {
-  if (value.length() != 7 || !value.startsWith("sl-")) return false;
-  for (unsigned int i = 3; i < value.length(); i++) {
-    if (value[i] < '0' || value[i] > '9') return false;
-  }
-  return true;
-}
-
-// Quotes let a password contain spaces without changing the command format.
-void tokenize(const String &line, String *tokens, size_t capacity, size_t &count) {
-  bool quoted = false;
-  String current;
-  count = 0;
-
-  for (unsigned int i = 0; i < line.length(); i++) {
-    char character = line[i];
-    if (character == '"') {
-      quoted = !quoted;
-      continue;
-    }
-    if (!quoted && (character == ' ' || character == '\t')) {
-      if (current.length() > 0 && count < capacity) {
-        tokens[count++] = current;
-        current = "";
-      }
-      continue;
-    }
-    if (current.length() < MAX_COMMAND_LENGTH) current += character;
-  }
-
-  if (current.length() > 0 && count < capacity) tokens[count++] = current;
-}
-
-} // namespace
+#include <validators.h>
 
 bool Settings::begin() {
   Preferences preferences;
@@ -52,89 +14,52 @@ bool Settings::begin() {
 }
 
 bool Settings::is_provisioned() const {
-  return loaded && valid_device_id(device_id) && wifi_ssid.length() > 0 && mqtt_password.length() > 0;
+  return loaded && safelock::valid_device_id(device_id.c_str(), device_id.length()) &&
+         safelock::valid_wifi_ssid(wifi_ssid.c_str(), wifi_ssid.length()) &&
+         safelock::valid_wifi_password(wifi_password.c_str(), wifi_password.length()) &&
+         safelock::valid_mqtt_password(mqtt_password.c_str(), mqtt_password.length());
 }
 
-void Settings::poll_provisioning() {
-  while (Serial.available() > 0) {
-    const char character = static_cast<char>(Serial.read());
-    if (character == '\r') continue;
-
-    if (character == '\n') {
-      if (line_too_long) {
-        Serial.println("Command too long; ignored");
-      } else {
-        String line = serial_buffer;
-        line.trim();
-        handle_line(line);
-      }
-      serial_buffer = "";
-      line_too_long = false;
-      continue;
-    }
-
-    if (line_too_long) continue;
-
-    if (serial_buffer.length() < MAX_COMMAND_LENGTH) {
-      serial_buffer += character;
-    } else {
-      line_too_long = true;
-      serial_buffer = "";
-    }
+String Settings::set(const String &new_device_id, const String &new_wifi_ssid,
+                     const String &new_wifi_password, const String &new_mqtt_password) {
+  if (!safelock::valid_device_id(new_device_id.c_str(), new_device_id.length())) {
+    return "Invalid device_id; use the format sl-0001";
   }
-}
-
-void Settings::handle_line(const String &line) {
-  if (line == "factory-reset") {
-    Preferences preferences;
-    preferences.begin("safelock", false);
-    preferences.clear();
-    preferences.end();
-    device_id = "";
-    wifi_ssid = "";
-    wifi_password = "";
-    mqtt_password = "";
-    Serial.println("Settings cleared; provision again");
-    return;
+  if (!safelock::valid_wifi_ssid(new_wifi_ssid.c_str(), new_wifi_ssid.length())) {
+    return "Invalid WiFi SSID; use 1-32 printable characters";
   }
-
-  String tokens[5];
-  size_t count = 0;
-  tokenize(line, tokens, 5, count);
-  if (count == 0 || tokens[0] != "provision") return;
-
-  if (count != 5) {
-    Serial.println("Use: provision sl-0001 <wifi_ssid> <wifi_password> <mqtt_password>");
-    return;
+  if (!safelock::valid_wifi_password(new_wifi_password.c_str(), new_wifi_password.length())) {
+    return "Invalid WiFi password; use 8-63 printable characters";
   }
-
-  tokens[1].toLowerCase();
-  if (!valid_device_id(tokens[1])) {
-    Serial.println("Invalid device_id; use the format sl-0001");
-    return;
-  }
-  if (tokens[2].length() == 0 || tokens[3].length() == 0 || tokens[4].length() == 0) {
-    Serial.println("WiFi SSID, WiFi password and MQTT password are required");
-    return;
+  if (!safelock::valid_mqtt_password(new_mqtt_password.c_str(), new_mqtt_password.length())) {
+    return "Invalid MQTT password; use 1-128 printable characters";
   }
 
   Preferences preferences;
   preferences.begin("safelock", false);
-  preferences.putString("device_id", tokens[1]);
-  preferences.putString("wifi_ssid", tokens[2]);
-  preferences.putString("wifi_password", tokens[3]);
-  preferences.putString("mqtt_password", tokens[4]);
+  preferences.putString("device_id", new_device_id);
+  preferences.putString("wifi_ssid", new_wifi_ssid);
+  preferences.putString("wifi_password", new_wifi_password);
+  preferences.putString("mqtt_password", new_mqtt_password);
   preferences.end();
 
-  device_id = tokens[1];
-  wifi_ssid = tokens[2];
-  wifi_password = tokens[3];
-  mqtt_password = tokens[4];
+  device_id = new_device_id;
+  wifi_ssid = new_wifi_ssid;
+  wifi_password = new_wifi_password;
+  mqtt_password = new_mqtt_password;
   loaded = true;
+  return "";
+}
 
-  // Never echo the credentials themselves.
-  Serial.print("Provisioned device ");
-  Serial.println(device_id);
+void Settings::clear() {
+  Preferences preferences;
+  preferences.begin("safelock", false);
+  preferences.clear();
+  preferences.end();
+  device_id = "";
+  wifi_ssid = "";
+  wifi_password = "";
+  mqtt_password = "";
 }
 
 const String &Settings::get_device_id() const { return device_id; }

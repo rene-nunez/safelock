@@ -4,13 +4,21 @@ Before flashing, replace the broker values and the placeholder CA in `include/mq
 
 ## First boot
 
-Open the serial monitor at 115200 baud and send one line:
+Open the serial monitor at 115200 baud and type `help` to see the commands. A new device waits for provisioning before starting WiFi or MQTT. Stage each value, review it with `show`, then commit:
 
-```shell
-provision sl-0001 <wifi_ssid> <wifi_password> <mqtt_password>
+```text
+set device-id sl-0001
+set wifi "My WiFi" "my-wifi-password"
+set mqtt "my-mqtt-password"
+show
+commit
 ```
 
-Use double quotes around an argument that contains spaces. The device stores the values in NVS and does not echo them back. `factory-reset` clears them so the device can be provisioned again.
+`show` prints the effective settings with passwords masked and marks values that are staged but not saved yet. `commit` validates every field, writes NVS and restarts the device; a bad value writes nothing. The single-line shortcut `provision sl-0001 <wifi_ssid> <wifi_password> <mqtt_password>` still works.
+
+Any field can be corrected later over the same USB cable: stage the new value, `commit` and the device restarts with it. `factory-reset` erases all settings and restarts into the first-boot flow; `reboot` restarts without changes.
+
+Double quotes let a credential contain spaces (but not `"`). WiFi passwords are 8-63 characters, SSIDs 1-32 and MQTT passwords 1-128. The MQTT username is the `device_id`. Alternatively, run `make provision PORT=/dev/ttyUSB0` for a guided flow that validates the values before sending them.
 
 ## Runtime
 
