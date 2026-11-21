@@ -1159,7 +1159,7 @@ export function CardholdersPage() {
                             variant="brand"
                             disabled={editMutation.isPending || !hasChanges || windowInvalid}
                           >
-                            Save
+                            {editMutation.isPending ? 'Saving…' : 'Save changes'}
                           </Button>
                         </FormActions>
                       </form>
