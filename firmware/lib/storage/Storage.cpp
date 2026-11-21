@@ -135,9 +135,7 @@ bool Storage::write_file(const char *path, const String &content) {
   return true;
 }
 
-bool Storage::write_atomic(
-  const char *final_path, const char *temp_path, const String &content
-) {
+bool Storage::write_atomic(const char *final_path, const char *temp_path, const String &content) {
   if (!write_file(temp_path, content)) return false;
   if (SD.exists(final_path) && !SD.remove(final_path)) return false;
   if (!SD.rename(temp_path, final_path)) {

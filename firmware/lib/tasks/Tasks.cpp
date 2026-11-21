@@ -86,14 +86,10 @@ void Tasks::run_rfid_task() {
 }
 
 void Tasks::handle_card(const String &uid) {
-  const AclDecision verdict = acl.evaluate(
-    uid, clock.is_valid(), time(nullptr), mqtt.connected()
-  );
+  const AclDecision verdict = acl.evaluate(uid, clock.is_valid(), time(nullptr), mqtt.connected());
   const String credential_id = acl.credential_id_for(uid);
 
-  publish_decision(
-    verdict.decision, verdict.reason, "card", uid, credential_id
-  );
+  publish_decision(verdict.decision, verdict.reason, "card", uid, credential_id);
 
   if (strcmp(verdict.decision, "granted") == 0) {
     Serial.println("RFID authorized");
@@ -105,13 +101,7 @@ void Tasks::handle_card(const String &uid) {
   }
 }
 
-void Tasks::publish_decision(
-  const char *decision,
-  const char *reason,
-  const char *source,
-  const String &uid,
-  const String &credential_id
-) {
+void Tasks::publish_decision(const char *decision, const char *reason, const char *source, const String &uid, const String &credential_id) {
   JsonDocument document;
   JsonObject data = document["data"].to<JsonObject>();
   data["decision"] = decision;
