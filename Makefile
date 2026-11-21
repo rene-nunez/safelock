@@ -35,7 +35,7 @@ firmware: ## Build firmware
 	pio run -d firmware
 
 test-firmware: ## Test firmware validators (host build)
-	cd firmware && pio test -c native.ini
+	cd firmware && pio test -e native
 
 monitor: ## Serial monitor
 	pio device monitor -d firmware -b 115200
