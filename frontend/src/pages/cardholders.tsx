@@ -758,6 +758,170 @@ export function CardholdersPage() {
                     </div>
                   </div>
 
+                  {credentialOpen ? (
+                    <form
+                      noValidate
+                      className="mt-4 grid gap-4 rounded-lg border border-border p-3 sm:grid-cols-2"
+                      onSubmit={credentialForm.handleSubmit(onAddCredential)}
+                    >
+                      <div className="flex flex-wrap gap-2 sm:col-span-2">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant={credentialMode === 'enroll' ? 'secondary' : 'ghost'}
+                          onClick={() => {
+                            credentialForm.setValue('mode', 'enroll')
+                            setActiveEnrollment(null)
+                          }}
+                        >
+                          Enroll on device
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant={credentialMode === 'manual' ? 'secondary' : 'ghost'}
+                          onClick={() => {
+                            credentialForm.setValue('mode', 'manual')
+                            setActiveEnrollment(null)
+                          }}
+                        >
+                          Enter UID manually
+                        </Button>
+                      </div>
+
+                      {credentialMode === 'enroll' ? (
+                        <>
+                          <FormField
+                            label="Device"
+                            htmlFor="credential-device"
+                            error={credentialForm.formState.errors.device_id?.message}
+                            className="sm:col-span-2"
+                          >
+                            <div className="flex gap-2">
+                              <Select
+                                id="credential-device"
+                                className="flex-1"
+                                {...credentialForm.register('device_id', {
+                                  onChange: () => setActiveEnrollment(null),
+                                })}
+                              >
+                                <option value="" className="text-muted-foreground">
+                                  Select a device
+                                </option>
+                                {(devicesQuery.data ?? [])
+                                  .filter((d) => d.status === 'active' && d.online)
+                                  .map((d) => (
+                                    <option key={d.id} value={d.device_id}>
+                                      {d.name} ({d.device_id})
+                                    </option>
+                                  ))}
+                              </Select>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                disabled={
+                                  !enrollmentDeviceId ||
+                                  startEnrollmentMutation.isPending ||
+                                  !(devicesQuery.data ?? []).some(
+                                    (d) => d.device_id === enrollmentDeviceId && d.online,
+                                  )
+                                }
+                                onClick={() => startEnrollmentMutation.mutate(enrollmentDeviceId)}
+                              >
+                                {startEnrollmentMutation.isPending ? 'Starting…' : 'Start enrollment'}
+                              </Button>
+                            </div>
+                          </FormField>
+                          {pendingEnrollment ? (
+                            <div className="sm:col-span-2">
+                              <Badge variant={pendingEnrollment.status === 'scanned' ? 'secondary' : 'muted'}>
+                                {pendingEnrollment.status === 'scanned'
+                                  ? `Scanned: ${pendingEnrollment.uid}`
+                                  : 'Waiting for card…'}
+                              </Badge>
+                            </div>
+                          ) : null}
+                          <InlineNotice
+                            message={errorMessage(startEnrollmentMutation.error)}
+                            className="sm:col-span-2"
+                          />
+                        </>
+                      ) : (
+                        <FormField
+                          label="Card UID"
+                          htmlFor="credential-uid"
+                          hint="AA:BB:CC:DD"
+                          error={credentialForm.formState.errors.uid?.message}
+                          className="sm:col-span-2"
+                        >
+                          <Input
+                            placeholder="AA:BB:CC:DD"
+                            {...credentialForm.register('uid')}
+                          />
+                        </FormField>
+                      )}
+
+                      <FormField
+                        label="PIN (optional)"
+                        htmlFor="credential-pin"
+                        hint="6–32 digits."
+                        error={credentialForm.formState.errors.pin?.message}
+                      >
+                        <PasswordInput
+                          inputMode="numeric"
+                          autoComplete="new-password"
+                          placeholder="Leave empty for no PIN"
+                          {...credentialForm.register('pin')}
+                        />
+                      </FormField>
+                      <div className="hidden sm:block" />
+                      <FormField label="Valid from" htmlFor="credential-from" hint="Leave empty to activate immediately">
+                        <Input
+                          type="datetime-local"
+                          {...credentialForm.register('valid_from')}
+                        />
+                      </FormField>
+                      <FormField label="Valid to" htmlFor="credential-to" hint="Leave empty for no expiry">
+                        <Input
+                          type="datetime-local"
+                          {...credentialForm.register('valid_to')}
+                        />
+                      </FormField>
+                      <FormActions className="sm:col-span-2">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          onClick={() => {
+                            createCredentialMutation.reset()
+                            confirmEnrollmentMutation.reset()
+                            startEnrollmentMutation.reset()
+                            setActiveEnrollment(null)
+                            setCredentialOpen(false)
+                          }}
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          type="submit"
+                          disabled={
+                            createCredentialMutation.isPending ||
+                            confirmEnrollmentMutation.isPending ||
+                            (credentialMode === 'enroll' && pendingEnrollment?.status !== 'scanned')
+                          }
+                        >
+                          <Plus className="size-4" />
+                          {createCredentialMutation.isPending || confirmEnrollmentMutation.isPending
+                            ? 'Adding card…'
+                            : 'Add card'}
+                        </Button>
+                      </FormActions>
+                      <InlineNotice
+                        message={errorMessage(createCredentialMutation.error ?? confirmEnrollmentMutation.error)}
+                        className="sm:col-span-2"
+                      />
+                    </form>
+                  ) : null}
+
                   <InlineNotice
                     message={errorMessage(credentialsQuery.error)}
                     className="mt-3"
@@ -962,172 +1126,6 @@ export function CardholdersPage() {
                     message={errorMessage(pinMutation.error)}
                     className="mt-2"
                   />
-
-                  {credentialOpen ? (
-                    <form
-                      noValidate
-                      className="mt-4 grid gap-4 rounded-lg border border-border p-3 sm:grid-cols-2"
-                      onSubmit={credentialForm.handleSubmit(onAddCredential)}
-                    >
-                      <div className="flex flex-wrap gap-2 sm:col-span-2">
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant={credentialMode === 'enroll' ? 'secondary' : 'ghost'}
-                          onClick={() => {
-                            credentialForm.setValue('mode', 'enroll')
-                            setActiveEnrollment(null)
-                          }}
-                        >
-                          Enroll on device
-                        </Button>
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant={credentialMode === 'manual' ? 'secondary' : 'ghost'}
-                          onClick={() => {
-                            credentialForm.setValue('mode', 'manual')
-                            setActiveEnrollment(null)
-                          }}
-                        >
-                          Enter UID manually
-                        </Button>
-                      </div>
-
-                      {credentialMode === 'enroll' ? (
-                        <>
-                          <FormField
-                            label="Device"
-                            htmlFor="credential-device"
-                            error={credentialForm.formState.errors.device_id?.message}
-                            className="sm:col-span-2"
-                          >
-                            <div className="flex gap-2">
-                              <Select
-                                id="credential-device"
-                                className="flex-1"
-                                {...credentialForm.register('device_id', {
-                                  onChange: () => setActiveEnrollment(null),
-                                })}
-                              >
-                                <option value="" className="text-muted-foreground">
-                                  Select a device
-                                </option>
-                                {(devicesQuery.data ?? [])
-                                  .filter((d) => d.status === 'active' && d.online)
-                                  .map((d) => (
-                                    <option key={d.id} value={d.device_id}>
-                                      {d.name} ({d.device_id})
-                                    </option>
-                                  ))}
-                              </Select>
-                              <Button
-                                type="button"
-                                variant="outline"
-                                disabled={
-                                  !enrollmentDeviceId ||
-                                  startEnrollmentMutation.isPending ||
-                                  !(devicesQuery.data ?? []).some(
-                                    (d) => d.device_id === enrollmentDeviceId && d.online,
-                                  )
-                                }
-                                onClick={() => startEnrollmentMutation.mutate(enrollmentDeviceId)}
-                              >
-                                {startEnrollmentMutation.isPending ? 'Starting…' : 'Start enrollment'}
-                              </Button>
-                            </div>
-                          </FormField>
-                          {pendingEnrollment ? (
-                            <div className="sm:col-span-2">
-                              <Badge variant={pendingEnrollment.status === 'scanned' ? 'secondary' : 'muted'}>
-                                {pendingEnrollment.status === 'scanned'
-                                  ? `Scanned: ${pendingEnrollment.uid}`
-                                  : 'Waiting for card…'}
-                              </Badge>
-                            </div>
-                          ) : null}
-                          <InlineNotice
-                            message={errorMessage(startEnrollmentMutation.error)}
-                            className="sm:col-span-2"
-                          />
-                        </>
-                      ) : (
-                        <FormField
-                          label="Card UID"
-                          htmlFor="credential-uid"
-                          hint="AA:BB:CC:DD"
-                          error={credentialForm.formState.errors.uid?.message}
-                          className="sm:col-span-2"
-                        >
-                          <Input
-                            placeholder="AA:BB:CC:DD"
-                            {...credentialForm.register('uid')}
-                          />
-                        </FormField>
-                      )}
-
-                      <FormField
-                        label="PIN (optional)"
-                        htmlFor="credential-pin"
-                        hint="6–32 digits."
-                        error={credentialForm.formState.errors.pin?.message}
-                      >
-                        <PasswordInput
-                          inputMode="numeric"
-                          autoComplete="new-password"
-                          placeholder="Leave empty for no PIN"
-                          {...credentialForm.register('pin')}
-                        />
-                      </FormField>
-                      <div className="hidden sm:block" />
-                      <FormField label="Valid from" htmlFor="credential-from" hint="Leave empty to activate immediately">
-                        <Input
-                          type="datetime-local"
-                          {...credentialForm.register('valid_from')}
-                        />
-                      </FormField>
-                      <FormField label="Valid to" htmlFor="credential-to" hint="Leave empty for no expiry">
-                        <Input
-                          type="datetime-local"
-                          {...credentialForm.register('valid_to')}
-                        />
-                      </FormField>
-                      <FormActions className="sm:col-span-2">
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          onClick={() => {
-                            createCredentialMutation.reset()
-                            confirmEnrollmentMutation.reset()
-                            startEnrollmentMutation.reset()
-                            setActiveEnrollment(null)
-                            setCredentialOpen(false)
-                          }}
-                        >
-                          Cancel
-                        </Button>
-                        <Button
-                          type="submit"
-                          disabled={
-                            createCredentialMutation.isPending ||
-                            confirmEnrollmentMutation.isPending ||
-                            (credentialMode === 'enroll' && pendingEnrollment?.status !== 'scanned')
-                          }
-                        >
-                          <Plus className="size-4" />
-                          {createCredentialMutation.isPending || confirmEnrollmentMutation.isPending
-                            ? 'Adding card…'
-                            : credentialMode === 'enroll'
-                              ? 'Confirm card'
-                              : 'Add card'}
-                        </Button>
-                      </FormActions>
-                      <InlineNotice
-                        message={errorMessage(createCredentialMutation.error ?? confirmEnrollmentMutation.error)}
-                        className="sm:col-span-2"
-                      />
-                    </form>
-                  ) : null}
                 </section>
               </div>
             ) : (
