@@ -74,6 +74,18 @@ class Tasks {
     unsigned long last_rfid_recover_millis = 0;
     unsigned long previous_numpad_millis = 0;
 
+    // Enrollment
+    bool enrollment_active = false;
+    String enrollment_request_id;
+    unsigned long enrollment_until = 0;
+
+    // PIN entry
+    bool pin_active = false;
+    String pin_uid;
+    String pin_credential_id;
+    String pin_buffer;
+    unsigned long pin_until = 0;
+
     // Pollers
     void run_storage_task();
     void run_rfid_task();
@@ -94,6 +106,11 @@ class Tasks {
       const String &uid,
       const String &credential_id
     );
+    void start_enrollment(const String &request_id, uint32_t ttl_s);
+    void cancel_enrollment();
+    void start_pin_entry(const String &uid, const String &credential_id);
+    void cancel_pin_entry();
+    void submit_pin();
 
     // Access log
     bool try_log_access();
@@ -113,4 +130,6 @@ class Tasks {
     );
 
     void run();
+    bool begin_enrollment(const String &request_id, uint32_t ttl_s);
+    void handle_remote_unlock(uint16_t duration_ms);
 };

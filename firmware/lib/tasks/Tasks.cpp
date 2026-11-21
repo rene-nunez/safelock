@@ -86,15 +86,38 @@ void Tasks::run_rfid_task() {
 }
 
 void Tasks::handle_card(const String &uid) {
+  if (enrollment_active) {
+    if (current_millis > enrollment_until) {
+      cancel_enrollment();
+    } else {
+      JsonDocument document;
+      JsonObject data = document["data"].to<JsonObject>();
+      data["uid"] = uid;
+      data["request_id"] = enrollment_request_id;
+      mqtt.publish_event("events/card-scan", data);
+      cancel_enrollment();
+      return;
+    }
+  }
+
   const AclDecision verdict = acl.evaluate(uid, clock.is_valid(), time(nullptr), mqtt.connected());
   const String credential_id = acl.credential_id_for(uid);
 
-  publish_decision(verdict.decision, verdict.reason, "card", uid, credential_id);
-
   if (strcmp(verdict.decision, "granted") == 0) {
+    if (acl.get_requires_pin()) {
+      publish_decision("denied", "offline_no_pin", "card", uid, credential_id);
+      if (mqtt.connected()) {
+        start_pin_entry(uid, credential_id);
+      } else {
+        deny_access();
+      }
+      return;
+    }
+    publish_decision(verdict.decision, verdict.reason, "card", uid, credential_id);
     Serial.println("RFID authorized");
     grant_access("rfid");
   } else {
+    publish_decision(verdict.decision, verdict.reason, "card", uid, credential_id);
     Serial.print("RFID denied: ");
     Serial.println(verdict.reason);
     deny_access();
@@ -122,10 +145,28 @@ void Tasks::run_numpad_task() {
 
   char key = numpad.read_key();
   if (key == NO_KEY) return;
-  if (state != ENTERING) return;
 
-  // The backend owns PIN validation. Consume keys so they do not queue up;
-  // no local secret is stored or compared in this milestone.
+  if (pin_active) {
+    if (current_millis > pin_until) {
+      cancel_pin_entry();
+      deny_access();
+      return;
+    }
+    if (key == '*') {
+      pin_buffer = "";
+      return;
+    }
+    if (key == '#') {
+      if (pin_buffer.length() >= 6) submit_pin();
+      return;
+    }
+    if (key >= '0' && key <= '9' && pin_buffer.length() < 32) {
+      pin_buffer += key;
+    }
+    return;
+  }
+
+  if (state != ENTERING) return;
   (void)key;
 }
 
@@ -284,10 +325,65 @@ void Tasks::alert_manual_open() {
 
   publish_decision("unknown", "manual_open", "manual", "", "");
 
-  // Best effort: the backend owns the audit trail, this is the local copy
   if (storage.is_ready() || storage.begin()) {
     storage.log_access(timestamp, "manual", "unknown");
   }
+}
+
+bool Tasks::begin_enrollment(const String &request_id, uint32_t ttl_s) {
+  if (state != ENTERING && state != ALERT && state != ERROR) return false;
+  enrollment_active = true;
+  enrollment_request_id = request_id;
+  enrollment_until = millis() + (ttl_s * 1000UL);
+  return true;
+}
+
+void Tasks::cancel_enrollment() {
+  enrollment_active = false;
+  enrollment_request_id = "";
+  enrollment_until = 0;
+}
+
+void Tasks::start_pin_entry(const String &uid, const String &credential_id) {
+  pin_active = true;
+  pin_uid = uid;
+  pin_credential_id = credential_id;
+  pin_buffer = "";
+  pin_until = millis() + 30000UL;
+}
+
+void Tasks::cancel_pin_entry() {
+  pin_active = false;
+  pin_uid = "";
+  pin_credential_id = "";
+  pin_buffer = "";
+  pin_until = 0;
+}
+
+void Tasks::submit_pin() {
+  if (!mqtt.connected()) {
+    publish_decision("denied", "backend_unreachable", "pin", pin_uid, pin_credential_id);
+    cancel_pin_entry();
+    deny_access();
+    return;
+  }
+
+  JsonDocument document;
+  JsonObject data = document["data"].to<JsonObject>();
+  data["uid"] = pin_uid;
+  data["pin"] = pin_buffer;
+  char req[33];
+  snprintf(req, sizeof(req), "%08lx-%04lx-4000-8000-%08lx%04lx", (unsigned long)millis(), (unsigned long)random(0xffff), (unsigned long)random(0xffffffff), (unsigned long)random(0xffff));
+  data["request_id"] = req;
+  mqtt.publish_event("events/pin-entry", data);
+  cancel_pin_entry();
+  start_entry();
+}
+
+void Tasks::handle_remote_unlock(uint16_t duration_ms) {
+  (void)duration_ms;
+  publish_decision("granted", "remote", "remote", "", "");
+  grant_access("remote");
 }
 
 bool Tasks::try_log_access() {

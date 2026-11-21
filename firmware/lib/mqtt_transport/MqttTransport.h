@@ -18,6 +18,8 @@
 
 #include "mqtt_config.h"
 
+class Tasks;
+
 class MqttTransport {
   private:
     Settings &settings;
@@ -26,6 +28,7 @@ class MqttTransport {
     Lock &lock;
     Acl &acl;
     Outbox &outbox;
+    Tasks *tasks = nullptr;
 
     espMqttClientSecure client;
 
@@ -71,6 +74,7 @@ class MqttTransport {
 
     void begin();
     void update();
+    void set_tasks(Tasks &tasks);
 
     bool connected() const;
     uint16_t publish_queued(
