@@ -36,6 +36,7 @@ import {
   deleteDevice,
   listDevices,
   synchronizeAccessList,
+  unlockDevice,
   updateDevice,
   type CreateDeviceInput,
   type Device,
@@ -358,10 +359,23 @@ export function DevicesPage() {
     },
   })
 
-  function resetDetailMutations(skip?: 'update' | 'delete' | 'sync') {
+  const unlockMutation = useMutation({
+    mutationFn: (id: string) => unlockDevice(id),
+    onMutate: () => {
+      setSuccess(null)
+      resetDetailMutations('unlock')
+    },
+    onSuccess: () => {
+      showSuccess('Unlock command sent. Waiting for device response.', 'detail')
+      void invalidate()
+    },
+  })
+
+  function resetDetailMutations(skip?: 'update' | 'delete' | 'sync' | 'unlock') {
     if (skip !== 'update') updateMutation.reset()
     if (skip !== 'delete') deleteMutation.reset()
     if (skip !== 'sync') syncMutation.reset()
+    if (skip !== 'unlock') unlockMutation.reset()
   }
 
   function resetPanelMutations() {
@@ -699,6 +713,20 @@ export function DevicesPage() {
                           : 'Sync ACL'}
                       </Button>
                     ) : null}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      title={
+                        selected.online
+                          ? 'Send a remote unlock command'
+                          : 'The device must be online to unlock remotely'
+                      }
+                      disabled={!selected.online || unlockMutation.isPending}
+                      onClick={() => unlockMutation.mutate(selected.id)}
+                    >
+                      <LockOpen className="size-4" />
+                      {unlockMutation.isPending ? 'Unlocking...' : 'Unlock'}
+                    </Button>
                   </div>
                   {isAdmin ? (
                     <>
@@ -780,7 +808,8 @@ export function DevicesPage() {
                     message={errorMessage(
                       updateMutation.error ??
                         deleteMutation.error ??
-                        syncMutation.error,
+                        syncMutation.error ??
+                        unlockMutation.error,
                     )}
                     className="mt-3"
                   />

@@ -388,9 +388,61 @@ export type SyncCommand = {
   acl_version: number
 }
 
+export type UnlockCommand = {
+  request_id: string
+  expires_at: number
+}
+
+export type EnrollmentStatus =
+  | 'pending'
+  | 'scanned'
+  | 'confirmed'
+  | 'expired'
+  | 'cancelled'
+
+export type Enrollment = {
+  id: string
+  device_id: string
+  request_id: string
+  status: EnrollmentStatus
+  uid: string | null
+  requested_by: string | null
+  created_at: string
+  expires_at: string
+  scanned_at: string | null
+}
+
 export function synchronizeAccessList(id: string): Promise<SyncCommand> {
   return request<SyncCommand>(`/devices/${id}/synchronize-access-list`, {
     method: 'POST',
+  })
+}
+
+export function unlockDevice(id: string): Promise<UnlockCommand> {
+  return request<UnlockCommand>(`/devices/${id}/unlock`, { method: 'POST' })
+}
+
+export function listEnrollments(deviceId?: string): Promise<Enrollment[]> {
+  const params = new URLSearchParams()
+  if (deviceId) params.set('device_id', deviceId)
+  const suffix = params.size > 0 ? `?${params.toString()}` : ''
+  return request<Enrollment[]>(`/enrollments${suffix}`)
+}
+
+export function createEnrollment(deviceId: string): Promise<Enrollment> {
+  return request<Enrollment>('/enrollments', {
+    method: 'POST',
+    body: JSON.stringify({ device_id: deviceId }),
+  })
+}
+
+export function confirmEnrollment(
+  id: string,
+  input: { holder_id: string; valid_from?: string | null; valid_to?: string | null; pin?: string },
+): Promise<Enrollment> {
+  return request<Enrollment>(`/enrollments/${id}/confirm`, {
+    method: 'POST',
+    body: JSON.stringify(input),
   })
 }
 
