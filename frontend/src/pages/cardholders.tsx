@@ -110,6 +110,14 @@ function toIso(value: string): string | null {
   return value === '' ? null : new Date(value).toISOString()
 }
 
+function toDatetimeLocal(value: string | null): string {
+  if (!value) return ''
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return ''
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`
+}
+
 function validityLabel(credential: Credential): string {
   const parts: string[] = []
   if (credential.valid_from) {
@@ -129,8 +137,10 @@ export function CardholdersPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [createOpen, setCreateOpen] = useState(false)
   const [credentialOpen, setCredentialOpen] = useState(false)
-  const [pinTarget, setPinTarget] = useState<Credential | null>(null)
-  const [pinValue, setPinValue] = useState('')
+  const [editTarget, setEditTarget] = useState<Credential | null>(null)
+  const [editPin, setEditPin] = useState('')
+  const [editFrom, setEditFrom] = useState('')
+  const [editTo, setEditTo] = useState('')
   const [activeEnrollment, setActiveEnrollment] = useState<Enrollment | null>(null)
   const [success, setSuccess] = useState<{
     message: string
@@ -154,7 +164,10 @@ export function CardholdersPage() {
     resetPanelMutations()
     editForm.reset()
     setCredentialOpen(false)
-    setPinTarget(null)
+    setEditTarget(null)
+    setEditPin("")
+    setEditFrom("")
+    setEditTo("")
     setSelectedId(null)
   }
 
@@ -223,7 +236,10 @@ export function CardholdersPage() {
     if (!selected) return
     resetEditForm(selected)
     setCredentialOpen(false)
-    setPinTarget(null)
+    setEditTarget(null)
+    setEditPin("")
+    setEditFrom("")
+    setEditTo("")
     setActiveEnrollment(null)
     credentialForm.reset({ mode: 'enroll', device_id: '', uid: '', pin: '', valid_from: '', valid_to: '' })
     // Reset only when switching cardholders, not after a background refetch.
@@ -362,20 +378,17 @@ export function CardholdersPage() {
     },
   })
 
-  const pinMutation = useMutation({
-    mutationFn: ({
-      id,
-      input,
-    }: {
-      id: string
-      input: { pin: string } | { clear_pin: true }
-    }) => updateCredential(id, input),
+  const editMutation = useMutation({
+    mutationFn: ({ id, input }: { id: string; input: Record<string, unknown> }) =>
+      updateCredential(id, input),
     onMutate: () => setSuccess(null),
     onSuccess: (_credential, { input }) => {
-      setPinTarget(null)
-      setPinValue('')
+      setEditTarget(null)
+      setEditPin('')
+      setEditFrom('')
+      setEditTo('')
       showSuccess(
-        'clear_pin' in input ? 'PIN removed.' : 'PIN updated.',
+        'clear_pin' in input ? 'PIN removed.' : 'Credential updated.',
         'credentials',
       )
       void invalidateCredentials()
@@ -396,7 +409,7 @@ export function CardholdersPage() {
   function resetPanelMutations() {
     resetDetailMutations()
     resetCredentialMutations()
-    pinMutation.reset()
+    editMutation.reset()
     createCredentialMutation.reset()
   }
 
@@ -988,13 +1001,15 @@ export function CardholdersPage() {
                               variant="outline"
                               size="sm"
                               onClick={() => {
-                                pinMutation.reset()
-                                setPinTarget(credential)
-                                setPinValue('')
+                                editMutation.reset()
+                                setEditTarget(credential)
+                                setEditPin('')
+                                setEditFrom(toDatetimeLocal(credential.valid_from))
+                                setEditTo(toDatetimeLocal(credential.valid_to))
                               }}
                             >
                               <KeyRound className="size-3.5" />
-                              PIN
+                              Edit
                             </Button>
                             {credential.status === 'active' ? (
                               <Button
@@ -1058,69 +1073,100 @@ export function CardholdersPage() {
                     </div>
                   )}
 
-                  {pinTarget ? (
-                    <form
-                      className="mt-4 grid gap-4 rounded-lg border border-border p-4 sm:grid-cols-2"
-                      onSubmit={(event) => {
-                        event.preventDefault()
-                        pinMutation.mutate({
-                          id: pinTarget.id,
-                          input: { pin: pinValue },
-                        })
-                      }}
-                    >
-                      <FormField
-                        label={`PIN for ${pinTarget.uid}`}
-                        htmlFor="pin-value"
-                        className="sm:col-span-2"
-                        reserveMessage={false}
+                  {editTarget ? (() => {
+                    const nextFrom = toIso(editFrom)
+                    const nextTo = toIso(editTo)
+                    const fromChanged = nextFrom !== (editTarget.valid_from ?? null)
+                    const toChanged = nextTo !== (editTarget.valid_to ?? null)
+                    const pinChanged = /^\d{6,32}$/.test(editPin)
+                    const hasChanges = fromChanged || toChanged || pinChanged
+                    const windowInvalid =
+                      nextFrom !== null && nextTo !== null && nextFrom >= nextTo
+                    return (
+                      <form
+                        className="mt-4 grid gap-4 rounded-lg border border-border p-4 sm:grid-cols-2"
+                        onSubmit={(event) => {
+                          event.preventDefault()
+                          if (!hasChanges || windowInvalid) return
+                          const input: Record<string, unknown> = {}
+                          if (fromChanged) input.valid_from = nextFrom
+                          if (toChanged) input.valid_to = nextTo
+                          if (pinChanged) input.pin = editPin
+                          editMutation.mutate({ id: editTarget.id, input })
+                        }}
                       >
-                        <PasswordInput
-                          inputMode="numeric"
-                          autoComplete="new-password"
-                          value={pinValue}
-                          onChange={(event) => setPinValue(event.target.value)}
-                          placeholder="6–32 digits"
+                        <FormField label="Valid from" htmlFor="edit-from" hint="Leave empty to activate immediately">
+                          <Input
+                            id="edit-from"
+                            type="datetime-local"
+                            value={editFrom}
+                            onChange={(event) => setEditFrom(event.target.value)}
+                          />
+                        </FormField>
+                        <FormField label="Valid to" htmlFor="edit-to" hint="Leave empty for no expiry">
+                          <Input
+                            id="edit-to"
+                            type="datetime-local"
+                            value={editTo}
+                            onChange={(event) => setEditTo(event.target.value)}
+                          />
+                        </FormField>
+                        <FormField
+                          label="New PIN"
+                          htmlFor="edit-pin"
+                          hint="Leave empty to keep current PIN"
+                          className="sm:col-span-2"
+                        >
+                          <PasswordInput
+                            id="edit-pin"
+                            inputMode="numeric"
+                            autoComplete="new-password"
+                            value={editPin}
+                            onChange={(event) => setEditPin(event.target.value)}
+                            placeholder="6–32 digits"
+                          />
+                        </FormField>
+                        <InlineNotice
+                          message={windowInvalid ? 'Valid from must be before valid to' : null}
+                          className="sm:col-span-2"
                         />
-                      </FormField>
-                      <FormActions className="sm:col-span-2">
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          onClick={() => {
-                            pinMutation.reset()
-                            setPinTarget(null)
-                          }}
-                        >
-                          Cancel
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          disabled={pinMutation.isPending || !pinTarget.has_pin}
-                          onClick={() =>
-                            pinMutation.mutate({
-                              id: pinTarget.id,
-                              input: { clear_pin: true },
-                            })
-                          }
-                        >
-                          Remove PIN
-                        </Button>
-                        <Button
-                          type="submit"
-                          variant="brand"
-                          disabled={
-                            pinMutation.isPending || !/^\d{6,32}$/.test(pinValue)
-                          }
-                        >
-                          Save PIN
-                        </Button>
-                      </FormActions>
-                    </form>
-                  ) : null}
+                        <FormActions className="sm:col-span-2">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            onClick={() => {
+                              editMutation.reset()
+                              setEditTarget(null)
+                            }}
+                          >
+                            Cancel
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            disabled={editMutation.isPending || !editTarget.has_pin}
+                            onClick={() => {
+                              const input: Record<string, unknown> = { clear_pin: true }
+                              if (fromChanged) input.valid_from = nextFrom
+                              if (toChanged) input.valid_to = nextTo
+                              editMutation.mutate({ id: editTarget.id, input })
+                            }}
+                          >
+                            Remove PIN
+                          </Button>
+                          <Button
+                            type="submit"
+                            variant="brand"
+                            disabled={editMutation.isPending || !hasChanges || windowInvalid}
+                          >
+                            Save
+                          </Button>
+                        </FormActions>
+                      </form>
+                    )
+                  })() : null}
                   <InlineNotice
-                    message={errorMessage(pinMutation.error)}
+                    message={errorMessage(editMutation.error)}
                     className="mt-2"
                   />
                 </section>
