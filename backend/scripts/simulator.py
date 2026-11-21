@@ -33,6 +33,7 @@ HELP = """\
 Commands:
   use <device_id>    Select the target device
   scan <UID>         Send an enrollment card scan
+  pin <UID> <PIN>    Send a PIN entry event
   grant [UID]        Decide card access using the local access list
   deny [UID]         Send a denied access decision
   open               Simulate a remote unlock
@@ -284,6 +285,12 @@ class SimulatedDevice:
 
         if command == "scan":
             await self._scan(uid)
+        elif command == "pin":
+            parts = argument.split()
+            if len(parts) != 2:
+                print("Usage: pin <UID> <PIN>")
+                return
+            await self._pin(parts[0], parts[1])
         elif command == "grant":
             await self._card_access(uid)
         elif command == "deny":
@@ -381,6 +388,12 @@ class SimulatedDevice:
         self.state.pending_enrollment = None
         await self._publish(
             "events/card-scan", {"uid": uid.upper(), "request_id": request_id}
+        )
+
+    async def _pin(self, uid: str, pin: str) -> None:
+        await self._publish(
+            "events/pin-entry",
+            {"uid": uid.upper(), "pin": pin, "request_id": str(uuid.uuid4())},
         )
 
     async def _publish_decision(

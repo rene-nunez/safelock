@@ -61,10 +61,12 @@ def enrollment_to_out(doc: EnrollmentDocument) -> dict[str, Any]:
 async def create_enrollment(
     db: Database,
     gateway: MqttGateway | None,
-    device_oid: str,
+    device_ref: str,
     requested_by: ObjectId | None,
 ) -> EnrollmentDocument:
-    device = await get_device(db, device_oid)
+    device = await get_device(db, device_ref)
+    if device is None:
+        device = await db.devices.find_one({"device_id": device_ref})
     if device is None:
         raise EnrollmentNotFoundError("Device not found")
     last_seen = device.get("last_seen")

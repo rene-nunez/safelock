@@ -201,3 +201,23 @@ async def test_operator_cannot_delete_device(
     )
 
     assert response.status_code == 403
+
+
+async def test_unlock_requires_online_device(
+    api: AsyncClient, admin_headers: dict[str, str]
+) -> None:
+    created = await create_device(api, admin_headers)
+    r = await api.post(f"/api/v1/devices/{created['id']}/unlock", headers=admin_headers)
+    assert r.status_code == 409
+
+
+async def test_operator_can_unlock_online_device(
+    api: AsyncClient, admin_headers: dict[str, str], operator_headers: dict[str, str], db: Database
+) -> None:
+    created = await create_device(api, admin_headers)
+    await db.devices.update_one(
+        {"device_id": "sl-0001"}, {"$set": {"last_seen": datetime.now(UTC)}}
+    )
+    # no gateway configured in test app -> 503
+    r = await api.post(f"/api/v1/devices/{created['id']}/unlock", headers=operator_headers)
+    assert r.status_code == 503
