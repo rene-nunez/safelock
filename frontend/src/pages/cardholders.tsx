@@ -846,7 +846,6 @@ export function CardholdersPage() {
                         <FormField
                           label="Card UID"
                           htmlFor="credential-uid"
-                          hint="AA:BB:CC:DD"
                           error={credentialForm.formState.errors.uid?.message}
                           className="sm:col-span-2"
                         >
@@ -1059,7 +1058,7 @@ export function CardholdersPage() {
 
                   {pinTarget ? (
                     <form
-                      className="mt-4 grid gap-4 rounded-lg border border-border p-3 sm:grid-cols-2"
+                      className="mt-4 grid gap-4 rounded-lg border border-border p-4 sm:grid-cols-2"
                       onSubmit={(event) => {
                         event.preventDefault()
                         pinMutation.mutate({
