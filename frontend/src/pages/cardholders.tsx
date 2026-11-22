@@ -107,7 +107,16 @@ function errorMessage(error: unknown): string | null {
 }
 
 function toIso(value: string): string | null {
-  return value === '' ? null : new Date(value).toISOString()
+  if (value === '') return null
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? null : date.toISOString()
+}
+
+function normalizeDateTime(value: string, kind: 'from' | 'to'): string {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return `${value}T${kind === 'from' ? '00:00' : '23:59'}`
+  }
+  return value
 }
 
 function toDatetimeLocal(value: string | null): string {
@@ -898,13 +907,27 @@ export function CardholdersPage() {
                       <FormField label="Valid from" htmlFor="credential-from" hint="Leave empty to activate immediately">
                         <Input
                           type="datetime-local"
-                          {...credentialForm.register('valid_from')}
+                          {...credentialForm.register('valid_from', {
+                            onChange: (event) =>
+                              credentialForm.setValue(
+                                'valid_from',
+                                normalizeDateTime(event.target.value, 'from'),
+                                { shouldDirty: true, shouldValidate: true },
+                              ),
+                          })}
                         />
                       </FormField>
                       <FormField label="Valid to" htmlFor="credential-to" hint="Leave empty for no expiry">
                         <Input
                           type="datetime-local"
-                          {...credentialForm.register('valid_to')}
+                          {...credentialForm.register('valid_to', {
+                            onChange: (event) =>
+                              credentialForm.setValue(
+                                'valid_to',
+                                normalizeDateTime(event.target.value, 'to'),
+                                { shouldDirty: true, shouldValidate: true },
+                              ),
+                          })}
                         />
                       </FormField>
                       <FormActions className="sm:col-span-2">
@@ -1110,7 +1133,7 @@ export function CardholdersPage() {
                             id="edit-from"
                             type="datetime-local"
                             value={editFrom}
-                            onChange={(event) => setEditFrom(event.target.value)}
+                            onChange={(event) => setEditFrom(normalizeDateTime(event.target.value, 'from'))}
                           />
                         </FormField>
                         <FormField label="Valid to" htmlFor="edit-to" hint="Leave empty for no expiry">
@@ -1118,7 +1141,7 @@ export function CardholdersPage() {
                             id="edit-to"
                             type="datetime-local"
                             value={editTo}
-                            onChange={(event) => setEditTo(event.target.value)}
+                            onChange={(event) => setEditTo(normalizeDateTime(event.target.value, 'to'))}
                           />
                         </FormField>
                         <FormField
