@@ -96,7 +96,7 @@ class Tasks : public MqttCommandHandler {
     // State transitions
     void start_entry();
     void handle_card(const String &uid);
-    void grant_access(const char *method);
+    void grant_access(const char *method, uint16_t duration_ms = 0);
     void deny_access();
     void alert_manual_open();
     void publish_decision(
@@ -106,7 +106,6 @@ class Tasks : public MqttCommandHandler {
       const String &uid,
       const String &credential_id
     );
-    void start_enrollment(const String &request_id, uint32_t ttl_s);
     void cancel_enrollment();
     void start_pin_entry(const String &uid, const String &credential_id);
     void cancel_pin_entry();

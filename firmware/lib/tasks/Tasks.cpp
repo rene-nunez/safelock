@@ -263,12 +263,16 @@ void Tasks::start_entry() {
   display.show_entry(0);
 }
 
-void Tasks::grant_access(const char *method) {
+void Tasks::grant_access(const char *method, uint16_t duration_ms) {
   unlock_animation_active = true;
   unlock_animation_frame = 0;
   last_unlock_animation_millis = current_millis;
   display.show_unlock_frame(unlock_animation_frame);
-  lock.unlock();
+  if (duration_ms > 0) {
+    lock.unlock(duration_ms);
+  } else {
+    lock.unlock();
+  }
   indicators.show_unlocked();
   indicators.beep_ok();
 
@@ -381,9 +385,8 @@ void Tasks::submit_pin() {
 }
 
 void Tasks::handle_remote_unlock(uint16_t duration_ms) {
-  (void)duration_ms;
   publish_decision("granted", "remote", "remote", "", "");
-  grant_access("remote");
+  grant_access("remote", duration_ms);
 }
 
 bool Tasks::try_log_access() {

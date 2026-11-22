@@ -31,8 +31,13 @@ void Lock::set_unlock_ms(uint16_t ms) {
 }
 
 void Lock::unlock() {
+  unlock(unlock_ms);
+}
+
+void Lock::unlock(uint16_t duration_ms) {
   set_coil(true);
   active = true;
+  active_ms = duration_ms;
   activated_millis = millis();
   has_command = true;
   command_millis = activated_millis;
@@ -53,13 +58,13 @@ void Lock::update() {
 
     // A bolt that opens without a recent command was released by hand
     if (!sense_stable) {
-      bool commanded = has_command && (now - command_millis) <= (unlock_ms + LOCK_CMD_GRACE_MS);
+      bool commanded = has_command && (now - command_millis) <= (active_ms + LOCK_CMD_GRACE_MS);
       manual_open = !commanded;
     }
   }
 
   if (!active) return;
-  if ((now - activated_millis) < unlock_ms) return;
+  if ((now - activated_millis) < active_ms) return;
 
   set_coil(false);
   active = false;

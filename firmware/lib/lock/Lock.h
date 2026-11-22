@@ -8,6 +8,7 @@ class Lock {
   private:
     bool active = false;
     unsigned long activated_millis = 0;
+    uint16_t active_ms = LOCK_OPEN_MS;
 
     bool sense_raw = false;
     bool sense_stable = false;
@@ -27,6 +28,7 @@ class Lock {
     void begin();
     void set_unlock_ms(uint16_t ms);
     void unlock();
+    void unlock(uint16_t duration_ms);
     void update();
     bool is_active() const;
     bool is_closed() const;
