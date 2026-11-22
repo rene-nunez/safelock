@@ -19,13 +19,6 @@ class DeviceAlreadyExistsError(Exception):
         self.device_id = device_id
 
 
-class DeviceHasHistoryError(Exception):
-    def __init__(self) -> None:
-        super().__init__(
-            "The device has history; retire it instead of deleting it"
-        )
-
-
 def device_to_out(document: DeviceDocument) -> DeviceOut:
     last_seen = document.get("last_seen")
     online = (

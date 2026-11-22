@@ -81,50 +81,9 @@ class AccessDecisionData(BaseModel):
     acl_age_s: int | None = Field(default=None, ge=0)
 
 
-class SyncEntryData(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    uid: str
-    credential_id: str
-    holder_id: str
-    status: Literal["active"]
-    valid_from: int | None = None
-    valid_to: int | None = None
-
-
-class SyncData(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    request_id: str = Field(min_length=1, max_length=64)
-    expires_at: int
-    acl_version: int = Field(ge=0)
-    requires_pin: bool
-    locked: bool
-    offline_policy: Literal["allow", "deny"]
-    stale_acl_hours: int = Field(ge=1)
-    unlock_ms: int = Field(ge=100)
-    entries: list[SyncEntryData]
-
-
 class CommandResponseData(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     request_id: str = Field(min_length=1, max_length=64)
     result: Literal["ok", "error", "expired"]
     reason: str | None = Field(default=None, max_length=60)
-
-
-class UnlockCommandData(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    request_id: str = Field(min_length=1, max_length=64)
-    duration_ms: int = Field(ge=100, le=30_000)
-    expires_at: int = Field(ge=0)
-
-
-class EnrollCommandData(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    request_id: str = Field(min_length=1, max_length=64)
-    ttl_s: int = Field(default=60, ge=1, le=300)
-    expires_at: int = Field(ge=0)
