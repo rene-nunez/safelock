@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import time
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, Any
@@ -7,6 +8,8 @@ from typing import TYPE_CHECKING, Any
 from fastapi.concurrency import run_in_threadpool
 
 from app.core.security import verify_password
+
+logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from app.schemas.mqtt import MessageEnvelope
@@ -59,6 +62,11 @@ async def _insert_event(
     try:
         await gateway.db.access_events.insert_one(doc)
     except Exception:
+        logger.exception(
+            "Failed to store PIN access event device_id=%s reason=%s",
+            device_id,
+            reason,
+        )
         return
 
 

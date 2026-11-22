@@ -21,7 +21,8 @@ async def _make_online_device(db: Database) -> dict[str, Any]:
 async def _make_cardholder(api: AsyncClient, headers: dict[str, str]) -> dict[str, Any]:
     r = await api.post("/api/v1/cardholders", headers=headers, json={"name": "Ada"})
     assert r.status_code == 201
-    return r.json()
+    data: dict[str, Any] = r.json()
+    return data
 
 
 async def test_enrollment_create_requires_online_device(
