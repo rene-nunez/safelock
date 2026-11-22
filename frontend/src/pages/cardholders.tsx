@@ -106,12 +106,6 @@ function errorMessage(error: unknown): string | null {
     : 'Something went wrong. Try again.'
 }
 
-function toIso(value: string): string | null {
-  if (value === '') return null
-  const date = new Date(value)
-  return Number.isNaN(date.getTime()) ? null : date.toISOString()
-}
-
 function normalizeDateTime(value: string, kind: 'from' | 'to'): string {
   if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
     return `${value}T${kind === 'from' ? '00:00' : '23:59'}`
@@ -119,12 +113,18 @@ function normalizeDateTime(value: string, kind: 'from' | 'to'): string {
   return value
 }
 
-function toDatetimeLocal(value: string | null): string {
+function toIso(value: string, kind: 'from' | 'to'): string | null {
+  if (value === '') return null
+  const date = new Date(normalizeDateTime(value, kind))
+  return Number.isNaN(date.getTime()) ? null : date.toISOString()
+}
+
+function toDateInput(value: string | null): string {
   if (!value) return ''
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return ''
   const pad = (n: number) => String(n).padStart(2, '0')
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
 }
 
 function validityLabel(credential: Credential): string {
@@ -339,8 +339,8 @@ export function CardholdersPage() {
     mutationFn: (input: { id: string; values: CredentialValues }) =>
       confirmEnrollment(input.id, {
         holder_id: selectedId ?? '',
-        valid_from: toIso(input.values.valid_from),
-        valid_to: toIso(input.values.valid_to),
+        valid_from: toIso(input.values.valid_from, 'from'),
+        valid_to: toIso(input.values.valid_to, 'to'),
         pin: input.values.pin === '' ? undefined : input.values.pin,
       }),
     onMutate: () => setSuccess(null),
@@ -460,8 +460,8 @@ export function CardholdersPage() {
       createCredentialMutation.mutate({
         uid: values.uid,
         pin: values.pin === '' ? undefined : values.pin,
-        valid_from: toIso(values.valid_from),
-        valid_to: toIso(values.valid_to),
+        valid_from: toIso(values.valid_from, 'from'),
+        valid_to: toIso(values.valid_to, 'to'),
       })
       return
     }
@@ -906,28 +906,14 @@ export function CardholdersPage() {
                       </FormField>
                       <FormField label="Valid from" htmlFor="credential-from" hint="Leave empty to activate immediately">
                         <Input
-                          type="datetime-local"
-                          {...credentialForm.register('valid_from', {
-                            onChange: (event) =>
-                              credentialForm.setValue(
-                                'valid_from',
-                                normalizeDateTime(event.target.value, 'from'),
-                                { shouldDirty: true, shouldValidate: true },
-                              ),
-                          })}
+                          type="date"
+                          {...credentialForm.register('valid_from')}
                         />
                       </FormField>
                       <FormField label="Valid to" htmlFor="credential-to" hint="Leave empty for no expiry">
                         <Input
-                          type="datetime-local"
-                          {...credentialForm.register('valid_to', {
-                            onChange: (event) =>
-                              credentialForm.setValue(
-                                'valid_to',
-                                normalizeDateTime(event.target.value, 'to'),
-                                { shouldDirty: true, shouldValidate: true },
-                              ),
-                          })}
+                          type="date"
+                          {...credentialForm.register('valid_to')}
                         />
                       </FormField>
                       <FormActions className="sm:col-span-2">
@@ -1037,8 +1023,8 @@ export function CardholdersPage() {
                                 editMutation.reset()
                                 setEditTarget(credential)
                                 setEditPin('')
-                                setEditFrom(toDatetimeLocal(credential.valid_from))
-                                setEditTo(toDatetimeLocal(credential.valid_to))
+                                setEditFrom(toDateInput(credential.valid_from))
+                                setEditTo(toDateInput(credential.valid_to))
                               }}
                             >
                               <Pencil className="size-3.5" />
@@ -1107,8 +1093,8 @@ export function CardholdersPage() {
                   )}
 
                   {editTarget ? (() => {
-                    const nextFrom = toIso(editFrom)
-                    const nextTo = toIso(editTo)
+                    const nextFrom = toIso(editFrom, 'from')
+                    const nextTo = toIso(editTo, 'to')
                     const fromChanged = nextFrom !== (editTarget.valid_from ?? null)
                     const toChanged = nextTo !== (editTarget.valid_to ?? null)
                     const pinChanged = /^\d{6,32}$/.test(editPin)
@@ -1131,17 +1117,17 @@ export function CardholdersPage() {
                         <FormField label="Valid from" htmlFor="edit-from" hint="Leave empty to activate immediately">
                           <Input
                             id="edit-from"
-                            type="datetime-local"
+                            type="date"
                             value={editFrom}
-                            onChange={(event) => setEditFrom(normalizeDateTime(event.target.value, 'from'))}
+                            onChange={(event) => setEditFrom(event.target.value)}
                           />
                         </FormField>
                         <FormField label="Valid to" htmlFor="edit-to" hint="Leave empty for no expiry">
                           <Input
                             id="edit-to"
-                            type="datetime-local"
+                            type="date"
                             value={editTo}
-                            onChange={(event) => setEditTo(normalizeDateTime(event.target.value, 'to'))}
+                            onChange={(event) => setEditTo(event.target.value)}
                           />
                         </FormField>
                         <FormField
