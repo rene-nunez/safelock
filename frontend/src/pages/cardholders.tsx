@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ChevronRight, KeyRound, Plus, UserPlus, X } from 'lucide-react'
+import { ChevronRight, Pencil, Plus, UserPlus, X } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 
@@ -1008,7 +1008,7 @@ export function CardholdersPage() {
                                 setEditTo(toDatetimeLocal(credential.valid_to))
                               }}
                             >
-                              <KeyRound className="size-3.5" />
+                              <Pencil className="size-3.5" />
                               Edit
                             </Button>
                             {credential.status === 'active' ? (
