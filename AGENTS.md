@@ -130,7 +130,7 @@ Enrolamiento: `POST /enrollments` (TTL 60 s) → el dispositivo envía `events/c
 
 Ya están `net`, `mqtt_transport`, `settings`, `storage`, `acl` (`lib/acl`), `outbox` (`lib/outbox`), `lock`, `display` y `Tasks` (ver `firmware/README.md`). El firmware usa `espMqttClient` (MQTT 3.1.1, TLS y QoS 1): `status` y LWT son retenidos a QoS 1, `heartbeat` va a QoS 0 y `events/*`/`response` van a QoS 1. `espMqttClient` no persiste los paquetes QoS 1 pendientes al reiniciar; la cola local cubre ese vacío.
 
-Pendientes para el hito 4: comandos `unlock` y `enroll`, y PIN validado por el backend (el teclado hoy solo se drena, sin contraseña local).
+El firmware maneja `commands/enroll` y `commands/unlock`, publica `events/card-scan` y `events/pin-entry`, y usa el teclado para entrada de PIN (`*` borra, `#` envía, mínimo 6 dígitos). El PIN se valida solo en el backend; el dispositivo nunca lo guarda ni lo valida.
 
 Arranque: NVS → reloj válido → WiFi → hora → MQTT + LWT → publicar `status` → suscribirse a `commands/#` → sincronizar si hace falta → listo. Sin lista cargada, no hay acceso.
 
@@ -191,6 +191,7 @@ make mqtt-restart  # reiniciar Mosquitto
 - Hito 1 cerrado: auth JWT, CLI `create-user`, CRUD de portadores, credenciales y dispositivos, auditoría con endpoint de lectura, y frontend de Login, Cardholders, Devices, Audit y Users.
 - Hito 2 implementado y verificado con el simulador: firmware con NVS/WiFi/SNTP/MQTT (`status`/`heartbeat` + LWT a QoS 1), gateway MQTT en el `lifespan`, `access_events` y vista Activity. Pendiente de probar en placa y configurar host y CA reales.
 - Hito 3 implementado y verificado de punta a punta con el simulador: snapshot completo con guardado atómico en microSD, outbox persistente, decisión local de tarjeta y `access-decision`. El backend actualiza la versión deseada solo cuando cambia el contenido y reenvía al reconectar; el frontend tiene sincronización manual para admin. Pendiente de probar en placa.
+- Hito 4 implementado y verificado con el simulador: unlock remoto, enrolamiento por toque y PIN validado en el backend; frontend con unlock remoto y enrolamiento/edición de credenciales en Cardholders. Pendiente de probar en placa.
 
 ## Roadmap
 

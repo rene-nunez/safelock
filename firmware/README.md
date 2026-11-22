@@ -29,7 +29,7 @@ The Last Will publishes `online: false` to `status` on an unexpected disconnect.
 
 ## Access decisions
 
-A card is granted only if its UID is in the local snapshot and passes the RTC validity window. No card is accepted before the first snapshot arrives; there is no local password or master card. The keypad is read but not validated locally: PIN validation is done by the backend in a later milestone. A door with `requires_pin` denies every card.
+A card is granted only if its UID is in the local snapshot and passes the RTC validity window. No card is accepted before the first snapshot arrives; there is no local password or master card. The keypad is used for PIN entry; PINs are validated only by the backend and never stored on the device. On doors with `requires_pin`, a matching card starts PIN entry and access is granted only after backend validation; without backend access is denied (`offline_no_pin`).
 
 Each scan produces an `events/access-decision` message, including denials and cards outside the ACL. A manual release detected by the bolt sensor produces `decision: "unknown"`, `source: "manual"`, `reason: "manual_open"`.
 
