@@ -360,7 +360,13 @@ export function CardholdersPage() {
       setSuccess(null)
       resetCredentialMutations('credential')
     },
-    onSuccess: (_credential, { action }) => {
+    onSuccess: (_credential, { action, id }) => {
+      if (editTarget?.id === id) {
+        setEditTarget(null)
+        setEditPin('')
+        setEditFrom('')
+        setEditTo('')
+      }
       showSuccess(CREDENTIAL_MESSAGES[action], 'credentials')
       void invalidateCredentials()
     },
@@ -373,6 +379,10 @@ export function CardholdersPage() {
       resetCredentialMutations('revokeAll')
     },
     onSuccess: () => {
+      setEditTarget(null)
+      setEditPin('')
+      setEditFrom('')
+      setEditTo('')
       showSuccess('All active credentials revoked.', 'credentials')
       void invalidateCredentials()
     },
