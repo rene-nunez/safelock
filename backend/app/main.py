@@ -9,7 +9,7 @@ from fastapi.responses import Response
 from pymongo.errors import PyMongoError
 
 from app.api.v1.router import router as v1_router
-from app.core.config import get_settings
+from app.core.config import get_settings, validate_runtime_settings
 from app.db.mongo import create_client, ensure_indexes, get_database
 from app.services.mqtt_gateway import MqttGateway
 
@@ -19,11 +19,8 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     settings = get_settings()
-    if settings.jwt_secret == "dev-only-change-me":
-        if settings.is_dev:
-            logger.warning("JWT_SECRET uses the development default; set it in .env")
-        else:
-            raise RuntimeError("JWT_SECRET must be set outside development")
+    for warning in validate_runtime_settings(settings):
+        logger.warning(warning)
 
     client = create_client(settings.mongodb_uri)
     db = get_database(client, settings.mongodb_db)

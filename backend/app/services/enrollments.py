@@ -37,6 +37,10 @@ class EnrollmentStateError(EnrollmentError):
     pass
 
 
+class EnrollmentActiveError(EnrollmentError):
+    pass
+
+
 def _expires_at(doc: EnrollmentDocument) -> datetime:
     created = doc["created_at"]
     if isinstance(created, datetime):
@@ -75,8 +79,20 @@ async def create_enrollment(
     if gateway is None:
         raise EnrollmentError("MQTT gateway unavailable")
 
-    request_id = str(uuid.uuid4())
     now = datetime.now(UTC)
+    active_cutoff = now - timedelta(seconds=ENROLLMENT_TTL_S)
+    active = await db.enrollments.find_one(
+        {
+            "device_id": device["device_id"],
+            "status": {"$in": ["pending", "scanned"]},
+            "created_at": {"$gt": active_cutoff},
+        },
+        sort=[("created_at", DESCENDING)],
+    )
+    if active is not None:
+        raise EnrollmentActiveError("Device already has an active enrollment")
+
+    request_id = str(uuid.uuid4())
     expires_at = int(time.time()) + ENROLLMENT_TTL_S
     doc: EnrollmentDocument = {
         "device_id": device["device_id"],

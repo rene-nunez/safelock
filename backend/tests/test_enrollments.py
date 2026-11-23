@@ -79,3 +79,35 @@ async def test_enrollment_happy_path(
     )
     assert creds.status_code == 200
     assert any(c["uid"] == "AA:BB:CC:DD" for c in creds.json())
+
+
+async def test_enrollment_rejects_active_enrollment(
+    db: Database,
+) -> None:
+    await _make_online_device(db)
+    now = datetime.now(UTC)
+    await db.enrollments.insert_one(
+        {
+            "device_id": "sl-0001",
+            "request_id": str(uuid.uuid4()),
+            "requested_by": None,
+            "status": "pending",
+            "uid": None,
+            "scanned_at": None,
+            "created_at": now,
+            "updated_at": now,
+        }
+    )
+
+    from app.services import enrollments as service
+
+    class DummyGateway:
+        async def publish_command(self, *_args: object, **_kwargs: object) -> bool:
+            return True
+
+    try:
+        await service.create_enrollment(db, DummyGateway(), "sl-0001", None)  # type: ignore[arg-type]
+    except service.EnrollmentActiveError as error:
+        assert "active enrollment" in str(error).lower()
+    else:
+        raise AssertionError("expected EnrollmentActiveError")

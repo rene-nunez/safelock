@@ -50,6 +50,10 @@ async def create_enrollment_endpoint(
         doc = await service.create_enrollment(
             db, gateway, payload.device_id, actor_object_id(user)
         )
+    except service.EnrollmentActiveError as error:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail=str(error)
+        ) from error
     except service.DeviceOfflineError as error:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT, detail=str(error)

@@ -239,6 +239,11 @@ export function CardholdersPage() {
     activeEnrollment
       ? enrollments.find((item) => item.id === activeEnrollment.id) ?? activeEnrollment
       : null
+  const hasActiveEnrollment = enrollments.some(
+    (item) =>
+      (item.status === 'pending' || item.status === 'scanned') &&
+      new Date(item.expires_at).getTime() > Date.now(),
+  )
 
   useEffect(() => {
     resetPanelMutations()
@@ -854,13 +859,18 @@ export function CardholdersPage() {
                                 disabled={
                                   !enrollmentDeviceId ||
                                   startEnrollmentMutation.isPending ||
+                                  hasActiveEnrollment ||
                                   !(devicesQuery.data ?? []).some(
                                     (d) => d.device_id === enrollmentDeviceId && d.online,
                                   )
                                 }
                                 onClick={() => startEnrollmentMutation.mutate(enrollmentDeviceId)}
                               >
-                                {startEnrollmentMutation.isPending ? 'Starting…' : 'Start enrollment'}
+                                {startEnrollmentMutation.isPending
+                                  ? 'Starting…'
+                                  : hasActiveEnrollment
+                                    ? 'Enrollment active'
+                                    : 'Start enrollment'}
                               </Button>
                             </div>
                           </FormField>

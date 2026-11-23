@@ -38,6 +38,41 @@ class Settings(BaseSettings):
     def is_dev(self) -> bool:
         return self.env.lower() in {"dev", "development", "test"}
 
+    @property
+    def mqtt_tls_enabled(self) -> bool:
+        return self.mqtt_tls or self.mqtt_url.startswith("mqtts://")
+
+
+def validate_runtime_settings(settings: Settings) -> list[str]:
+    warnings: list[str] = []
+    if settings.jwt_secret == "dev-only-change-me":
+        if settings.is_dev:
+            warnings.append("JWT_SECRET uses the development default; set it in .env")
+        else:
+            raise RuntimeError("JWT_SECRET must be set outside development")
+
+    if settings.is_dev:
+        return warnings
+
+    if not settings.mqtt_tls_enabled:
+        raise RuntimeError("MQTT TLS must be enabled outside development")
+    if not settings.mqtt_password:
+        raise RuntimeError("MQTT_PASSWORD must be set outside development")
+    if "*" in settings.cors_origins:
+        raise RuntimeError("CORS wildcard origin is not allowed outside development")
+    if "mongodb.net" not in settings.mongodb_uri and "@" not in settings.mongodb_uri:
+        warnings.append(
+            "MONGODB_URI does not look like an authenticated/Atlas URI "
+            "outside development"
+        )
+    if any(
+        origin.startswith(("http://localhost", "http://127.0.0.1", "http://[::1]"))
+        or origin.startswith(("https://localhost", "https://127.0.0.1", "https://[::1]"))
+        for origin in settings.cors_origins
+    ):
+        warnings.append("CORS_ORIGINS includes localhost outside development")
+    return warnings
+
 
 @lru_cache
 def get_settings() -> Settings:

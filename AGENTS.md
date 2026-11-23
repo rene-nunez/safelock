@@ -104,6 +104,7 @@ Reglas:
 - Nadie puede cambiar su propio rol ni desactivarse. No se puede desactivar ni degradar al último `admin` activo.
 - Resetear una contraseña o desactivar una cuenta invalida sus tokens (`token_version` y `active` se validan en cada request).
 - `POST /auth/login` tiene bloqueo temporal incremental por email normalizado. Contador se limpia con login correcto; durante bloqueo responde `429` con `Retry-After` y mensaje genérico. Bloqueo por bloques de 5 fallos: 5-9 = 60 s, 10-14 = 5 min, 15-19 = 15 min, 20+ = 30 min.
+- `POST /enrollments` rechaza con `409` si el dispositivo ya tiene un enrolamiento activo (`pending`/`scanned` dentro del TTL de 60 s).
 - `online` se calcula con `last_seen`. El frontend usa **polling** (~3 s), no WebSocket.
 - No guardar secretos reversibles. No correr múltiples workers de uvicorn (el consumidor MQTT vive en el `lifespan`).
 
