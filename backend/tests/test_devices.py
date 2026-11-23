@@ -226,3 +226,48 @@ async def test_operator_can_unlock_online_device(
         f"/api/v1/devices/{created['id']}/unlock", headers=operator_headers
     )
     assert r.status_code == 503
+
+
+async def test_unlock_cooldown_returns_429(
+    api: AsyncClient,
+    admin_headers: dict[str, str],
+    db: Database,
+) -> None:
+    created = await create_device(api, admin_headers)
+    await db.devices.update_one(
+        {"device_id": "sl-0001"},
+        {
+            "$set": {
+                "last_seen": datetime.now(UTC),
+                "unlock_cooldown_until": datetime.now(UTC) + timedelta(seconds=30),
+            }
+        },
+    )
+    r = await api.post(
+        f"/api/v1/devices/{created['id']}/unlock", headers=admin_headers
+    )
+    assert r.status_code == 429
+    assert r.headers.get("retry-after") is not None
+
+
+async def test_sync_cooldown_returns_429(
+    api: AsyncClient,
+    admin_headers: dict[str, str],
+    db: Database,
+) -> None:
+    created = await create_device(api, admin_headers)
+    await db.devices.update_one(
+        {"device_id": "sl-0001"},
+        {
+            "$set": {
+                "last_seen": datetime.now(UTC),
+                "sync_cooldown_until": datetime.now(UTC) + timedelta(seconds=30),
+            }
+        },
+    )
+    r = await api.post(
+        f"/api/v1/devices/{created['id']}/synchronize-access-list",
+        headers=admin_headers,
+    )
+    assert r.status_code == 429
+    assert r.headers.get("retry-after") is not None

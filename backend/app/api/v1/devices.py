@@ -16,6 +16,7 @@ from app.schemas.devices import (
 )
 from app.services import acl_sync
 from app.services.audit import record_audit
+from app.services.command_throttle import check_device_cooldown, mark_device_cooldown
 from app.services.devices import (
     ONLINE_WINDOW as DEVICE_ONLINE_WINDOW,
 )
@@ -168,6 +169,19 @@ async def synchronize_device_endpoint(
             status_code=status.HTTP_409_CONFLICT,
             detail="The device is offline",
         )
+    throttle = await check_device_cooldown(
+        db,
+        device_id=target["device_id"],
+        field="sync_cooldown_until",
+        cooldown_s=10,
+    )
+    if not throttle.allowed:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Device sync requested too recently. Try again later.",
+            headers={"Retry-After": str(throttle.retry_after)},
+        )
+
     if gateway is None:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -191,6 +205,12 @@ async def synchronize_device_endpoint(
             "acl_version": result["acl_version"],
         },
         ip=client_ip(request),
+    )
+    await mark_device_cooldown(
+        db,
+        device_id=target["device_id"],
+        field="sync_cooldown_until",
+        cooldown_s=10,
     )
     return CommandOut(
         request_id=result["request_id"],
@@ -217,6 +237,19 @@ async def unlock_device_endpoint(
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT, detail="The device is offline"
         )
+    throttle = await check_device_cooldown(
+        db,
+        device_id=target["device_id"],
+        field="unlock_cooldown_until",
+        cooldown_s=5,
+    )
+    if not throttle.allowed:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Unlock requested too recently. Try again later.",
+            headers={"Retry-After": str(throttle.retry_after)},
+        )
+
     if gateway is None:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -246,6 +279,12 @@ async def unlock_device_endpoint(
         target=target["device_id"],
         after={"request_id": request_id, "duration_ms": payload["duration_ms"]},
         ip=client_ip(request),
+    )
+    await mark_device_cooldown(
+        db,
+        device_id=target["device_id"],
+        field="unlock_cooldown_until",
+        cooldown_s=5,
     )
     return UnlockCommandOut(request_id=request_id, expires_at=expires_at)
 
