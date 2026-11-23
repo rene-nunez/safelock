@@ -17,6 +17,7 @@ def get_database(client: AsyncMongoClient[Document], name: str) -> Database:
 
 
 ACCESS_EVENT_TTL_SECONDS = 2 * 365 * 24 * 60 * 60
+AUDIT_LOG_TTL_SECONDS = 2 * 365 * 24 * 60 * 60
 
 
 async def ensure_indexes(db: Database) -> None:
@@ -65,4 +66,13 @@ async def ensure_indexes(db: Database) -> None:
             ),
         ]
     )
-    await db.audit_logs.create_index([("ts", DESCENDING)], name="ts")
+    await db.audit_logs.create_indexes(
+        [
+            IndexModel([("ts", DESCENDING)], name="ts"),
+            IndexModel(
+                [("ts", ASCENDING)],
+                expireAfterSeconds=AUDIT_LOG_TTL_SECONDS,
+                name="ts_ttl",
+            ),
+        ]
+    )

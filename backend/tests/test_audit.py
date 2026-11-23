@@ -2,7 +2,7 @@ from datetime import UTC, datetime
 
 from httpx import AsyncClient
 
-from app.db.mongo import Database
+from app.db.mongo import AUDIT_LOG_TTL_SECONDS, Database, ensure_indexes
 
 
 async def test_operator_cannot_read_audit_logs(
@@ -11,6 +11,12 @@ async def test_operator_cannot_read_audit_logs(
     response = await api.get("/api/v1/audit-logs", headers=operator_headers)
 
     assert response.status_code == 403
+
+
+async def test_audit_logs_have_ttl_index(db: Database) -> None:
+    await ensure_indexes(db)
+    indexes = await db.audit_logs.index_information()
+    assert indexes["ts_ttl"]["expireAfterSeconds"] == AUDIT_LOG_TTL_SECONDS
 
 
 async def test_admin_reads_audit_logs_with_pagination(
