@@ -63,7 +63,12 @@ tokens are JWTs valid for 30 minutes (`ACCESS_TOKEN_TTL_MINUTES`); resetting a
 password or deactivating the account invalidates the existing ones. Login has
 incremental temporary lockout per normalized email: 5-9 failed attempts = 60 s,
 10-14 = 5 min, 15-19 = 15 min, 20+ = 30 min. A successful login clears the
-counter, and blocked attempts return `429` with `Retry-After`.
+counter, and blocked attempts return `429` with `Retry-After`. Device unlock and
+manual ACL sync have per-device cooldowns (5 s and 10 s) and return `429` with
+`Retry-After` during cooldown. Outside `dev`/`test`, startup fails if
+`JWT_SECRET` is the default, MQTT TLS is disabled, `MQTT_PASSWORD` is empty, or
+`CORS_ORIGINS` contains `*`; it warns on localhost CORS origins or MongoDB URIs
+that do not look authenticated/Atlas.
 
 To populate the development UI with cardholders, credentials, devices and audit
 entries:
