@@ -4,6 +4,7 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends, Query
 
 from app.api.deps import get_current_user, get_db
+from app.api.v1.common import Offset
 from app.db.mongo import Database
 from app.schemas.access_events import AccessEventOut, AccessEventPage
 from app.schemas.auth import UserOut
@@ -37,7 +38,7 @@ async def get_access_events(
     db: Db,
     _: CurrentUser,
     limit: Annotated[int, Query(ge=1, le=100)] = 50,
-    offset: Annotated[int, Query(ge=0)] = 0,
+    offset: Offset = 0,
     device_id: Annotated[str | None, Query(pattern=r"^sl-\d{4}$")] = None,
 ) -> AccessEventPage:
     documents, total = await list_access_events(

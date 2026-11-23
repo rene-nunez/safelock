@@ -1,8 +1,12 @@
 import pytest
+from fastapi import FastAPI
+from fastapi.exceptions import RequestValidationError
 from httpx import ASGITransport, AsyncClient
+from pydantic import BaseModel, Field
+from starlette.requests import Request
 
 from app.core.config import Settings, validate_runtime_settings
-from app.main import app
+from app.main import app, internal_server_error, sanitize_validation_errors
 
 
 def test_validate_runtime_settings_dev_allows_defaults() -> None:
@@ -121,3 +125,52 @@ def test_validate_runtime_settings_prod_rejects_placeholder_mqtt_password() -> N
     with pytest.raises(RuntimeError, match="MQTT_PASSWORD"):
         validate_runtime_settings(settings)
 
+
+class _SensitivePayload(BaseModel):
+    pin: str = Field(min_length=6)
+
+
+async def test_validation_errors_do_not_echo_sensitive_input() -> None:
+    probe = FastAPI()
+    probe.add_exception_handler(RequestValidationError, sanitize_validation_errors)
+
+    @probe.post("/probe")
+    async def probe_endpoint(payload: _SensitivePayload) -> None:
+        return None
+
+    transport = ASGITransport(app=probe)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.post("/probe", json={"pin": "123"})
+
+    assert response.status_code == 422
+    assert "123" not in response.text
+    assert response.json()["detail"][0]["loc"] == ["body", "pin"]
+
+
+async def test_oversized_body_is_rejected_before_validation() -> None:
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.post(
+            "/api/v1/auth/login",
+            json={"email": "someone@example.com", "password": "x" * 70_000},
+        )
+    assert response.status_code == 413
+    assert response.headers["x-content-type-options"] == "nosniff"
+
+
+async def test_internal_error_is_generic_and_has_security_headers() -> None:
+    scope = {
+        "type": "http",
+        "method": "GET",
+        "path": "/boom",
+        "scheme": "http",
+        "headers": [],
+        "query_string": b"",
+        "server": ("test", 80),
+        "client": ("test", 1),
+    }
+    request = Request(scope)
+    response = await internal_server_error(request, RuntimeError("secret detail"))
+    assert response.status_code == 500
+    assert response.headers["x-content-type-options"] == "nosniff"
+    assert "secret detail" not in bytes(response.body).decode()

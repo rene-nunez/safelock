@@ -3,7 +3,7 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 
 from app.api.deps import get_current_admin, get_current_user, get_db, get_gateway
-from app.api.v1.common import actor_object_id, client_ip
+from app.api.v1.common import Limit, Offset, actor_object_id, client_ip
 from app.db.mongo import Database
 from app.schemas.auth import UserOut
 from app.schemas.cardholders import (
@@ -65,8 +65,11 @@ async def _sync_acl(db: Database, gateway: MqttGateway | None) -> None:
 
 
 @router.get("", response_model=list[CardholderOut])
-async def get_cardholders(db: Db, _: CurrentUser) -> list[CardholderOut]:
-    return [cardholder_to_out(document) for document in await list_cardholders(db)]
+async def get_cardholders(
+    db: Db, _: CurrentUser, limit: Limit = 100, offset: Offset = 0
+) -> list[CardholderOut]:
+    documents = await list_cardholders(db, limit=limit, offset=offset)
+    return [cardholder_to_out(document) for document in documents]
 
 
 @router.post("", response_model=CardholderOut, status_code=status.HTTP_201_CREATED)
@@ -246,10 +249,16 @@ async def delete_cardholder_endpoint(
 
 @router.get("/{cardholder_id}/credentials", response_model=list[CredentialOut])
 async def get_holder_credentials(
-    cardholder_id: str, db: Db, _: CurrentUser
+    cardholder_id: str,
+    db: Db,
+    _: CurrentUser,
+    limit: Limit = 100,
+    offset: Offset = 0,
 ) -> list[CredentialOut]:
     cardholder = await _require_cardholder(db, cardholder_id)
-    documents = await list_holder_credentials(db, cardholder["_id"])
+    documents = await list_holder_credentials(
+        db, cardholder["_id"], limit=limit, offset=offset
+    )
     return [credential_to_out(document) for document in documents]
 
 

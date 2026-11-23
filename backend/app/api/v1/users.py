@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.concurrency import run_in_threadpool
 
 from app.api.deps import get_current_admin, get_db
+from app.api.v1.common import Limit, Offset
 from app.core.security import hash_password
 from app.db.mongo import Database
 from app.schemas.auth import UserOut
@@ -31,8 +32,11 @@ def _client_ip(request: Request) -> str | None:
 
 
 @router.get("", response_model=list[UserOut])
-async def get_users(db: Db, _: AdminUser) -> list[UserOut]:
-    return [user_to_out(document) for document in await list_users(db)]
+async def get_users(
+    db: Db, _: AdminUser, limit: Limit = 100, offset: Offset = 0
+) -> list[UserOut]:
+    documents = await list_users(db, limit=limit, offset=offset)
+    return [user_to_out(document) for document in documents]
 
 
 @router.post("", response_model=UserOut, status_code=status.HTTP_201_CREATED)

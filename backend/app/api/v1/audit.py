@@ -3,6 +3,7 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends, Query
 
 from app.api.deps import get_current_admin, get_db
+from app.api.v1.common import Offset
 from app.db.mongo import Database
 from app.schemas.audit import AuditLogOut, AuditLogPage
 from app.schemas.auth import UserOut
@@ -33,7 +34,7 @@ async def get_audit_logs(
     db: Db,
     _: AdminUser,
     limit: Annotated[int, Query(ge=1, le=100)] = 50,
-    offset: Annotated[int, Query(ge=0)] = 0,
+    offset: Offset = 0,
     action: Annotated[str | None, Query(max_length=120)] = None,
 ) -> AuditLogPage:
     documents, total = await list_audit_logs(

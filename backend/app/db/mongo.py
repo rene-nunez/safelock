@@ -70,6 +70,7 @@ async def ensure_indexes(db: Database) -> None:
     await db.audit_logs.create_indexes(
         [
             IndexModel([("ts", DESCENDING)], name="ts"),
+            IndexModel([("action", ASCENDING), ("ts", DESCENDING)], name="action_ts"),
             IndexModel(
                 [("ts", ASCENDING)],
                 expireAfterSeconds=AUDIT_LOG_TTL_SECONDS,

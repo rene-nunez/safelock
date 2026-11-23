@@ -51,10 +51,13 @@ async def get_credential(
 
 
 async def list_holder_credentials(
-    db: Database, holder_id: ObjectId
+    db: Database, holder_id: ObjectId, *, limit: int = 100, offset: int = 0
 ) -> list[CredentialDocument]:
-    cursor = db.credentials.find({"holder_id": holder_id}).sort(
-        "created_at", ASCENDING
+    cursor = (
+        db.credentials.find({"holder_id": holder_id})
+        .sort("created_at", ASCENDING)
+        .skip(offset)
+        .limit(limit)
     )
     return [document async for document in cursor]
 

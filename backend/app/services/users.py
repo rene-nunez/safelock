@@ -65,8 +65,15 @@ async def create_user(
     return document
 
 
-async def list_users(db: Database) -> list[UserDocument]:
-    cursor = db.users.find({}, {"password_hash": 0}).sort("email", ASCENDING)
+async def list_users(
+    db: Database, *, limit: int = 100, offset: int = 0
+) -> list[UserDocument]:
+    cursor = (
+        db.users.find({}, {"password_hash": 0})
+        .sort("email", ASCENDING)
+        .skip(offset)
+        .limit(limit)
+    )
     return [document async for document in cursor]
 
 

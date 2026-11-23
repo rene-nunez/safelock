@@ -4,7 +4,7 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 
 from app.api.deps import get_current_admin, get_current_user, get_db, get_gateway
-from app.api.v1.common import actor_object_id, client_ip
+from app.api.v1.common import Limit, Offset, actor_object_id, client_ip
 from app.db.mongo import Database
 from app.schemas.auth import UserOut
 from app.schemas.devices import (
@@ -65,8 +65,11 @@ def _snapshot(document: dict[str, Any]) -> dict[str, Any]:
 
 
 @router.get("", response_model=list[DeviceOut])
-async def get_devices(db: Db, _: CurrentUser) -> list[DeviceOut]:
-    return [device_to_out(document) for document in await list_devices(db)]
+async def get_devices(
+    db: Db, _: CurrentUser, limit: Limit = 100, offset: Offset = 0
+) -> list[DeviceOut]:
+    documents = await list_devices(db, limit=limit, offset=offset)
+    return [device_to_out(document) for document in documents]
 
 
 @router.get("/{device_id}", response_model=DeviceOut)

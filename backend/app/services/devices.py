@@ -53,8 +53,12 @@ async def get_device(db: Database, device_id: str) -> DeviceDocument | None:
     return await db.devices.find_one({"_id": ObjectId(device_id)})
 
 
-async def list_devices(db: Database) -> list[DeviceDocument]:
-    cursor = db.devices.find({}).sort("device_id", ASCENDING)
+async def list_devices(
+    db: Database, *, limit: int = 100, offset: int = 0
+) -> list[DeviceDocument]:
+    cursor = (
+        db.devices.find({}).sort("device_id", ASCENDING).skip(offset).limit(limit)
+    )
     return [document async for document in cursor]
 
 

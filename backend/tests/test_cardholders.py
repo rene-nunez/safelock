@@ -310,3 +310,25 @@ async def test_activate_and_restore_conflicting_uid_is_blocked(
         f"/api/v1/cardholders/{holder['id']}", headers=admin_headers
     )
     assert current.json()["status"] == "inactive"
+
+
+async def test_cardholder_listing_is_paginated(
+    api: AsyncClient, operator_headers: dict[str, str]
+) -> None:
+    for name in ("Ada", "Bob", "Cleo"):
+        await create_cardholder(
+            api, operator_headers, name=name, email=f"{name.lower()}@example.com"
+        )
+
+    page = await api.get(
+        "/api/v1/cardholders",
+        headers=operator_headers,
+        params={"limit": 2, "offset": 1},
+    )
+    assert page.status_code == 200
+    assert [item["name"] for item in page.json()] == ["Bob", "Cleo"]
+
+    too_large = await api.get(
+        "/api/v1/cardholders", headers=operator_headers, params={"limit": 101}
+    )
+    assert too_large.status_code == 422

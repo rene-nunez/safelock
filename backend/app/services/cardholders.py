@@ -32,8 +32,12 @@ async def get_cardholder(db: Database, cardholder_id: str) -> CardholderDocument
     return await db.cardholders.find_one({"_id": ObjectId(cardholder_id)})
 
 
-async def list_cardholders(db: Database) -> list[CardholderDocument]:
-    cursor = db.cardholders.find({}).sort("name", ASCENDING)
+async def list_cardholders(
+    db: Database, *, limit: int = 100, offset: int = 0
+) -> list[CardholderDocument]:
+    cursor = (
+        db.cardholders.find({}).sort("name", ASCENDING).skip(offset).limit(limit)
+    )
     return [document async for document in cursor]
 
 

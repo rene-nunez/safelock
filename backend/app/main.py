@@ -2,10 +2,12 @@ import asyncio
 import logging
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager, suppress
+from typing import cast
 
 from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import Response
+from fastapi.responses import JSONResponse, Response
 from pymongo.errors import PyMongoError
 
 from app.api.v1.router import router as v1_router
@@ -14,6 +16,7 @@ from app.db.mongo import create_client, ensure_indexes, get_database
 from app.services.mqtt_gateway import MqttGateway
 
 logger = logging.getLogger(__name__)
+MAX_BODY_BYTES = 64 * 1024
 
 
 @asynccontextmanager
@@ -58,11 +61,7 @@ app.add_middleware(
 )
 
 
-@app.middleware("http")
-async def add_security_headers(
-    request: Request, call_next: Callable[[Request], Awaitable[Response]]
-) -> Response:
-    response = await call_next(request)
+def _with_security_headers(response: Response, request: Request) -> Response:
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["Referrer-Policy"] = "no-referrer"
@@ -72,6 +71,50 @@ async def add_security_headers(
             "max-age=31536000; includeSubDomains"
         )
     return response
+
+
+@app.middleware("http")
+async def add_security_headers(
+    request: Request, call_next: Callable[[Request], Awaitable[Response]]
+) -> Response:
+    declared = request.headers.get("content-length")
+    if declared and declared.isdigit() and int(declared) > MAX_BODY_BYTES:
+        return _with_security_headers(
+            JSONResponse(status_code=413, content={"detail": "Request body too large"}),
+            request,
+        )
+    return _with_security_headers(await call_next(request), request)
+
+
+@app.exception_handler(RequestValidationError)
+async def sanitize_validation_errors(request: Request, error: Exception) -> Response:
+    # `input` and `ctx` can echo passwords, PINs and UIDs back to the client.
+    validation_error = cast(RequestValidationError, error)
+    detail = [
+        {
+            "loc": item.get("loc", ()),
+            "msg": item.get("msg", "Invalid value"),
+            "type": item.get("type", "value_error"),
+        }
+        for item in validation_error.errors()
+    ]
+    return _with_security_headers(
+        JSONResponse(status_code=422, content={"detail": detail}), request
+    )
+
+
+@app.exception_handler(Exception)
+async def internal_server_error(request: Request, error: Exception) -> Response:
+    logger.exception(
+        "Unhandled error method=%s path=%s type=%s",
+        request.method,
+        request.url.path,
+        type(error).__name__,
+    )
+    return _with_security_headers(
+        JSONResponse(status_code=500, content={"detail": "Internal Server Error"}),
+        request,
+    )
 
 
 app.include_router(v1_router)
