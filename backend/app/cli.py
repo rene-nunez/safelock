@@ -3,6 +3,7 @@
 import argparse
 import asyncio
 import getpass
+import logging
 from collections.abc import Sequence
 
 from pydantic import EmailStr, TypeAdapter, ValidationError
@@ -20,6 +21,7 @@ from app.services.demo import (
 )
 from app.services.users import UserAlreadyExistsError, create_user, normalize_email
 
+logger = logging.getLogger(__name__)
 MIN_PASSWORD_LENGTH = 12
 
 _email_adapter = TypeAdapter(EmailStr)
@@ -56,7 +58,8 @@ async def _create_user(
         except UserAlreadyExistsError as error:
             raise SystemExit(str(error)) from error
         except PyMongoError as error:
-            raise SystemExit(f"Could not reach MongoDB: {error}") from error
+            logger.debug("MongoDB error type=%s", type(error).__name__)
+            raise SystemExit("Could not reach MongoDB") from error
 
         await record_audit(
             db,
@@ -73,7 +76,7 @@ async def _create_user(
 
 def _run_create_user(args: argparse.Namespace) -> None:
     email = _validate_email(args.email or input("Email: "))
-    password = args.password or _prompt_password()
+    password = _prompt_password()
     if len(password) < MIN_PASSWORD_LENGTH:
         raise SystemExit(
             f"Password must be at least {MIN_PASSWORD_LENGTH} characters long"
@@ -105,7 +108,8 @@ async def _seed_demo(settings: Settings, *, reset_only: bool) -> None:
             + ", ".join(f"{name}={count}" for name, count in created.items())
         )
     except PyMongoError as error:
-        raise SystemExit(f"Could not reach MongoDB: {error}") from error
+        logger.debug("MongoDB error type=%s", type(error).__name__)
+        raise SystemExit("Could not reach MongoDB") from error
     finally:
         await client.close()
 
@@ -122,9 +126,6 @@ def build_parser() -> argparse.ArgumentParser:
         "create-user", help="Create an account (administrator by default)"
     )
     create_user.add_argument("--email", help="Account email (prompted if omitted)")
-    create_user.add_argument(
-        "--password", help="Account password (prompted if omitted)"
-    )
     create_user.add_argument(
         "--role",
         choices=("admin", "operator"),

@@ -6,6 +6,19 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 _ENV_FILE = Path(__file__).resolve().parents[2] / ".env"
 
+_WEAK_SECRETS = {
+    "change-me",
+    "changeme",
+    "dev-only-change-me",
+    "replace-me",
+    "secret",
+}
+_JWT_SECRET_MIN_LENGTH = 32
+
+
+def _is_weak_secret(value: str) -> bool:
+    return value.strip().lower() in _WEAK_SECRETS
+
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
@@ -45,19 +58,27 @@ class Settings(BaseSettings):
 
 def validate_runtime_settings(settings: Settings) -> list[str]:
     warnings: list[str] = []
-    if settings.jwt_secret == "dev-only-change-me":
+    if (
+        _is_weak_secret(settings.jwt_secret)
+        or len(settings.jwt_secret) < _JWT_SECRET_MIN_LENGTH
+    ):
         if settings.is_dev:
             warnings.append("JWT_SECRET uses the development default; set it in .env")
         else:
-            raise RuntimeError("JWT_SECRET must be set outside development")
+            raise RuntimeError(
+                "JWT_SECRET must be a unique secret of at least 32 characters "
+                "outside development"
+            )
 
     if settings.is_dev:
         return warnings
 
     if not settings.mqtt_tls_enabled:
         raise RuntimeError("MQTT TLS must be enabled outside development")
-    if not settings.mqtt_password:
-        raise RuntimeError("MQTT_PASSWORD must be set outside development")
+    if not settings.mqtt_password or _is_weak_secret(settings.mqtt_password):
+        raise RuntimeError(
+            "MQTT_PASSWORD must be set to a non-placeholder value outside development"
+        )
     if "*" in settings.cors_origins:
         raise RuntimeError("CORS wildcard origin is not allowed outside development")
     if "mongodb.net" not in settings.mongodb_uri and "@" not in settings.mongodb_uri:

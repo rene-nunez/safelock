@@ -2,12 +2,15 @@ from __future__ import annotations
 
 import logging
 import time
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
 from fastapi.concurrency import run_in_threadpool
+from pymongo import ReturnDocument
+from pymongo.errors import DuplicateKeyError
 
 from app.core.security import verify_password
+from app.services.lockout import build_failure_pipeline
 
 logger = logging.getLogger(__name__)
 
@@ -17,14 +20,6 @@ if TYPE_CHECKING:
 
 PIN_LOCK_THRESHOLD = 5
 PIN_LOCK_SCHEDULE_SECONDS = [60, 5 * 60, 15 * 60, 30 * 60]
-
-
-def _pin_lock_seconds(failures: int) -> int | None:
-    if failures < PIN_LOCK_THRESHOLD or failures % PIN_LOCK_THRESHOLD != 0:
-        return None
-    block_index = failures // PIN_LOCK_THRESHOLD - 1
-    index = min(block_index, len(PIN_LOCK_SCHEDULE_SECONDS) - 1)
-    return int(PIN_LOCK_SCHEDULE_SECONDS[index])
 
 
 def _event_ts(gateway: MqttGateway, envelope: MessageEnvelope) -> tuple[datetime, bool]:
@@ -49,7 +44,7 @@ async def _insert_event(
     reason: str,
     uid: str,
     credential_id: Any = None,
-) -> None:
+) -> bool:
     now = datetime.now(UTC)
     event_ts, degraded = _event_ts(gateway, envelope)
     doc = {
@@ -69,13 +64,16 @@ async def _insert_event(
     }
     try:
         await gateway.db.access_events.insert_one(doc)
+    except DuplicateKeyError:
+        return False
     except Exception:
         logger.exception(
             "Failed to store PIN access event device_id=%s reason=%s",
             device_id,
             reason,
         )
-        return
+        return False
+    return True
 
 
 async def handle_pin_entry(
@@ -131,26 +129,56 @@ async def handle_pin_entry(
         await deny("no_pin_set")
         return
 
-    locked_until = credential.get("pin_locked_until")
     now = datetime.now(UTC)
+    valid_from = credential.get("valid_from")
+    valid_to = credential.get("valid_to")
+    if isinstance(valid_from, datetime) and valid_from > now:
+        await deny("not_yet_valid")
+        return
+    if isinstance(valid_to, datetime) and valid_to <= now:
+        await deny("credential_expired")
+        return
+
+    locked_until = credential.get("pin_locked_until")
     if isinstance(locked_until, datetime) and locked_until > now:
         await deny("pin_locked")
         return
 
     ok = await run_in_threadpool(verify_password, pin, pin_hash)
     if not ok:
-        fails = int(credential.get("pin_fails", 0)) + 1
-        updates: dict[str, Any] = {"pin_fails": fails, "updated_at": now}
-        reason = "pin_bad"
-        lock_seconds = _pin_lock_seconds(fails)
-        if lock_seconds is not None:
-            updates["pin_locked_until"] = now + timedelta(seconds=lock_seconds)
-            reason = "pin_locked"
-        await db.credentials.update_one({"_id": credential["_id"]}, {"$set": updates})
-        await deny(reason)
+        updated = await db.credentials.find_one_and_update(
+            {"_id": credential["_id"]},
+            build_failure_pipeline(
+                failures_field="pin_fails",
+                locked_until_field="pin_locked_until",
+                now=now,
+                threshold=PIN_LOCK_THRESHOLD,
+                schedule_seconds=PIN_LOCK_SCHEDULE_SECONDS,
+            ),
+            return_document=ReturnDocument.AFTER,
+        )
+        locked_now = (
+            updated is not None
+            and isinstance(updated.get("pin_locked_until"), datetime)
+            and updated["pin_locked_until"] > now
+        )
+        await deny("pin_locked" if locked_now else "pin_bad")
         return
 
-    # success: clear fail counters
+    # Claim the event before opening: mqtt_id is unique, so a replay cannot
+    # publish a second unlock even if the in-memory dedupe cache was lost.
+    inserted = await _insert_event(
+        gateway,
+        device_id=device_id,
+        envelope=envelope,
+        decision="denied",
+        reason="pin_pending",
+        uid=uid,
+        credential_id=credential_id,
+    )
+    if not inserted:
+        return
+
     await db.credentials.update_one(
         {"_id": credential["_id"]},
         {"$set": {"pin_fails": 0, "pin_locked_until": None, "updated_at": now}},
@@ -163,24 +191,12 @@ async def handle_pin_entry(
         "unlock",
         {"request_id": request_id, "duration_ms": unlock_ms, "expires_at": expires_at},
     )
-    if not published:
-        await _insert_event(
-            gateway,
-            device_id=device_id,
-            envelope=envelope,
-            decision="denied",
-            reason="backend_unreachable",
-            uid=uid,
-            credential_id=credential_id,
-        )
-        return
-
-    await _insert_event(
-        gateway,
-        device_id=device_id,
-        envelope=envelope,
-        decision="granted",
-        reason="pin_ok",
-        uid=uid,
-        credential_id=credential_id,
+    await db.access_events.update_one(
+        {"mqtt_id": envelope.id},
+        {
+            "$set": {
+                "decision": "granted" if published else "denied",
+                "reason": "pin_ok" if published else "backend_unreachable",
+            }
+        },
     )

@@ -1,5 +1,5 @@
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from httpx import AsyncClient
@@ -111,3 +111,53 @@ async def test_enrollment_rejects_active_enrollment(
         assert "active enrollment" in str(error).lower()
     else:
         raise AssertionError("expected EnrollmentActiveError")
+
+
+async def test_confirm_rejects_expired_enrollment(
+    api: AsyncClient, db: Database, operator_headers: dict[str, str]
+) -> None:
+    await _make_online_device(db)
+    holder = await _make_cardholder(api, operator_headers)
+    stale = datetime.now(UTC) - timedelta(seconds=120)
+    res = await db.enrollments.insert_one(
+        {
+            "device_id": "sl-0001",
+            "request_id": str(uuid.uuid4()),
+            "requested_by": None,
+            "status": "scanned",
+            "uid": "AA:BB:CC:DD",
+            "scanned_at": stale,
+            "created_at": stale,
+            "updated_at": stale,
+        }
+    )
+
+    confirm = await api.post(
+        f"/api/v1/enrollments/{res.inserted_id}/confirm",
+        headers=operator_headers,
+        json={"holder_id": holder["id"]},
+    )
+    assert confirm.status_code == 409
+    doc = await db.enrollments.find_one({"_id": res.inserted_id})
+    assert doc is not None and doc["status"] == "expired"
+
+
+async def test_mark_scanned_rejects_expired_enrollment(db: Database) -> None:
+    from app.services import enrollments as service
+
+    stale = datetime.now(UTC) - timedelta(seconds=120)
+    request_id = str(uuid.uuid4())
+    await db.enrollments.insert_one(
+        {
+            "device_id": "sl-0001",
+            "request_id": request_id,
+            "requested_by": None,
+            "status": "pending",
+            "uid": None,
+            "scanned_at": None,
+            "created_at": stale,
+            "updated_at": stale,
+        }
+    )
+    updated = await service.mark_scanned(db, "sl-0001", request_id, "AA:BB:CC:DD")
+    assert updated is None

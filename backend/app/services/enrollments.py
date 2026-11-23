@@ -147,7 +147,12 @@ async def mark_scanned(
 ) -> EnrollmentDocument | None:
     now = datetime.now(UTC)
     return await db.enrollments.find_one_and_update(
-        {"device_id": device_id, "request_id": request_id, "status": "pending"},
+        {
+            "device_id": device_id,
+            "request_id": request_id,
+            "status": "pending",
+            "created_at": {"$gt": now - timedelta(seconds=ENROLLMENT_TTL_S)},
+        },
         {
             "$set": {
                 "status": "scanned",
@@ -167,6 +172,14 @@ async def confirm_enrollment(
     holder_id: ObjectId,
     payload: Any,
 ) -> EnrollmentDocument:
+    now = datetime.now(UTC)
+    if _expires_at(enrollment) <= now:
+        await db.enrollments.update_one(
+            {"_id": enrollment["_id"]},
+            {"$set": {"status": "expired", "updated_at": now}},
+        )
+        raise EnrollmentStateError("Enrollment has expired")
+
     if enrollment.get("status") != "scanned" or not enrollment.get("uid"):
         raise EnrollmentStateError("Enrollment has no scanned card")
 
@@ -186,7 +199,6 @@ async def confirm_enrollment(
     except CredentialAlreadyExistsError as error:
         raise EnrollmentStateError(str(error)) from error
 
-    now = datetime.now(UTC)
     updated = await db.enrollments.find_one_and_update(
         {"_id": enrollment["_id"]},
         {"$set": {"status": "confirmed", "updated_at": now}},

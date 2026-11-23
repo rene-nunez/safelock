@@ -39,7 +39,7 @@ def test_validate_runtime_settings_prod_rejects_cors_wildcard() -> None:
         env="prod",
         jwt_secret="x" * 40,
         mqtt_tls=True,
-        mqtt_password="secret",
+        mqtt_password="strong-mqtt-password",
         cors_origins=["*"],
         mongodb_uri="mongodb+srv://u:p@cluster.mongodb.net/safelock",
     )
@@ -85,9 +85,39 @@ def test_validate_runtime_settings_prod_warns_on_plain_mongodb_uri() -> None:
         env="prod",
         jwt_secret="x" * 40,
         mqtt_tls=True,
-        mqtt_password="secret",
+        mqtt_password="strong-mqtt-password",
         cors_origins=["https://example.com"],
         mongodb_uri="mongodb://127.0.0.1:27017",
     )
     warnings = validate_runtime_settings(settings)
     assert any("MONGODB_URI" in warning for warning in warnings)
+
+
+@pytest.mark.parametrize("jwt_secret", ["change-me", "dev-only-change-me", "short"])
+def test_validate_runtime_settings_prod_rejects_weak_jwt_secret(
+    jwt_secret: str,
+) -> None:
+    settings = Settings(
+        env="prod",
+        jwt_secret=jwt_secret,
+        mqtt_tls=True,
+        mqtt_password="strong-mqtt-password",
+        cors_origins=["https://example.com"],
+        mongodb_uri="mongodb+srv://u:p@cluster.mongodb.net/safelock",
+    )
+    with pytest.raises(RuntimeError, match="JWT_SECRET"):
+        validate_runtime_settings(settings)
+
+
+def test_validate_runtime_settings_prod_rejects_placeholder_mqtt_password() -> None:
+    settings = Settings(
+        env="prod",
+        jwt_secret="x" * 40,
+        mqtt_tls=True,
+        mqtt_password="change-me",
+        cors_origins=["https://example.com"],
+        mongodb_uri="mongodb+srv://u:p@cluster.mongodb.net/safelock",
+    )
+    with pytest.raises(RuntimeError, match="MQTT_PASSWORD"):
+        validate_runtime_settings(settings)
+

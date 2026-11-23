@@ -2,10 +2,9 @@ from typing import Self
 
 from pydantic import BaseModel, EmailStr, Field, model_validator
 
-from app.schemas.auth import Role
+from app.schemas.auth import PASSWORD_MAX_LENGTH, Role
 
 PASSWORD_MIN_LENGTH = 12
-PASSWORD_MAX_LENGTH = 256
 
 
 class CreateUserRequest(BaseModel):

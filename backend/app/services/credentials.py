@@ -15,7 +15,7 @@ CredentialDocument = dict[str, Any]
 
 class CredentialAlreadyExistsError(Exception):
     def __init__(self, uid: str) -> None:
-        super().__init__(f"An active credential with UID {uid} already exists")
+        super().__init__("An active credential with this UID already exists")
         self.uid = uid
 
 

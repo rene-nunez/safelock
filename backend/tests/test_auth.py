@@ -7,6 +7,7 @@ from httpx import AsyncClient, Response
 from app.core.config import Settings
 from app.core.security import hash_password
 from app.db.mongo import Database
+from app.services.login_throttle import register_login_failure
 from app.services.users import UserAlreadyExistsError, UserDocument, create_user
 from tests.conftest import ADMIN_EMAIL, ADMIN_PASSWORD
 
@@ -194,3 +195,22 @@ async def test_login_success_clears_failed_attempts(
 
     fifth = await login(api, ADMIN_EMAIL, "wrong password")
     assert fifth.status_code == 429
+
+
+@pytest.mark.parametrize(
+    ("failures", "expected_seconds"),
+    [(5, 60), (10, 300), (15, 900), (20, 1800), (25, 1800)],
+)
+async def test_login_lockout_escalates_by_blocks(
+    db: Database, failures: int, expected_seconds: int
+) -> None:
+    email = f"lockout-{failures}@example.com"
+    for _ in range(failures):
+        result = await register_login_failure(db, email)
+    assert not result.allowed
+
+    doc = await db.login_throttles.find_one({"email": email})
+    assert doc is not None
+    assert doc["failures"] == failures
+    locked_for = (doc["locked_until"] - doc["updated_at"]).total_seconds()
+    assert locked_for == pytest.approx(expected_seconds, abs=1)

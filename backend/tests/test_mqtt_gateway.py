@@ -326,6 +326,96 @@ async def test_pin_entry_grants_and_publishes_unlock(
     ]
 
 
+async def _make_pin_credential(
+    db: Database, *, valid_to: datetime | None = None
+) -> None:
+    from app.core.security import hash_password
+
+    holder = await db.cardholders.insert_one(
+        {
+            "name": "Ada",
+            "email": None,
+            "unit": None,
+            "status": "active",
+            "created_at": datetime.now(UTC),
+            "updated_at": datetime.now(UTC),
+        }
+    )
+    await db.credentials.insert_one(
+        {
+            "holder_id": holder.inserted_id,
+            "uid": "AA:BB:CC:DD",
+            "status": "active",
+            "valid_from": None,
+            "valid_to": valid_to,
+            "revoked_at": None,
+            "revoked_reason": None,
+            "pin_hash": hash_password("123456"),
+            "pin_fails": 0,
+            "pin_locked_until": None,
+            "created_at": datetime.now(UTC),
+            "updated_at": datetime.now(UTC),
+        }
+    )
+
+
+async def test_pin_entry_rejects_expired_credential(
+    db: Database, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    await make_device(db)
+    await db.devices.update_one(
+        {"device_id": DEVICE_ID}, {"$set": {"requires_pin": True}}
+    )
+    await _make_pin_credential(db, valid_to=datetime.now(UTC) - timedelta(hours=1))
+    net = gateway(db)
+    published: list[tuple[str, str, dict[str, Any]]] = []
+
+    async def fake_publish(
+        device_id: str, command: str, payload: dict[str, Any]
+    ) -> bool:
+        published.append((device_id, command, payload))
+        return True
+
+    monkeypatch.setattr(net, "publish_command", fake_publish)
+    await net.handle_message(
+        f"{BASE}/events/pin-entry",
+        message({"uid": "AA:BB:CC:DD", "pin": "123456", "request_id": "req-expired"}),
+    )
+    event = await db.access_events.find_one({"source": "pin"})
+    assert event is not None and event["reason"] == "credential_expired"
+    assert published == []
+
+
+async def test_pin_replay_after_restart_does_not_unlock_twice(
+    db: Database, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    await make_device(db)
+    await db.devices.update_one(
+        {"device_id": DEVICE_ID}, {"$set": {"requires_pin": True}}
+    )
+    await _make_pin_credential(db)
+    published: list[tuple[str, str, dict[str, Any]]] = []
+
+    async def fake_publish(
+        device_id: str, command: str, payload: dict[str, Any]
+    ) -> bool:
+        published.append((device_id, command, payload))
+        return True
+
+    replay = message(
+        {"uid": "AA:BB:CC:DD", "pin": "123456", "request_id": "req-replay"},
+        message_id=str(uuid.uuid4()),
+    )
+    for _ in range(2):
+        net = gateway(db)
+        monkeypatch.setattr(net, "publish_command", fake_publish)
+        await net.handle_message(f"{BASE}/events/pin-entry", replay)
+
+    assert len(published) == 1
+    events = [doc async for doc in db.access_events.find({"source": "pin"})]
+    assert len(events) == 1 and events[0]["decision"] == "granted"
+
+
 async def test_pin_entry_invalid_pin_increments_fails_and_locks(
     db: Database,
 ) -> None:

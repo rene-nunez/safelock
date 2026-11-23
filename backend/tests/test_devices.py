@@ -4,6 +4,7 @@ from typing import Any, cast
 from httpx import AsyncClient
 
 from app.db.mongo import Database
+from app.services.command_throttle import claim_device_cooldown, release_device_cooldown
 
 
 async def create_device(
@@ -271,3 +272,26 @@ async def test_sync_cooldown_returns_429(
     )
     assert r.status_code == 429
     assert r.headers.get("retry-after") is not None
+
+
+async def test_cooldown_claim_is_atomic_and_releasable(db: Database) -> None:
+    from app.schemas.devices import DeviceCreate
+    from app.services.devices import create_device as create_device_doc
+
+    await create_device_doc(db, DeviceCreate(device_id="sl-0002", name="Garage"))
+    first = await claim_device_cooldown(
+        db, device_id="sl-0002", field="unlock_cooldown_until", cooldown_s=5
+    )
+    second = await claim_device_cooldown(
+        db, device_id="sl-0002", field="unlock_cooldown_until", cooldown_s=5
+    )
+    assert first.allowed
+    assert not second.allowed and second.retry_after >= 1
+
+    await release_device_cooldown(
+        db, device_id="sl-0002", field="unlock_cooldown_until"
+    )
+    third = await claim_device_cooldown(
+        db, device_id="sl-0002", field="unlock_cooldown_until", cooldown_s=5
+    )
+    assert third.allowed

@@ -16,7 +16,7 @@ from app.schemas.devices import (
 )
 from app.services import acl_sync
 from app.services.audit import record_audit
-from app.services.command_throttle import check_device_cooldown, mark_device_cooldown
+from app.services.command_throttle import claim_device_cooldown, release_device_cooldown
 from app.services.devices import (
     ONLINE_WINDOW as DEVICE_ONLINE_WINDOW,
 )
@@ -169,7 +169,7 @@ async def synchronize_device_endpoint(
             status_code=status.HTTP_409_CONFLICT,
             detail="The device is offline",
         )
-    throttle = await check_device_cooldown(
+    throttle = await claim_device_cooldown(
         db,
         device_id=target["device_id"],
         field="sync_cooldown_until",
@@ -191,6 +191,9 @@ async def synchronize_device_endpoint(
     try:
         result = await acl_sync.publish_snapshot(db, gateway, target["device_id"])
     except acl_sync.GatewayUnavailableError as error:
+        await release_device_cooldown(
+            db, device_id=target["device_id"], field="sync_cooldown_until"
+        )
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(error)
         ) from error
@@ -205,12 +208,6 @@ async def synchronize_device_endpoint(
             "acl_version": result["acl_version"],
         },
         ip=client_ip(request),
-    )
-    await mark_device_cooldown(
-        db,
-        device_id=target["device_id"],
-        field="sync_cooldown_until",
-        cooldown_s=10,
     )
     return CommandOut(
         request_id=result["request_id"],
@@ -237,7 +234,7 @@ async def unlock_device_endpoint(
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT, detail="The device is offline"
         )
-    throttle = await check_device_cooldown(
+    throttle = await claim_device_cooldown(
         db,
         device_id=target["device_id"],
         field="unlock_cooldown_until",
@@ -267,6 +264,9 @@ async def unlock_device_endpoint(
     }
     ok = await gateway.publish_command(target["device_id"], "unlock", payload)
     if not ok:
+        await release_device_cooldown(
+            db, device_id=target["device_id"], field="unlock_cooldown_until"
+        )
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="MQTT gateway could not publish the command",
@@ -279,12 +279,6 @@ async def unlock_device_endpoint(
         target=target["device_id"],
         after={"request_id": request_id, "duration_ms": payload["duration_ms"]},
         ip=client_ip(request),
-    )
-    await mark_device_cooldown(
-        db,
-        device_id=target["device_id"],
-        field="unlock_cooldown_until",
-        cooldown_s=5,
     )
     return UnlockCommandOut(request_id=request_id, expires_at=expires_at)
 

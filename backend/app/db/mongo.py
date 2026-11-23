@@ -18,6 +18,7 @@ def get_database(client: AsyncMongoClient[Document], name: str) -> Database:
 
 ACCESS_EVENT_TTL_SECONDS = 2 * 365 * 24 * 60 * 60
 AUDIT_LOG_TTL_SECONDS = 2 * 365 * 24 * 60 * 60
+LOGIN_THROTTLE_TTL_SECONDS = 30 * 24 * 60 * 60
 
 
 async def ensure_indexes(db: Database) -> None:
@@ -76,6 +77,13 @@ async def ensure_indexes(db: Database) -> None:
             ),
         ]
     )
-    await db.login_throttles.create_index(
-        [("email", ASCENDING)], unique=True, name="email_unique"
+    await db.login_throttles.create_indexes(
+        [
+            IndexModel([("email", ASCENDING)], unique=True, name="email_unique"),
+            IndexModel(
+                [("updated_at", ASCENDING)],
+                expireAfterSeconds=LOGIN_THROTTLE_TTL_SECONDS,
+                name="updated_at_ttl",
+            ),
+        ]
     )
