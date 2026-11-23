@@ -73,7 +73,7 @@ Formato de mensaje (todos los topics):
 ```
 
 - `id` duplicado se descarta. `ts` en segundos (UTC); si el reloj no es válido se marca `degraded`.
-- **PIN**: viaja en `events/pin-entry` dentro de TLS. El backend guarda `Argon2id(pin)` y aplica límites de intentos (bloqueo temporal tras 5 fallos).
+- **PIN**: viaja en `events/pin-entry` dentro de TLS. El backend guarda `Argon2id(pin)` y aplica límites de intentos por credencial. El contador se limpia con PIN correcto; mientras está bloqueado responde `pin_locked`. Bloqueo por bloques de 5 fallos: 5-9 = 60 s, 10-14 = 5 min, 15-19 = 15 min, 20+ = 30 min.
 - **Sincronización**: snapshot completo (configuración + lista). El dispositivo lo guarda de forma atómica en la microSD (`/acl.tmp` → `/acl.json`). Si un UID no está en la lista, no tiene acceso.
 - **Cola local (outbox)**: `events/*` y `response` se guardan en `/outbox.json` en la microSD y se reenvían al reconectar (se descartan los más viejos si se llena). `heartbeat` y `status` no se encolan. El backend ignora `id` repetidos.
 - **Comandos**: se envían solo si el dispositivo está online (`last_seen` < 90 s), llevan `expires_at` y no se reintentan. Sin `response`, la UI lo marca como fallido.
@@ -87,7 +87,7 @@ Formato de mensaje (todos los topics):
 | `credentials` | `holder_id`, `uid`, `status`, `valid_from/to`, `revoked_at`, `pin_hash` (Argon2id, opcional), `pin_fails`, `pin_locked_until` | `uid` único entre vigentes (`partialFilterExpression: {status: "active"}`), `holder_id` |
 | `enrollments` | `device_id`, `request_id`, `requested_by`, `created_at` | TTL 60 s |
 | `access_events` | `device_id`, `ts`, `uid`, `credential_id?`, `decision`, `reason`, `source`, `request_id`, `mqtt_id`, `degraded`, `acl_age_s` | `(device_id, ts)`, TTL 2 años, `mqtt_id` único |
-| `audit_logs` | `actor_id`, `action`, `target`, `before/after`, `ip`, `ts` | `ts` |
+| `audit_logs` | `actor_id`, `action`, `target`, `before/after`, `ip`, `ts` | `ts`, TTL 2 años (`ts_ttl`) |
 | `users` | `email`, `password_hash` (Argon2id), `role`, `active`, `last_login_at` | `email` único |
 
 Bases: `safelock_dev`, `safelock_test_<uuid>` (tests), `safelock` (producción).
@@ -103,6 +103,7 @@ Reglas:
 - Roles `admin`/`operator` aplicados en el backend. Sin autorregistro. Primer admin por CLI (`python -m app.cli create-user`).
 - Nadie puede cambiar su propio rol ni desactivarse. No se puede desactivar ni degradar al último `admin` activo.
 - Resetear una contraseña o desactivar una cuenta invalida sus tokens (`token_version` y `active` se validan en cada request).
+- `POST /auth/login` tiene bloqueo temporal incremental por email normalizado. Contador se limpia con login correcto; durante bloqueo responde `429` con `Retry-After` y mensaje genérico. Bloqueo por bloques de 5 fallos: 5-9 = 60 s, 10-14 = 5 min, 15-19 = 15 min, 20+ = 30 min.
 - `online` se calcula con `last_seen`. El frontend usa **polling** (~3 s), no WebSocket.
 - No guardar secretos reversibles. No correr múltiples workers de uvicorn (el consumidor MQTT vive en el `lifespan`).
 

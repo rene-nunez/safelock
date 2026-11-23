@@ -60,7 +60,10 @@ created this way are recorded in `audit_logs`. Pass
 `CLI_ARGS="--role operator"` to create an operator instead. The `users`
 collection requires a unique `email`; existing accounts are rejected. Access
 tokens are JWTs valid for 30 minutes (`ACCESS_TOKEN_TTL_MINUTES`); resetting a
-password or deactivating the account invalidates the existing ones.
+password or deactivating the account invalidates the existing ones. Login has
+incremental temporary lockout per normalized email: 5-9 failed attempts = 60 s,
+10-14 = 5 min, 15-19 = 15 min, 20+ = 30 min. A successful login clears the
+counter, and blocked attempts return `429` with `Retry-After`.
 
 To populate the development UI with cardholders, credentials, devices and audit
 entries:
