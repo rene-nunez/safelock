@@ -76,3 +76,6 @@ async def ensure_indexes(db: Database) -> None:
             ),
         ]
     )
+    await db.login_throttles.create_index(
+        [("email", ASCENDING)], unique=True, name="email_unique"
+    )

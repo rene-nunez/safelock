@@ -159,3 +159,38 @@ async def test_create_user_rejects_duplicate_email(
 ) -> None:
     with pytest.raises(UserAlreadyExistsError):
         await create_user(db, ADMIN_EMAIL, ADMIN_PASSWORD)
+
+
+async def test_login_lockout_is_incremental(
+    api: AsyncClient, admin: UserDocument
+) -> None:
+    for _ in range(4):
+        response = await login(api, ADMIN_EMAIL, "wrong password")
+        assert response.status_code == 401
+
+    fifth = await login(api, ADMIN_EMAIL, "wrong password")
+    assert fifth.status_code == 429
+    assert fifth.headers.get("retry-after") == "60"
+    assert "Too many login attempts" in fifth.json()["detail"]
+
+    locked = await login(api, ADMIN_EMAIL, ADMIN_PASSWORD)
+    assert locked.status_code == 429
+    assert locked.headers.get("retry-after") is not None
+
+
+async def test_login_success_clears_failed_attempts(
+    api: AsyncClient, admin: UserDocument
+) -> None:
+    for _ in range(4):
+        response = await login(api, ADMIN_EMAIL, "wrong password")
+        assert response.status_code == 401
+
+    ok = await login(api, ADMIN_EMAIL, ADMIN_PASSWORD)
+    assert ok.status_code == 200
+
+    for _ in range(4):
+        response = await login(api, ADMIN_EMAIL, "wrong password")
+        assert response.status_code == 401
+
+    fifth = await login(api, ADMIN_EMAIL, "wrong password")
+    assert fifth.status_code == 429
