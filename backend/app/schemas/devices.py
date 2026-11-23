@@ -21,7 +21,7 @@ class DeviceCreate(BaseModel):
     location: DeviceLocation | None = None
     offline_policy: OfflinePolicy = "allow"
     stale_acl_hours: int = Field(default=72, ge=1, le=8760)
-    unlock_ms: int = Field(default=3000, ge=100, le=30_000)
+    unlock_ms: int = Field(default=3000, ge=100, le=10_000)
     requires_pin: bool = False
 
     @field_validator("device_id")
@@ -39,7 +39,7 @@ class DeviceUpdate(BaseModel):
     location: DeviceLocation | None = None
     offline_policy: OfflinePolicy | None = None
     stale_acl_hours: int | None = Field(default=None, ge=1, le=8760)
-    unlock_ms: int | None = Field(default=None, ge=100, le=30_000)
+    unlock_ms: int | None = Field(default=None, ge=100, le=10_000)
     requires_pin: bool | None = None
     locked: bool | None = None
     status: DeviceStatus | None = None

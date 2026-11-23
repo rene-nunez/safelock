@@ -91,8 +91,8 @@ const settingsSchema = z
     unlock_ms: z
       .string()
       .regex(/^\d+$/, 'Use a whole number')
-      .refine((value) => Number(value) >= 100 && Number(value) <= 30_000, {
-        message: 'Use 100 to 30000 ms',
+      .refine((value) => Number(value) >= 100 && Number(value) <= 10_000, {
+        message: 'Use 100 to 10000 ms',
       }),
   })
   .refine((values) => (values.lat === '') === (values.lng === ''), {

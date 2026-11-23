@@ -26,7 +26,7 @@ bool Acl::parse(const JsonObject &data, bool persist, time_t now) {
   const uint16_t new_stale_hours = data["stale_acl_hours"] | 72;
   const uint16_t new_unlock_ms = data["unlock_ms"] | LOCK_OPEN_MS;
   if (new_stale_hours == 0) return false;
-  if (new_unlock_ms < 100 || new_unlock_ms > 30000) return false;
+  if (new_unlock_ms < 100 || new_unlock_ms > 10000) return false;
 
   std::vector<AclEntry> staged;
   for (JsonObject item : data["entries"].as<JsonArray>()) {

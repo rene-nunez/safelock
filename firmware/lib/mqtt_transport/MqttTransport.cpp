@@ -289,7 +289,9 @@ void MqttTransport::handle_command(const String &command, const JsonObject &data
       publish_response(request_id, "error", "not_ready");
       return;
     }
-    const uint16_t duration_ms = data["duration_ms"] | acl.get_unlock_ms();
+    uint16_t duration_ms = data["duration_ms"] | acl.get_unlock_ms();
+    if (duration_ms < 100) duration_ms = 100;
+    if (duration_ms > 10000) duration_ms = 10000;
     command_handler->handle_remote_unlock(duration_ms);
     publish_response(request_id, "ok", nullptr);
     publish_status();
