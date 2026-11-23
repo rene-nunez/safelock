@@ -7,8 +7,7 @@ from typing import Any
 from app.db.mongo import Database
 
 THRESHOLD = 5
-BASE_LOCK_SECONDS = 60
-MAX_LOCK_SECONDS = 30 * 60
+BLOCK_SCHEDULE_SECONDS = [60, 5 * 60, 15 * 60, 30 * 60]
 
 
 @dataclass(frozen=True)
@@ -25,12 +24,12 @@ def _as_utc(value: Any) -> datetime | None:
     return None
 
 
-def _lock_seconds(failures: int) -> int:
-    # Incremental lockout: 60s, 300s, 900s, 1800s.
-    schedule = [60, 300, 900, MAX_LOCK_SECONDS]
-    step = max(0, failures - THRESHOLD)
-    index = min(step, len(schedule) - 1)
-    return int(schedule[index])
+def _lock_seconds(failures: int) -> int | None:
+    if failures < THRESHOLD or failures % THRESHOLD != 0:
+        return None
+    block_index = failures // THRESHOLD - 1
+    index = min(block_index, len(BLOCK_SCHEDULE_SECONDS) - 1)
+    return int(BLOCK_SCHEDULE_SECONDS[index])
 
 
 def _retry_after(now: datetime, locked_until: datetime | None) -> int:
@@ -70,8 +69,8 @@ async def register_login_failure(
         "failures": failures,
         "updated_at": current,
     }
-    if failures >= THRESHOLD:
-        lock_seconds = _lock_seconds(failures)
+    lock_seconds = _lock_seconds(failures)
+    if lock_seconds is not None:
         updates["locked_until"] = current + timedelta(seconds=lock_seconds)
         updates["last_lock_seconds"] = lock_seconds
 

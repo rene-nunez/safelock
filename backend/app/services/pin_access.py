@@ -16,7 +16,15 @@ if TYPE_CHECKING:
     from app.services.mqtt_gateway import MqttGateway
 
 PIN_LOCK_THRESHOLD = 5
-PIN_LOCK_MINUTES = 5
+PIN_LOCK_SCHEDULE_SECONDS = [60, 5 * 60, 15 * 60, 30 * 60]
+
+
+def _pin_lock_seconds(failures: int) -> int | None:
+    if failures < PIN_LOCK_THRESHOLD or failures % PIN_LOCK_THRESHOLD != 0:
+        return None
+    block_index = failures // PIN_LOCK_THRESHOLD - 1
+    index = min(block_index, len(PIN_LOCK_SCHEDULE_SECONDS) - 1)
+    return int(PIN_LOCK_SCHEDULE_SECONDS[index])
 
 
 def _event_ts(gateway: MqttGateway, envelope: MessageEnvelope) -> tuple[datetime, bool]:
@@ -134,9 +142,9 @@ async def handle_pin_entry(
         fails = int(credential.get("pin_fails", 0)) + 1
         updates: dict[str, Any] = {"pin_fails": fails, "updated_at": now}
         reason = "pin_bad"
-        if fails >= PIN_LOCK_THRESHOLD:
-            updates["pin_locked_until"] = now + timedelta(minutes=PIN_LOCK_MINUTES)
-            updates["pin_fails"] = 0
+        lock_seconds = _pin_lock_seconds(fails)
+        if lock_seconds is not None:
+            updates["pin_locked_until"] = now + timedelta(seconds=lock_seconds)
             reason = "pin_locked"
         await db.credentials.update_one({"_id": credential["_id"]}, {"$set": updates})
         await deny(reason)

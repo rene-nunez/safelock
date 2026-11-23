@@ -374,5 +374,5 @@ async def test_pin_entry_invalid_pin_increments_fails_and_locks(
     assert event["reason"] == "pin_locked"
     updated = await db.credentials.find_one({"_id": cred.inserted_id})
     assert updated is not None
-    assert updated["pin_fails"] == 0
+    assert updated["pin_fails"] == 5
     assert updated["pin_locked_until"] is not None
