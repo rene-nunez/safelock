@@ -3,6 +3,16 @@
 #include <ArduinoJson.h>
 #include <time.h>
 
+namespace {
+
+String mask_uid(const char *uid) {
+  const String text(uid);
+  if (text.length() < 8) return text;
+  return text.substring(0, 2) + ":..:..:" + text.substring(text.length() - 2);
+}
+
+}  // namespace
+
 Tasks::Tasks(
   Rfid &rfid,
   Numpad &numpad,
@@ -80,7 +90,7 @@ void Tasks::run_rfid_task() {
   rfid.last_uid().format(uid_text, sizeof(uid_text));
 
   Serial.print("RFID card detected: ");
-  Serial.println(uid_text);
+  Serial.println(mask_uid(uid_text));
 
   handle_card(String(uid_text));
 }

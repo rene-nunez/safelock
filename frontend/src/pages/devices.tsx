@@ -682,9 +682,21 @@ export function DevicesPage() {
                       }
                       disabled={updateMutation.isPending}
                       onClick={() =>
-                        updateMutation.mutate({
-                          id: selected.id,
-                          input: { locked: !selected.locked },
+                        confirm({
+                          title: selected.locked
+                            ? 'Disable remote lock?'
+                            : 'Enable remote lock?',
+                          description: selected.locked
+                            ? 'Access will follow the device configuration again.'
+                            : 'All access will be denied while the lock is enabled.',
+                          confirmLabel: selected.locked
+                            ? 'Disable lock'
+                            : 'Enable lock',
+                          onConfirm: () =>
+                            updateMutation.mutate({
+                              id: selected.id,
+                              input: { locked: !selected.locked },
+                            }),
                         })
                       }
                     >
@@ -724,7 +736,14 @@ export function DevicesPage() {
                           : 'The device must be online to unlock remotely'
                       }
                       disabled={!selected.online || unlockMutation.isPending}
-                      onClick={() => unlockMutation.mutate(selected.id)}
+                      onClick={() =>
+                        confirm({
+                          title: 'Unlock remotely?',
+                          description: `${selected.device_id} will open for a few seconds and the action will be audited.`,
+                          confirmLabel: 'Unlock',
+                          onConfirm: () => unlockMutation.mutate(selected.id),
+                        })
+                      }
                     >
                       <LockOpen className="size-4" />
                       {unlockMutation.isPending ? 'Unlocking...' : 'Unlock'}
@@ -753,9 +772,21 @@ export function DevicesPage() {
                           }
                           disabled={updateMutation.isPending}
                           onClick={() =>
-                            updateMutation.mutate({
-                              id: selected.id,
-                              input: { requires_pin: !selected.requires_pin },
+                            confirm({
+                              title: selected.requires_pin
+                                ? 'Remove PIN requirement?'
+                                : 'Require PIN?',
+                              description: selected.requires_pin
+                                ? 'Card access will work offline again.'
+                                : 'This door will be online-only: access will be denied without the backend.',
+                              confirmLabel: selected.requires_pin
+                                ? 'Remove PIN'
+                                : 'Require PIN',
+                              onConfirm: () =>
+                                updateMutation.mutate({
+                                  id: selected.id,
+                                  input: { requires_pin: !selected.requires_pin },
+                                }),
                             })
                           }
                         >
@@ -768,14 +799,27 @@ export function DevicesPage() {
                           size="sm"
                           disabled={updateMutation.isPending}
                           onClick={() =>
-                            updateMutation.mutate({
-                              id: selected.id,
-                              input: {
-                                status:
-                                  selected.status === 'active'
-                                    ? 'retired'
-                                    : 'active',
-                              },
+                            confirm({
+                              title:
+                                selected.status === 'active'
+                                  ? 'Retire device?'
+                                  : 'Reactivate device?',
+                              description:
+                                selected.status === 'active'
+                                  ? 'The device will keep its history but stop operating.'
+                                  : 'The device will be able to operate again.',
+                              confirmLabel:
+                                selected.status === 'active' ? 'Retire' : 'Reactivate',
+                              onConfirm: () =>
+                                updateMutation.mutate({
+                                  id: selected.id,
+                                  input: {
+                                    status:
+                                      selected.status === 'active'
+                                        ? 'retired'
+                                        : 'active',
+                                  },
+                                }),
                             })
                           }
                         >

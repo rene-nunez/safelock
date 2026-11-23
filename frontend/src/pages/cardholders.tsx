@@ -680,9 +680,15 @@ export function CardholdersPage() {
                         className="sm:min-w-56"
                         disabled={updateMutation.isPending}
                         onClick={() =>
-                          updateMutation.mutate({
-                            id: selected.id,
-                            input: { status: 'inactive' },
+                          confirm({
+                            title: 'Deactivate cardholder?',
+                            description: `${selected.name} will lose access and all active credentials will be revoked.`,
+                            confirmLabel: 'Deactivate',
+                            onConfirm: () =>
+                              updateMutation.mutate({
+                                id: selected.id,
+                                input: { status: 'inactive' },
+                              }),
                           })
                         }
                       >
@@ -1046,9 +1052,15 @@ export function CardholdersPage() {
                                 size="sm"
                                 disabled={credentialMutation.isPending}
                                 onClick={() =>
-                                  credentialMutation.mutate({
-                                    id: credential.id,
-                                    action: 'revoke',
+                                  confirm({
+                                    title: 'Revoke credential?',
+                                    description: `UID ${credential.uid} will lose access immediately.`,
+                                    confirmLabel: 'Revoke',
+                                    onConfirm: () =>
+                                      credentialMutation.mutate({
+                                        id: credential.id,
+                                        action: 'revoke',
+                                      }),
                                   })
                                 }
                               >

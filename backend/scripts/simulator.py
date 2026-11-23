@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import contextlib
+import getpass
 import json
 import os
 import signal
@@ -23,7 +24,6 @@ DEFAULT_CARD_UID = "AA:BB:CC:DD"
 DEFAULT_DEVICES = "sl-0001,sl-0002"
 DEFAULT_FIRMWARE = "0.1.0"
 DEFAULT_HEARTBEAT_S = 30.0
-DEFAULT_PASSWORD = "change-me"
 DEFAULT_URL = "mqtt://127.0.0.1:1883"
 RECONNECT_DELAY_S = 5.0
 
@@ -106,10 +106,14 @@ def build_config(args: argparse.Namespace) -> Config:
     if not devices:
         raise SystemExit("At least one device ID is required")
 
+    password = args.password
+    if password is None:
+        password = getpass.getpass("MQTT password: ") if sys.stdin.isatty() else ""
+
     return Config(
         hostname=parsed.hostname,
         port=parsed.port or 1883,
-        password=str(args.password),
+        password=str(password),
         devices=devices,
         heartbeat_s=heartbeat_s,
         interactive=not bool(args.no_interactive) and sys.stdin.isatty(),
@@ -301,7 +305,15 @@ class SimulatedDevice:
                 f"{len(self.state.entries)} entries"
             )
             for entry in self.state.entries:
-                print(f"  {entry}")
+                uid = str(entry.get("uid", ""))
+                masked = (
+                    f"{uid[:2]}:..:..:{uid[-2:]}" if len(uid) >= 11 else uid
+                )
+                print(
+                    f"  uid={masked} "
+                    f"valid_from={entry.get('valid_from')} "
+                    f"valid_to={entry.get('valid_to')}"
+                )
         elif command == "stale":
             if argument not in {"on", "off"}:
                 print("Usage: stale on|off")
@@ -603,8 +615,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--password",
-        default=os.environ.get("SIM_PASSWORD", DEFAULT_PASSWORD),
-        help="MQTT password shared by all simulated devices",
+        default=os.environ.get("SIM_PASSWORD"),
+        help="MQTT password (prompted if omitted; prefer SIM_PASSWORD)",
     )
     parser.add_argument(
         "--devices",
