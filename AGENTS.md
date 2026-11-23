@@ -103,11 +103,14 @@ Reglas:
 - Roles `admin`/`operator` aplicados en el backend. Sin autorregistro. Primer admin por CLI (`python -m app.cli create-user`).
 - Nadie puede cambiar su propio rol ni desactivarse. No se puede desactivar ni degradar al último `admin` activo.
 - Resetear una contraseña o desactivar una cuenta invalida sus tokens (`token_version` y `active` se validan en cada request).
-- `POST /auth/login` tiene bloqueo temporal incremental por email normalizado. Contador se limpia con login correcto; durante bloqueo responde `429` con `Retry-After` y mensaje genérico. Bloqueo por bloques de 5 fallos: 5-9 = 60 s, 10-14 = 5 min, 15-19 = 15 min, 20+ = 30 min.
-- `POST /enrollments` rechaza con `409` si el dispositivo ya tiene un enrolamiento activo (`pending`/`scanned` dentro del TTL de 60 s).
-- `POST /devices/{id}/unlock` y `POST /devices/{id}/synchronize-access-list` tienen cooldown por dispositivo (5 s y 10 s); durante el cooldown responden `429` con `Retry-After`.
-- Fuera de `dev`/`test`, el backend falla al arrancar si `JWT_SECRET` es el default, MQTT no usa TLS, `MQTT_PASSWORD` está vacío o `CORS_ORIGINS` incluye `*`. Advierte si `CORS_ORIGINS` incluye localhost o si `MONGODB_URI` no parece autenticada/Atlas.
-- `online` se calcula con `last_seen`. El frontend usa **polling** (~3 s), no WebSocket.
+- `POST /auth/login` tiene bloqueo temporal incremental por email normalizado. El contador se incrementa de forma atómica (`$inc` en pipeline) y se limpia con login correcto; durante bloqueo responde `429` con `Retry-After` y mensaje genérico. Bloqueo por bloques de 5 fallos: 5-9 = 60 s, 10-14 = 5 min, 15-19 = 15 min, 20+ = 30 min. El PIN usa el mismo esquema atómico por credencial.
+- `POST /enrollments` rechaza con `409` si el dispositivo ya tiene un enrolamiento activo (`pending`/`scanned` dentro del TTL de 60 s). El TTL se valida también al marcar el escaneo y al confirmar; confirmar uno expirado lo marca `expired` y responde `409`.
+- `POST /devices/{id}/unlock` y `POST /devices/{id}/synchronize-access-list` tienen cooldown por dispositivo (5 s y 10 s); la ventana se reclama de forma atómica **antes** de publicar y se libera si falla la publicación. Durante el cooldown responden `429` con `Retry-After`.
+- Fuera de `dev`/`test`, el backend falla al arrancar si `JWT_SECRET` es un placeholder o tiene menos de 32 caracteres, si MQTT no usa TLS, si `MQTT_PASSWORD` está vacío o es placeholder, o si `CORS_ORIGINS` incluye `*`. Advierte si `CORS_ORIGINS` incluye localhost o si `MONGODB_URI` no parece autenticada/Atlas. Ningún secreto se pasa por argumento de CLI: se pide por prompt o variable de entorno.
+- Los errores `422` no reflejan `input` ni `ctx` (pueden contener passwords, PIN o UID). Las respuestas `500` son genéricas y llevan los headers de seguridad.
+- Los listados están paginados (`limit` ≤ 100, `offset` ≤ 10000) y el body HTTP se rechaza con `413` por encima de 64 KiB.
+- Un `events/pin-entry` reserva su evento en `access_events` antes de publicar el unlock; el `mqtt_id` único evita que un replay abra la puerta aunque se pierda la caché de dedupe. El backend valida también `valid_from`/`valid_to` del PIN.
+- `online` se calcula con `last_seen`. El frontend usa **polling** (~3 s), no WebSocket. Las acciones sensibles (unlock, lock remoto, retirada, vincular PIN, baja de portador/credencial) piden confirmación.
 - No guardar secretos reversibles. No correr múltiples workers de uvicorn (el consumidor MQTT vive en el `lifespan`).
 
 | Capacidad | admin | operator |
@@ -196,7 +199,7 @@ make mqtt-restart  # reiniciar Mosquitto
 - Hito 2 implementado y verificado con el simulador: firmware con NVS/WiFi/SNTP/MQTT (`status`/`heartbeat` + LWT a QoS 1), gateway MQTT en el `lifespan`, `access_events` y vista Activity. Pendiente de probar en placa y configurar host y CA reales.
 - Hito 3 implementado y verificado de punta a punta con el simulador: snapshot completo con guardado atómico en microSD, outbox persistente, decisión local de tarjeta y `access-decision`. El backend actualiza la versión deseada solo cuando cambia el contenido y reenvía al reconectar; el frontend tiene sincronización manual para admin. Pendiente de probar en placa.
 - Hito 4 implementado y verificado con el simulador: unlock remoto, enrolamiento por toque y PIN validado en el backend; frontend con unlock remoto y enrolamiento/edición de credenciales en Cardholders. Pendiente de probar en placa.
-- Hito 5 en progreso: TTL de `audit_logs` (2 años), lockout incremental de login/PIN por bloques, cooldowns de unlock/sync, enrolamiento activo único por dispositivo, CORS/headers de seguridad y validación estricta de config fuera de dev. Falta cerrar revisión final de hardening.
+- Hito 5 cerrado: TTL de `audit_logs` (2 años), lockout incremental y atómico de login/PIN, cooldowns atómicos de unlock/sync, enrolamiento activo con TTL estricto, CORS/headers de seguridad, validación estricta de config y revisión final de hardening (dependencias, endpoints y logs/errores/permisos). Seguimientos no bloqueantes: lockfile de Python con hashes y CI con `pip-audit`/`npm audit`, throttle por IP en login y dedupe atómico de enrolamiento.
 
 ## Roadmap
 
