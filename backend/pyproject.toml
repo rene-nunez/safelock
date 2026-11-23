@@ -8,14 +8,14 @@ version = "0.1.0"
 description = "Safelock backend API"
 requires-python = ">=3.14"
 dependencies = [
-  "fastapi>=0.163",
+  "fastapi>=0.163.2",
   "uvicorn[standard]>=0.54",
   "pydantic>=2.14",
   "pydantic-settings>=2.16",
   "aiomqtt>=2.5",
   "pymongo>=4.20",
   "pwdlib[argon2]>=0.4",
-  "pyjwt>=2.10",
+  "pyjwt>=2.15.1",
   "email-validator>=2.4",
 ]
 
