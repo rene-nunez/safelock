@@ -8,7 +8,7 @@ from app.db.mongo import Database
 
 THRESHOLD = 5
 BASE_LOCK_SECONDS = 60
-MAX_LOCK_SECONDS = 15 * 60
+MAX_LOCK_SECONDS = 30 * 60
 
 
 @dataclass(frozen=True)
@@ -26,10 +26,11 @@ def _as_utc(value: Any) -> datetime | None:
 
 
 def _lock_seconds(failures: int) -> int:
-    # Incremental lockout: 60s, 120s, 240s, ... capped at 15 min.
+    # Incremental lockout: 60s, 300s, 900s, 1800s.
+    schedule = [60, 300, 900, MAX_LOCK_SECONDS]
     step = max(0, failures - THRESHOLD)
-    lock_seconds = min(BASE_LOCK_SECONDS * (2**step), MAX_LOCK_SECONDS)
-    return int(lock_seconds)
+    index = min(step, len(schedule) - 1)
+    return int(schedule[index])
 
 
 def _retry_after(now: datetime, locked_until: datetime | None) -> int:
