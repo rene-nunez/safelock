@@ -131,7 +131,7 @@ Vite + TypeScript + React Router + TanStack Query + React Hook Form + Zod + Tail
 
 Páginas previstas: Login, Dashboard, Cardholders, Devices, Activity, Audit, Users.
 
-Enrolamiento: `POST /enrollments` (TTL 60 s) → el dispositivo envía `events/card-scan` → la UI lo muestra por polling → el admin confirma → se crea la credencial y se sincroniza la lista.
+Enrolamiento: se inicia en **Cardholders → Add card → Enroll on device** (no en Devices). `POST /enrollments` (TTL 60 s) → el dispositivo envía `events/card-scan` → la UI lo muestra por polling → el admin confirma → se crea la credencial y se sincroniza la lista.
 
 ## Firmware
 
