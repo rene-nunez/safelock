@@ -47,12 +47,12 @@ function FitDevices({
     const latestPoints = pointsRef.current
     if (latestPoints.length === 0) return
     if (latestPoints.length === 1) {
-      map.setView(latestPoints[0], 13)
+      map.setView(latestPoints[0], 16)
       return
     }
     map.fitBounds(L.latLngBounds(latestPoints), {
       padding: [48, 48],
-      maxZoom: 13,
+      maxZoom: 16,
     })
   }, [locationsKey, fitRequest, map])
 
@@ -72,7 +72,7 @@ export function DeviceMap({ devices, fitRequest }: DeviceMapProps) {
         zoom={2}
         minZoom={2}
         maxZoom={18}
-        scrollWheelZoom={false}
+        scrollWheelZoom={true}
         worldCopyJump
         attributionControl={false}
         className="h-full w-full"
