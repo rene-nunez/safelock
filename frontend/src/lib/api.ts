@@ -1,6 +1,6 @@
 import { getToken } from '@/lib/token'
 
-const API_PREFIX = '/api/v1'
+const API_PREFIX = `${import.meta.env.VITE_API_URL ?? ''}/api/v1`
 export const UNAUTHORIZED_EVENT = 'safelock:unauthorized'
 
 export type Role = 'admin' | 'operator'
