@@ -23,6 +23,20 @@ import {
   pinIcon,
 } from './map-config'
 
+function ResizeMap() {
+  const map = useMap()
+
+  useEffect(() => {
+    const observer = new ResizeObserver(() => {
+      map.invalidateSize({ pan: false })
+    })
+    observer.observe(map.getContainer())
+    return () => observer.disconnect()
+  }, [map])
+
+  return null
+}
+
 function FitDevices({
   devices,
   fitRequest,
@@ -66,7 +80,7 @@ type DeviceMapProps = {
 
 export function DeviceMap({ devices, fitRequest }: DeviceMapProps) {
   return (
-    <div className="relative isolate h-full w-full">
+    <div className="absolute inset-0 isolate">
       <MapContainer
         center={[20, 0]}
         zoom={2}
@@ -79,6 +93,7 @@ export function DeviceMap({ devices, fitRequest }: DeviceMapProps) {
       >
         <TileLayer url={TILE_URL} attribution={ATTRIBUTION} />
         <AttributionControl position="bottomright" prefix={false} />
+        <ResizeMap />
         <FitDevices devices={devices} fitRequest={fitRequest} />
         {devices.map((device) =>
           device.location ? (

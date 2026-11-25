@@ -1,12 +1,6 @@
 import { lazy, Suspense, useState } from 'react'
-import {
-  Activity,
-  Cpu,
-  Lock,
-  Maximize2,
-  UserPlus,
-  type LucideIcon,
-} from 'lucide-react'
+import { ChevronRight, Maximize2 } from 'lucide-react'
+import { Link } from 'react-router-dom'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -21,90 +15,26 @@ import { EventTime } from '@/components/ui/event-time'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useAccessEvents } from '@/hooks/use-access-events'
 import { useDevices } from '@/hooks/use-devices'
-import { listEnrollments } from '@/lib/api'
-import { useQuery } from '@tanstack/react-query'
 
 const DeviceMap = lazy(async () => {
   const module = await import('@/components/map/device-map')
   return { default: module.DeviceMap }
 })
 
-type StatCardProps = {
-  label: string
-  value: string
-  hint: string
-  icon: LucideIcon
-}
-
-function StatCard({ label, value, hint, icon: Icon }: StatCardProps) {
-  return (
-    <Card className="gap-0 py-4">
-      <CardContent className="flex items-start justify-between gap-3 px-4">
-        <div>
-          <p className="text-xs text-muted-foreground">{label}</p>
-          <p className="mt-1 text-2xl font-semibold tabular-nums">{value}</p>
-          <p className="mt-1 text-xs text-muted-foreground">{hint}</p>
-        </div>
-        <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-secondary text-muted-foreground">
-          <Icon className="size-4" />
-        </span>
-      </CardContent>
-    </Card>
-  )
-}
-
 export function DashboardPage() {
   const [fitRequest, setFitRequest] = useState(0)
   const devicesQuery = useDevices()
   const eventsQuery = useAccessEvents({ limit: 5 })
-  const enrollmentsQuery = useQuery({
-    queryKey: ['enrollments'],
-    queryFn: () => listEnrollments(),
-    refetchInterval: 3000,
-  })
   const devices = (devicesQuery.data ?? []).filter(
     (device) => device.status === 'active',
   )
-  const online = devices.filter((device) => device.online).length
-  const locked = devices.filter((device) => device.locked).length
   const hasLocations = devices.some((device) => device.location !== null)
-  const accessToday = eventsQuery.data?.today_count ?? 0
   const recentEvents = eventsQuery.data?.items ?? []
-  const pendingEnrollments = (enrollmentsQuery.data ?? []).filter(
-    (e: { status: string }) => e.status === 'pending' || e.status === 'scanned',
-  ).length
 
   return (
-    <div className="flex flex-col gap-4 lg:gap-6">
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard
-          label="Online devices"
-          value={`${online} / ${devices.length}`}
-          hint="Connected to the backend"
-          icon={Cpu}
-        />
-        <StatCard
-          label="Doors locked"
-          value={`${locked}`}
-          hint="Blocked remotely"
-          icon={Lock}
-        />
-        <StatCard
-          label="Access today"
-          value={`${accessToday}`}
-          hint="Access decisions reported"
-          icon={Activity}
-        />
-        <StatCard
-          label="Pending enrollments"
-          value={`${pendingEnrollments}`}
-          hint={pendingEnrollments ? 'Awaiting card or confirmation' : 'No enrollment in progress'}
-          icon={UserPlus}
-        />
-      </section>
-
-      <section className="grid gap-4 lg:grid-cols-3 lg:gap-6">
-        <Card className="gap-4 overflow-hidden lg:col-span-2">
+    <div className="flex min-h-full flex-col gap-4 lg:gap-6">
+      <section className="grid flex-1 gap-4 lg:grid-cols-3 lg:gap-6">
+        <Card className="flex h-full gap-4 overflow-hidden pb-0 lg:col-span-2">
           <CardHeader className="flex-row items-center justify-between gap-4">
             <div className="flex flex-col gap-1.5">
               <CardTitle>Lock locations</CardTitle>
@@ -122,10 +52,10 @@ export function DashboardPage() {
               Fit
             </Button>
           </CardHeader>
-          <CardContent className="px-0">
-            <div className="h-[360px] border-t border-border sm:h-[420px]">
+          <CardContent className="flex min-h-0 flex-1 flex-col px-0">
+            <div className="relative min-h-[320px] flex-1 border-t border-border">
               <Suspense
-                fallback={<Skeleton className="size-full rounded-none" />}
+                fallback={<Skeleton className="absolute inset-0 rounded-none" />}
               >
                 <DeviceMap devices={devices} fitRequest={fitRequest} />
               </Suspense>
@@ -133,10 +63,19 @@ export function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Recent activity</CardTitle>
-            <CardDescription>Last access decisions.</CardDescription>
+        <Card className="h-full">
+          <CardHeader className="flex-row items-center justify-between gap-4">
+            <div className="flex flex-col gap-1.5">
+              <CardTitle>Recent activity</CardTitle>
+              <CardDescription>Last access decisions.</CardDescription>
+            </div>
+            <Link
+              to="/activity"
+              className="inline-flex shrink-0 items-center gap-1 text-xs text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline"
+            >
+              View all
+              <ChevronRight className="size-3.5" />
+            </Link>
           </CardHeader>
           <CardContent className="flex flex-1 flex-col gap-3 pb-6">
             {recentEvents.length === 0 ? (
