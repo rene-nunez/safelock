@@ -15,7 +15,8 @@
 // Poll and recovery intervals
 #define RFID_POLL_INTERVAL 200
 #define NUMPAD_POLL_INTERVAL 20
-#define RFID_RECOVER_INTERVAL 2000 // A reset blocks up to ~400 ms
+#define RFID_HEALTH_INTERVAL 2000 // Check the reader in every state, not only while waiting for a card
+#define RFID_RECOVER_INTERVAL 2000 // Throttle blocking recovery attempts
 
 // Screen timings
 #define LOCK_SPLASH_MS 1500
@@ -71,6 +72,7 @@ class Tasks : public MqttCommandHandler {
 
     // Poll throttles
     unsigned long previous_rfid_millis = 0;
+    unsigned long last_rfid_health_millis = 0;
     unsigned long last_rfid_recover_millis = 0;
     unsigned long previous_numpad_millis = 0;
 
@@ -92,6 +94,11 @@ class Tasks : public MqttCommandHandler {
     void run_numpad_task();
     void run_lock_task();
     void run_display_task();
+
+    // RFID health
+    bool ensure_rfid_ready();
+    void log_rfid_unhealthy();
+    const char *state_name() const;
 
     // State transitions
     void start_entry();

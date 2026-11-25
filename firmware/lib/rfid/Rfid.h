@@ -14,12 +14,14 @@ class Rfid {
 
     void begin();
     bool recover();
+    bool healthy();
     ScanResult poll();
     const CardUid &last_uid() const;
 
   private:
     struct Status {
       uint8_t version;
+      uint8_t command;
       uint8_t tx_control;
       bool responds;
       bool antenna_on;
@@ -30,6 +32,6 @@ class Rfid {
 
     void reset_and_init();
     Status read_status();
-    bool healthy();
+    bool wait_for_healthy();
     void log_status(const char *event, const Status &status);
 };

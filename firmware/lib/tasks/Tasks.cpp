@@ -72,15 +72,18 @@ void Tasks::run_rfid_task() {
 
   previous_rfid_millis = current_millis;
 
+  // A coil pulse or an SD write can drop the antenna with no card due.
+  if ((current_millis - last_rfid_health_millis) >= RFID_HEALTH_INTERVAL) {
+    last_rfid_health_millis = current_millis;
+    ensure_rfid_ready();
+  }
+
   if (state != ENTERING) return;
 
   Rfid::ScanResult scan = rfid.poll();
 
   if (scan == Rfid::UNHEALTHY) {
-    if ((current_millis - last_rfid_recover_millis) < RFID_RECOVER_INTERVAL) return;
-    last_rfid_recover_millis = current_millis;
-
-    rfid.recover();
+    ensure_rfid_ready();
     return;
   }
 
@@ -93,6 +96,38 @@ void Tasks::run_rfid_task() {
   Serial.println(mask_uid(uid_text));
 
   handle_card(String(uid_text));
+}
+
+bool Tasks::ensure_rfid_ready() {
+  if (rfid.healthy()) return true;
+  if (pin_active) return false;
+  if ((current_millis - last_rfid_recover_millis) < RFID_RECOVER_INTERVAL) return false;
+
+  last_rfid_recover_millis = current_millis;
+  log_rfid_unhealthy();
+  rfid.recover();
+  current_millis = millis();
+  return rfid.healthy();
+}
+
+void Tasks::log_rfid_unhealthy() {
+  Serial.printf(
+    "Tasks rfid recovery: state=%s pin_entry=%s\n",
+    state_name(),
+    pin_active ? "yes" : "no"
+  );
+}
+
+const char *Tasks::state_name() const {
+  switch (state) {
+    case WAIT_SD: return "wait_sd";
+    case ENTERING: return "entering";
+    case SUCCESS: return "success";
+    case LOGGING: return "logging";
+    case ERROR: return "error";
+    case ALERT: return "alert";
+  }
+  return "unknown";
 }
 
 void Tasks::handle_card(const String &uid) {
@@ -153,15 +188,18 @@ void Tasks::run_numpad_task() {
 
   previous_numpad_millis = current_millis;
 
+  // Expire on time even when the user walks away without pressing a key,
+  // otherwise PIN entry would block RFID recovery indefinitely.
+  if (pin_active && current_millis > pin_until) {
+    cancel_pin_entry();
+    deny_access();
+    return;
+  }
+
   char key = numpad.read_key();
   if (key == NO_KEY) return;
 
   if (pin_active) {
-    if (current_millis > pin_until) {
-      cancel_pin_entry();
-      deny_access();
-      return;
-    }
     if (key == '*') {
       pin_buffer = "";
       return;
@@ -238,7 +276,6 @@ void Tasks::run_display_task() {
       if ((current_millis - state_millis) < SUCCESS_HOLD_MS) return;
       if (lock.is_active()) return;
 
-      rfid.recover();
       display.recover();
       start_entry();
       break;
@@ -269,6 +306,7 @@ void Tasks::run_display_task() {
 }
 
 void Tasks::start_entry() {
+  ensure_rfid_ready();
   state = ENTERING;
   display.show_entry(0);
 }

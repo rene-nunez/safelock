@@ -2,6 +2,7 @@
 #include "pins.h"
 
 static const uint8_t ANTENNA_MASK = 0x03;
+static const uint8_t POWER_DOWN_MASK = 0x10;
 
 // MFRC522 reports 0x91 or 0x92; anything else is a dead bus
 static bool version_supported(uint8_t version) {
@@ -22,6 +23,11 @@ void Rfid::reset_and_init() {
 
   // The library does not manage RST, so PCD_Init() only performs a soft reset
   mfrc522.PCD_Init();
+
+  // Keep NRSTPD driven high even if a library version reconfigures the pin;
+  // a floating input lets noise reset the chip or drop it into power-down.
+  pinMode(RFID_RST, OUTPUT);
+  digitalWrite(RFID_RST, HIGH);
   delay(100);
 }
 
@@ -34,6 +40,7 @@ void Rfid::begin() {
 Rfid::Status Rfid::read_status() {
   Status status;
   status.version = mfrc522.PCD_ReadRegister(MFRC522::VersionReg);
+  status.command = mfrc522.PCD_ReadRegister(MFRC522::CommandReg);
   status.tx_control = mfrc522.PCD_ReadRegister(MFRC522::TxControlReg);
   status.responds = version_supported(status.version);
 
@@ -43,15 +50,23 @@ Rfid::Status Rfid::read_status() {
 
 bool Rfid::healthy() {
   Status status = read_status();
-  return status.responds && status.antenna_on;
+  return status.responds && status.antenna_on && (status.command & POWER_DOWN_MASK) == 0;
+}
+
+bool Rfid::wait_for_healthy() {
+  // The register write is accepted while the chip is still settling; confirm
+  // after the oscillator and the antenna drivers have had time to come up.
+  delay(50);
+  return healthy();
 }
 
 void Rfid::log_status(const char *event, const Status &status) {
   if (!status.responds) {
     Serial.printf(
-      "RFID %s: no response (version=0x%02X, tx_control=0x%02X)\n",
+      "RFID %s: no response (version=0x%02X, command=0x%02X, tx_control=0x%02X)\n",
       event,
       static_cast<unsigned>(status.version),
+      static_cast<unsigned>(status.command),
       static_cast<unsigned>(status.tx_control)
     );
 
@@ -59,22 +74,28 @@ void Rfid::log_status(const char *event, const Status &status) {
   }
 
   Serial.printf(
-    "RFID %s: version=0x%02X antenna=%s\n",
+    "RFID %s: version=0x%02X command=0x%02X tx_control=0x%02X antenna=%s power_down=%s\n",
     event,
     static_cast<unsigned>(status.version),
-    status.antenna_on ? "on" : "off"
+    static_cast<unsigned>(status.command),
+    static_cast<unsigned>(status.tx_control),
+    status.antenna_on ? "on" : "off",
+    (status.command & POWER_DOWN_MASK) ? "yes" : "no"
   );
 }
 
 bool Rfid::recover() {
   Status status = read_status();
-  if (status.responds && status.antenna_on) return true;
+  if (status.responds && status.antenna_on && (status.command & POWER_DOWN_MASK) == 0) return true;
 
-  // Re-enabling the antenna costs microseconds, a physical reset ~300 ms
-  if (status.responds) {
+  log_status("recover before", status);
+
+  // A software-only re-enable is enough only while the chip is awake. A coil
+  // pulse can leave it reset or in power-down, where the SPI write is ignored.
+  if (status.responds && (status.command & POWER_DOWN_MASK) == 0) {
     mfrc522.PCD_AntennaOn();
 
-    if (healthy()) {
+    if (wait_for_healthy()) {
       Serial.println("RFID recover: antenna re-enabled");
       return true;
     }
@@ -88,8 +109,7 @@ bool Rfid::recover() {
     delay(100);
     reset_and_init();
 
-    status = read_status();
-    if (status.responds && status.antenna_on) {
+    if (wait_for_healthy()) {
       Serial.printf(
         "RFID recover: ok on attempt %u/%u\n",
         static_cast<unsigned>(attempt),
@@ -100,7 +120,7 @@ bool Rfid::recover() {
     }
   }
 
-  log_status("recover failed", status);
+  log_status("recover failed", read_status());
   return false;
 }
 

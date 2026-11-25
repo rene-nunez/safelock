@@ -27,6 +27,8 @@ On boot the device loads NVS, starts the RTC, restores `/acl.json` and `/outbox.
 If the clock is not valid it does not attempt TLS and card expiry checks are skipped.
 The Last Will publishes `online: false` to `status` on an unexpected disconnect.
 
+The RFID reader is checked every 2 s in every state, not only while waiting for a card. A coil pulse or an SD write can reset the MFRC522 and clear its antenna bits; recovery verifies a software antenna-on write and falls back to a hard reset of NRSTPD. `CommandReg` and `TxControlReg` are logged when the reader is unhealthy.
+
 ## Access decisions
 
 A card is granted only if its UID is in the local snapshot and passes the RTC validity window. No card is accepted before the first snapshot arrives; there is no local password or master card. The keypad is used for PIN entry; PINs are validated only by the backend and never stored on the device. On doors with `requires_pin`, a matching card starts PIN entry and access is granted only after backend validation; without backend access is denied (`offline_no_pin`).
