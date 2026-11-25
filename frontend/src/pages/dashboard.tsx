@@ -1,13 +1,11 @@
 import { lazy, Suspense, useState } from 'react'
-import { ChevronRight, Maximize2 } from 'lucide-react'
+import { ChevronRight } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
@@ -35,29 +33,20 @@ export function DashboardPage() {
     <div className="flex min-h-full flex-col gap-4 lg:gap-6">
       <section className="grid flex-1 gap-4 lg:grid-cols-3 lg:gap-6">
         <Card className="flex h-full gap-4 overflow-hidden pb-0 lg:col-span-2">
-          <CardHeader className="flex-row items-center justify-between gap-4">
-            <div className="flex flex-col gap-1.5">
-              <CardTitle>Lock locations</CardTitle>
-              <CardDescription>
-                Devices with a saved location.
-              </CardDescription>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setFitRequest((value) => value + 1)}
-              disabled={!hasLocations}
-            >
-              <Maximize2 className="size-4" />
-              Fit
-            </Button>
+          <CardHeader className="self-start">
+            <CardTitle>Locations</CardTitle>
           </CardHeader>
           <CardContent className="flex min-h-0 flex-1 flex-col px-0">
             <div className="relative min-h-[320px] flex-1 border-t border-border">
               <Suspense
                 fallback={<Skeleton className="absolute inset-0 rounded-none" />}
               >
-                <DeviceMap devices={devices} fitRequest={fitRequest} />
+                <DeviceMap
+                  devices={devices}
+                  fitRequest={fitRequest}
+                  onFit={() => setFitRequest((value) => value + 1)}
+                  fitDisabled={!hasLocations}
+                />
               </Suspense>
             </div>
           </CardContent>
@@ -65,10 +54,7 @@ export function DashboardPage() {
 
         <Card className="h-full">
           <CardHeader className="flex-row items-center justify-between gap-4">
-            <div className="flex flex-col gap-1.5">
-              <CardTitle>Recent activity</CardTitle>
-              <CardDescription>Last access decisions.</CardDescription>
-            </div>
+            <CardTitle>Recent activity</CardTitle>
             <Link
               to="/activity"
               className="inline-flex shrink-0 items-center gap-1 text-xs text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline"
@@ -79,9 +65,11 @@ export function DashboardPage() {
           </CardHeader>
           <CardContent className="flex flex-1 flex-col gap-3 pb-6">
             {recentEvents.length === 0 ? (
-              <p className="py-6 text-center text-sm text-muted-foreground">
-                No access events yet.
-              </p>
+              <div className="flex flex-1 items-center justify-center">
+                <p className="text-center text-sm text-muted-foreground">
+                  No access events yet.
+                </p>
+              </div>
             ) : (
               recentEvents.map((event) => (
                 <div

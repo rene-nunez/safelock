@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import L from 'leaflet'
-import { MapPin } from 'lucide-react'
+import { MapPin, Maximize2 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import {
   AttributionControl,
@@ -76,9 +76,16 @@ function FitDevices({
 type DeviceMapProps = {
   devices: Device[]
   fitRequest: number
+  onFit: () => void
+  fitDisabled?: boolean
 }
 
-export function DeviceMap({ devices, fitRequest }: DeviceMapProps) {
+export function DeviceMap({
+  devices,
+  fitRequest,
+  onFit,
+  fitDisabled,
+}: DeviceMapProps) {
   return (
     <div className="absolute inset-0 isolate">
       <MapContainer
@@ -142,6 +149,17 @@ export function DeviceMap({ devices, fitRequest }: DeviceMapProps) {
           ) : null,
         )}
       </MapContainer>
+
+      <button
+        type="button"
+        aria-label="Fit devices on map"
+        title="Fit devices on map"
+        disabled={fitDisabled}
+        onClick={onFit}
+        className="absolute right-3 top-3 z-[1000] flex size-9 items-center justify-center rounded-md border border-zinc-200 bg-white text-zinc-900 shadow-sm transition-colors hover:bg-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900/30 disabled:pointer-events-none disabled:opacity-50"
+      >
+        <Maximize2 className="size-4" />
+      </button>
 
       {devices.length === 0 ? (
         <div className="pointer-events-none absolute inset-0 z-[1000] grid place-items-center p-6">
