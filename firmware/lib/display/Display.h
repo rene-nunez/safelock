@@ -24,6 +24,7 @@ class Display {
     void show_unlock_frame(uint8_t frame);
     void show_error_frame(uint8_t frame);
     void show_entry(uint8_t digits);
+    void show_pin_entry(uint8_t digits);
     void show_success();
     void show_manual_open();
 };

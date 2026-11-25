@@ -31,7 +31,7 @@ The RFID reader is checked every 2 s in every state, not only while waiting for 
 
 ## Access decisions
 
-A card is granted only if its UID is in the local snapshot and passes the RTC validity window. No card is accepted before the first snapshot arrives; there is no local password or master card. The keypad is used for PIN entry; PINs are validated only by the backend and never stored on the device. On doors with `requires_pin`, a matching card starts PIN entry and access is granted only after backend validation; without backend access is denied (`offline_no_pin`).
+A card is granted only if its UID is in the local snapshot and passes the RTC validity window. No card is accepted before the first snapshot arrives; there is no local password or master card. The keypad is used for PIN entry; PINs are validated only by the backend and never stored on the device. On doors with `requires_pin`, a matching card starts PIN entry instead of opening: the card tap is logged as `denied` / `offline_no_pin`, the OLED prompts `ENTER PIN` and adds one asterisk per digit (capped at 12; the digits themselves are never shown) and the backend validation is what opens the door. There is no buzzer feedback per key: an audible click per digit would let someone count the PIN, so the buzzer only reports the final result. Without a backend the entry times out and access is denied.
 
 Each scan produces an `events/access-decision` message, including denials and cards outside the ACL. A manual release detected by the bolt sensor produces `decision: "unknown"`, `source: "manual"`, `reason: "manual_open"`.
 

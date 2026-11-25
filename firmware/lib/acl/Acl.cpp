@@ -121,7 +121,8 @@ bool Acl::apply(const JsonObject &data, time_t now) {
 
 AclDecision Acl::evaluate(const String &uid, bool clock_valid, time_t now, bool backend_available) const {
   if (locked) return {"denied", "door_locked"};
-  if (requires_pin) return {"denied", "offline_no_pin"};
+  // requires_pin is a second factor handled by Tasks with the backend,
+  // not a reason to reject the card in the local evaluator.
   if (!loaded) return {"denied", "acl_absent"};
   if (clock_valid && age_s(clock_valid, now) > stale_hours * 3600UL) {
     return {"denied", "acl_stale"};

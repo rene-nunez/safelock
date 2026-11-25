@@ -131,6 +131,9 @@ const char *Tasks::state_name() const {
 }
 
 void Tasks::handle_card(const String &uid) {
+  // A second tap must not restart PIN entry with another credential.
+  if (pin_active) return;
+
   if (enrollment_active) {
     if (current_millis > enrollment_until) {
       cancel_enrollment();
@@ -202,6 +205,7 @@ void Tasks::run_numpad_task() {
   if (pin_active) {
     if (key == '*') {
       pin_buffer = "";
+      display.show_pin_entry(0);
       return;
     }
     if (key == '#') {
@@ -210,6 +214,7 @@ void Tasks::run_numpad_task() {
     }
     if (key >= '0' && key <= '9' && pin_buffer.length() < 32) {
       pin_buffer += key;
+      display.show_pin_entry(pin_buffer.length());
     }
     return;
   }
@@ -402,6 +407,7 @@ void Tasks::start_pin_entry(const String &uid, const String &credential_id) {
   pin_credential_id = credential_id;
   pin_buffer = "";
   pin_until = millis() + 30000UL;
+  display.show_pin_entry(0);
 }
 
 void Tasks::cancel_pin_entry() {

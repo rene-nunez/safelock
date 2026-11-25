@@ -79,7 +79,7 @@ void Display::show_error_frame(uint8_t frame) {
 
 void Display::show_entry(uint8_t digits) {
   if (!ready) return;
-  (void)digits; // No digit slots: the PIN is validated by the backend
+  (void)digits; // No digit slots: the PIN length is never disclosed on the OLED
 
   display.clearDisplay();
   draw_lock_icon();
@@ -95,6 +95,39 @@ void Display::show_entry(uint8_t digits) {
   display.getTextBounds(text, 0, 0, &x1, &y1, &width, &height);
   display.setCursor((SCREEN_WIDTH - width) / 2, 2);
   display.print(text);
+
+  display.display();
+}
+
+void Display::show_pin_entry(uint8_t digits) {
+  if (!ready) return;
+
+  display.clearDisplay();
+
+  const char *prompt = "ENTER PIN";
+  // Cap the visible mask: the buffer accepts longer PINs than the OLED can show.
+  const uint8_t max_visible = 12;
+  if (digits > max_visible) digits = max_visible;
+
+  char mask[max_visible + 1];
+  for (uint8_t i = 0; i < digits; i++) mask[i] = '*';
+  mask[digits] = '\0';
+
+  int16_t x1 = 0;
+  int16_t y1 = 0;
+  uint16_t width = 0;
+  uint16_t height = 0;
+
+  display.setTextSize(1);
+  display.setTextColor(WHITE);
+
+  display.getTextBounds(prompt, 0, 0, &x1, &y1, &width, &height);
+  display.setCursor((SCREEN_WIDTH - width) / 2, 2);
+  display.print(prompt);
+
+  display.getTextBounds(mask, 0, 0, &x1, &y1, &width, &height);
+  display.setCursor((SCREEN_WIDTH - width) / 2, 32);
+  display.print(mask);
 
   display.display();
 }

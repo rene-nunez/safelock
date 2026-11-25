@@ -26,6 +26,7 @@ DEFAULT_FIRMWARE = "0.1.0"
 DEFAULT_HEARTBEAT_S = 30.0
 DEFAULT_URL = "mqtt://127.0.0.1:1883"
 RECONNECT_DELAY_S = 5.0
+PIN_PENDING_TTL_S = 30.0
 
 JsonObject = dict[str, Any]
 
@@ -33,7 +34,7 @@ HELP = """\
 Commands:
   use <device_id>    Select the target device
   scan <UID>         Send an enrollment card scan
-  pin <UID> <PIN>    Send a PIN entry event
+  pin <UID> <PIN>    Send a PIN entry event (after a grant with requires_pin)
   grant [UID]        Decide card access using the local access list
   deny [UID]         Send a denied access decision
   open               Simulate a remote unlock
@@ -74,6 +75,9 @@ class DeviceState:
     entries: list[JsonObject] = field(default_factory=list)
     pending_enrollment: str | None = None
     pending_enrollment_until: float = 0.0
+    pending_pin_uid: str | None = None
+    pending_pin_request_id: str | None = None
+    pending_pin_until: float = 0.0
 
 
 def envelope(device_id: str, data: JsonObject) -> JsonObject:
@@ -349,8 +353,6 @@ class SimulatedDevice:
 
         if self.state.locked:
             reason = "door_locked"
-        elif self.state.requires_pin:
-            reason = "offline_no_pin"
         elif not self.state.has_acl:
             reason = "acl_absent"
         elif age_s > self.state.stale_acl_hours * 3600:
@@ -380,6 +382,20 @@ class SimulatedDevice:
                     reason = "acl_match"
 
         granted = reason == "acl_match"
+        if granted and self.state.requires_pin:
+            # The card is only the first factor; the backend validates the PIN.
+            self.state.pending_pin_uid = normalized
+            self.state.pending_pin_request_id = str(uuid.uuid4())
+            self.state.pending_pin_until = time.monotonic() + PIN_PENDING_TTL_S
+            await self._publish_decision(
+                "denied", "offline_no_pin", "card", normalized, acl_age_s=age_s
+            )
+            print(
+                f"{self.device_id}: waiting for PIN ({int(PIN_PENDING_TTL_S)} s); "
+                "run pin <UID> <PIN>"
+            )
+            return
+
         await self._publish_decision(
             "granted" if granted else "denied",
             reason,
@@ -403,9 +419,27 @@ class SimulatedDevice:
         )
 
     async def _pin(self, uid: str, pin: str) -> None:
+        normalized = uid.upper()
+        if (
+            self.state.pending_pin_uid != normalized
+            or time.monotonic() > self.state.pending_pin_until
+        ):
+            self.state.pending_pin_uid = None
+            self.state.pending_pin_request_id = None
+            print(f"{self.device_id}: no pending PIN for {normalized}")
+            return
+
+        if len(pin) < 6 or not pin.isdigit():
+            print(f"{self.device_id}: PIN must be at least 6 digits")
+            return
+
+        request_id = self.state.pending_pin_request_id or str(uuid.uuid4())
+        self.state.pending_pin_uid = None
+        self.state.pending_pin_request_id = None
+        self.state.pending_pin_until = 0.0
         await self._publish(
             "events/pin-entry",
-            {"uid": uid.upper(), "pin": pin, "request_id": str(uuid.uuid4())},
+            {"uid": normalized, "pin": pin, "request_id": request_id},
         )
 
     async def _publish_decision(
@@ -443,6 +477,10 @@ class SimulatedDevice:
         self.state.requires_pin = bool(
             data.get("requires_pin", self.state.requires_pin)
         )
+        if not self.state.requires_pin:
+            self.state.pending_pin_uid = None
+            self.state.pending_pin_request_id = None
+            self.state.pending_pin_until = 0.0
         self.state.locked = bool(data.get("locked", self.state.locked))
         self.state.offline_policy = as_str(
             data.get("offline_policy"), self.state.offline_policy
