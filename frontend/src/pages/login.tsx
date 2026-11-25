@@ -41,12 +41,14 @@ export function LoginPage() {
       await signIn(values.email, values.password)
       navigate(from, { replace: true })
     } catch (error) {
-      form.setError('root', {
-        message:
-          error instanceof ApiError
-            ? error.message
-            : 'Could not sign in. Try again.',
-      })
+      let message = 'Could not sign in. Try again.'
+      if (error instanceof ApiError) {
+        message =
+          error.status === 429 && error.retryAfter !== undefined
+            ? `Too many attempts. Try again in ${error.retryAfter} s.`
+            : error.message
+      }
+      form.setError('root', { message })
     }
   }
 

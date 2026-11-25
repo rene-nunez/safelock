@@ -8,6 +8,7 @@ import { z } from 'zod'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { EventTime } from '@/components/ui/event-time'
 import { FormActions } from '@/components/ui/form-actions'
 import { FormField } from '@/components/ui/form-field'
 import { InlineNotice } from '@/components/ui/inline-notice'
@@ -28,7 +29,6 @@ import {
   type UpdateUserInput,
   type User,
 } from '@/lib/api'
-import { formatDateTime } from '@/lib/format'
 import { roleLabel, userInitials } from '@/lib/user'
 import { cn } from '@/lib/utils'
 
@@ -307,9 +307,14 @@ export function UsersPage() {
                             </span>
                           ) : (
                             <span className="block text-xs text-muted-foreground">
-                              {entry.last_login_at
-                                ? `Last sign in ${formatDateTime(entry.last_login_at)}`
-                                : 'Never signed in'}
+                              {entry.last_login_at ? (
+                                <>
+                                  Last sign in{' '}
+                                  <EventTime value={entry.last_login_at} />
+                                </>
+                              ) : (
+                                'Never signed in'
+                              )}
                             </span>
                           )}
                         </span>

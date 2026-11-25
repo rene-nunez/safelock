@@ -13,7 +13,7 @@ import {
 
 import { Badge } from '@/components/ui/badge'
 import { buttonVariants } from '@/components/ui/button-variants'
-import { formatDateTime } from '@/lib/format'
+import { EventTime } from '@/components/ui/event-time'
 import { cn } from '@/lib/utils'
 import type { Device } from '@/types/device'
 import {
@@ -109,9 +109,11 @@ export function DeviceMap({ devices, fitRequest }: DeviceMapProps) {
                   </div>
                   <p className="text-xs text-muted-foreground">
                     Last seen{' '}
-                    {device.last_seen
-                      ? formatDateTime(device.last_seen)
-                      : 'Never'}
+                    {device.last_seen ? (
+                      <EventTime value={device.last_seen} />
+                    ) : (
+                      'Never'
+                    )}
                   </p>
                   <Link
                     to={`/devices?device=${encodeURIComponent(device.device_id)}`}

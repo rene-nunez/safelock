@@ -8,6 +8,7 @@ import { z } from 'zod'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { EventTime } from '@/components/ui/event-time'
 import { FormActions } from '@/components/ui/form-actions'
 import { FormField } from '@/components/ui/form-field'
 import { InlineNotice } from '@/components/ui/inline-notice'
@@ -42,7 +43,6 @@ import {
   type Enrollment,
   type UpdateCardholderInput,
 } from '@/lib/api'
-import { formatDateTime } from '@/lib/format'
 import { cn } from '@/lib/utils'
 
 const createSchema = z.object({
@@ -128,15 +128,25 @@ function toDateInput(value: string | null): string {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
 }
 
-function validityLabel(credential: Credential): string {
-  const parts: string[] = []
-  if (credential.valid_from) {
-    parts.push(`From ${formatDateTime(credential.valid_from)}`)
+function validityLabel(credential: Credential) {
+  if (!credential.valid_from && !credential.valid_to) {
+    return 'No validity dates'
   }
-  if (credential.valid_to) {
-    parts.push(`Until ${formatDateTime(credential.valid_to)}`)
-  }
-  return parts.length > 0 ? parts.join(' · ') : 'No validity dates'
+  return (
+    <>
+      {credential.valid_from ? (
+        <>
+          From <EventTime value={credential.valid_from} />
+        </>
+      ) : null}
+      {credential.valid_from && credential.valid_to ? ' · ' : null}
+      {credential.valid_to ? (
+        <>
+          Until <EventTime value={credential.valid_to} />
+        </>
+      ) : null}
+    </>
+  )
 }
 
 export function CardholdersPage() {
@@ -1143,7 +1153,17 @@ export function CardholdersPage() {
                           const input: Record<string, unknown> = {}
                           if (fromChanged) input.valid_from = nextFrom
                           if (toChanged) input.valid_to = nextTo
-                          if (pinChanged) input.pin = editPin
+                          if (pinChanged) {
+                            input.pin = editPin
+                            confirm({
+                              title: 'Set a new PIN?',
+                              description: `The PIN for ${editTarget.uid} will be replaced. It is validated by the backend, never stored on the device.`,
+                              confirmLabel: 'Set PIN',
+                              onConfirm: () =>
+                                editMutation.mutate({ id: editTarget.id, input }),
+                            })
+                            return
+                          }
                           editMutation.mutate({ id: editTarget.id, input })
                         }}
                       >
@@ -1197,12 +1217,21 @@ export function CardholdersPage() {
                             type="button"
                             variant="outline"
                             disabled={editMutation.isPending || !editTarget.has_pin}
-                            onClick={() => {
-                              const input: Record<string, unknown> = { clear_pin: true }
-                              if (fromChanged) input.valid_from = nextFrom
-                              if (toChanged) input.valid_to = nextTo
-                              editMutation.mutate({ id: editTarget.id, input })
-                            }}
+                            onClick={() =>
+                              confirm({
+                                title: 'Remove PIN?',
+                                description: `${editTarget.uid} will no longer require a PIN.`,
+                                confirmLabel: 'Remove PIN',
+                                onConfirm: () => {
+                                  const input: Record<string, unknown> = {
+                                    clear_pin: true,
+                                  }
+                                  if (fromChanged) input.valid_from = nextFrom
+                                  if (toChanged) input.valid_to = nextTo
+                                  editMutation.mutate({ id: editTarget.id, input })
+                                },
+                              })
+                            }
                           >
                             Remove PIN
                           </Button>

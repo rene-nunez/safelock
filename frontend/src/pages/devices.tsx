@@ -22,6 +22,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
+import { EventTime } from '@/components/ui/event-time'
 import { FormActions } from '@/components/ui/form-actions'
 import { FormField } from '@/components/ui/form-field'
 import { InlineNotice } from '@/components/ui/inline-notice'
@@ -44,7 +45,6 @@ import {
   type DeviceLocation,
   type UpdateDeviceInput,
 } from '@/lib/api'
-import { formatDateTime } from '@/lib/format'
 import { cn } from '@/lib/utils'
 
 const coordinate = (min: number, max: number) =>
@@ -651,17 +651,21 @@ export function DevicesPage() {
                     </StatusRow>
                     <StatusRow label="Last seen">
                       <span className="text-muted-foreground">
-                        {selected.last_seen
-                          ? formatDateTime(selected.last_seen)
-                          : 'Never connected'}
+                        {selected.last_seen ? (
+                          <EventTime value={selected.last_seen} />
+                        ) : (
+                          'Never connected'
+                        )}
                       </span>
                     </StatusRow>
                     <StatusRow label="Access list">
                       <span className="text-muted-foreground">
                         v{selected.acl_version} ·{' '}
-                        {selected.last_sync_at
-                          ? formatDateTime(selected.last_sync_at)
-                          : 'Never synced'}
+                        {selected.last_sync_at ? (
+                          <EventTime value={selected.last_sync_at} />
+                        ) : (
+                          'Never synced'
+                        )}
                       </span>
                     </StatusRow>
                   </dl>
@@ -718,7 +722,14 @@ export function DevicesPage() {
                             : 'The device must be online to receive the access list'
                         }
                         disabled={!selected.online || syncMutation.isPending}
-                        onClick={() => syncMutation.mutate(selected.id)}
+                        onClick={() =>
+                          confirm({
+                            title: 'Synchronize access list?',
+                            description: `${selected.device_id} will receive the full configuration and access list now.`,
+                            confirmLabel: 'Sync',
+                            onConfirm: () => syncMutation.mutate(selected.id),
+                          })
+                        }
                       >
                         <RefreshCw className="size-4" />
                         {syncMutation.isPending

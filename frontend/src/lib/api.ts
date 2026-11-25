@@ -129,11 +129,13 @@ export type AccessEventQuery = {
 
 export class ApiError extends Error {
   readonly status: number
+  readonly retryAfter?: number
 
-  constructor(message: string, status: number) {
+  constructor(message: string, status: number, retryAfter?: number) {
     super(message)
     this.name = 'ApiError'
     this.status = status
+    this.retryAfter = retryAfter
   }
 }
 
@@ -180,7 +182,11 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
       response.status === 502
         ? 'Backend unavailable. Try again shortly.'
         : response.statusText
-    throw new ApiError(detail ?? fallback, response.status)
+    const header = response.headers.get('Retry-After')?.trim()
+    const retryAfter = header !== undefined && /^\d+$/.test(header)
+      ? Number(header)
+      : undefined
+    throw new ApiError(detail ?? fallback, response.status, retryAfter)
   }
 
   if (response.status === 204) {

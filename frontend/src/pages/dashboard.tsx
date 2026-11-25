@@ -17,11 +17,11 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
+import { EventTime } from '@/components/ui/event-time'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useAccessEvents } from '@/hooks/use-access-events'
 import { useDevices } from '@/hooks/use-devices'
 import { listEnrollments } from '@/lib/api'
-import { formatDateTime } from '@/lib/format'
 import { useQuery } from '@tanstack/react-query'
 
 const DeviceMap = lazy(async () => {
@@ -157,7 +157,7 @@ export function DashboardPage() {
                       )}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      {formatDateTime(event.ts)} · {event.reason}
+                      <EventTime value={event.ts} /> · {event.reason}
                     </p>
                   </div>
                   <Badge

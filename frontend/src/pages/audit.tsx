@@ -11,12 +11,12 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
+import { EventTime } from '@/components/ui/event-time'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select } from '@/components/ui/select'
 import { TableSkeleton } from '@/components/ui/skeleton'
 import { ApiError, listAuditLogs } from '@/lib/api'
-import { formatDateTime } from '@/lib/format'
 
 function errorMessage(error: unknown): string {
   return error instanceof ApiError
@@ -139,7 +139,7 @@ export function AuditPage() {
                     className="border-b border-border/60 align-top last:border-0"
                   >
                     <td className="py-3 pr-3 whitespace-nowrap text-muted-foreground">
-                      {formatDateTime(entry.ts)}
+                      <EventTime value={entry.ts} />
                     </td>
                     <td className="px-3 py-3 font-mono text-xs">
                       {entry.actor_id ? `${entry.actor_id.slice(-8)}` : 'CLI'}

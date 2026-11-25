@@ -9,13 +9,13 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
+import { EventTime } from '@/components/ui/event-time'
 import { Label } from '@/components/ui/label'
 import { Select } from '@/components/ui/select'
 import { TableSkeleton } from '@/components/ui/skeleton'
 import { useAccessEvents } from '@/hooks/use-access-events'
 import { useDevices } from '@/hooks/use-devices'
 import { ApiError, type AccessDecision } from '@/lib/api'
-import { formatDateTime } from '@/lib/format'
 
 const REASON_LABELS: Record<string, string> = {
   acl_match: 'Card in access list',
@@ -140,7 +140,7 @@ export function ActivityPage() {
                     className="border-b border-border/60 align-top last:border-0"
                   >
                     <td className="py-3 pr-3 whitespace-nowrap text-muted-foreground">
-                      {formatDateTime(event.ts)}
+                      <EventTime value={event.ts} />
                       {event.degraded ? (
                         <Badge variant="muted" className="ml-2">
                           degraded
