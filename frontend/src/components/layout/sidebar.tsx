@@ -1,6 +1,6 @@
-import { LockKeyhole } from 'lucide-react'
 import { Link, NavLink } from 'react-router-dom'
 
+import { SafelockLogo } from '@/components/brand/safelock-logo'
 import { NAV_ITEMS } from '@/components/layout/nav'
 import { useAuth } from '@/hooks/use-auth'
 import { cn } from '@/lib/utils'
@@ -17,15 +17,8 @@ export function Sidebar({ onNavigate }: SidebarProps) {
 
   return (
     <div className="flex h-full flex-col gap-6 px-3 py-4">
-      <Link
-        to="/"
-        className="flex items-center gap-2.5 px-2"
-        onClick={onNavigate}
-      >
-        <span className="grid size-8 place-items-center rounded-lg bg-primary text-primary-foreground">
-          <LockKeyhole className="size-4" />
-        </span>
-        <span className="text-base font-semibold tracking-tight">Safelock</span>
+      <Link to="/" className="flex items-center px-2" onClick={onNavigate}>
+        <SafelockLogo className="text-xl" />
       </Link>
 
       <nav className="flex flex-1 flex-col gap-1">

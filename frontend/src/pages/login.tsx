@@ -1,10 +1,11 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { LoaderCircle, LockKeyhole } from 'lucide-react'
+import { LoaderCircle } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { z } from 'zod'
 
 import { SessionLoader } from '@/components/auth/session-loader'
+import { SafelockLogo } from '@/components/brand/safelock-logo'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -63,16 +64,9 @@ export function LoginPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4 text-foreground">
       <div className="w-full max-w-sm">
-        <div className="mb-8 flex flex-col items-center gap-3 text-center">
-          <span className="grid size-11 place-items-center rounded-xl bg-primary text-primary-foreground">
-            <LockKeyhole className="size-5" />
-          </span>
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight">Safelock</h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Sign in to continue
-            </p>
-          </div>
+        <div className="mb-8 flex flex-col items-center gap-4 text-center">
+          <SafelockLogo className="text-3xl" />
+          <p className="text-sm text-muted-foreground">Sign in to continue</p>
         </div>
 
         <Card className="py-5">
