@@ -23,8 +23,8 @@ export function InlineNotice({
       className={cn(
         'flex items-start gap-2 rounded-md border px-3 py-2 text-sm',
         success
-          ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
-          : 'border-red-500/30 bg-red-500/10 text-red-300',
+          ? 'border-success/30 bg-success/10 text-success'
+          : 'border-destructive/30 bg-destructive/10 text-destructive',
         className,
       )}
     >

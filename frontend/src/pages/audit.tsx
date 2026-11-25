@@ -111,7 +111,7 @@ export function AuditPage() {
             Loading audit entries…
           </p>
         ) : auditQuery.isError ? (
-          <p className="py-12 text-center text-sm text-red-400">
+          <p className="py-12 text-center text-sm text-destructive">
             {errorMessage(auditQuery.error)}
           </p>
         ) : items.length === 0 ? (
@@ -157,7 +157,7 @@ export function AuditPage() {
                         <summary className="cursor-pointer text-xs text-muted-foreground underline-offset-4 hover:underline">
                           View
                         </summary>
-                        <pre className="mt-2 max-w-md overflow-x-auto rounded-md border border-border bg-zinc-950/60 p-3 text-[11px] text-muted-foreground">
+                        <pre className="mt-2 max-w-md overflow-x-auto rounded-md border border-border bg-background/60 p-3 text-[11px] text-muted-foreground">
                           {JSON.stringify(
                             { before: entry.before, after: entry.after },
                             null,

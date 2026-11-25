@@ -101,8 +101,8 @@ function SystemStatus({ status }: { status: SystemStatusInfo }) {
             apiOnline
               ? 'bg-brand'
               : apiConnecting
-                ? 'bg-amber-500'
-                : 'bg-red-500',
+                ? 'bg-warning'
+                : 'bg-destructive',
           )}
         />
         <span className="hidden sm:inline">{apiLabel}</span>
@@ -159,7 +159,7 @@ function AccountMenu() {
         aria-expanded={open}
         title={user ? `${user.email} (${roleLabel(user.role)})` : 'Signed out'}
         onClick={() => setOpen((value) => !value)}
-        className="grid size-8 shrink-0 place-items-center rounded-full bg-secondary text-xs font-medium ring-1 ring-border transition-all duration-200 hover:bg-zinc-700 hover:text-brand hover:ring-2 hover:ring-brand/40 hover:shadow-md"
+        className="grid size-8 shrink-0 place-items-center rounded-full bg-secondary text-xs font-medium ring-1 ring-border transition-all duration-200 hover:bg-accent hover:text-brand hover:ring-2 hover:ring-brand/40 hover:shadow-md"
       >
         {user ? userInitials(user.email) : '?'}
       </button>
@@ -199,7 +199,7 @@ export function AppHeader({ onOpenMenu }: { onOpenMenu: () => void }) {
   const status = useSystemStatus()
 
   return (
-    <header className="sticky top-0 z-30 border-b border-border bg-zinc-950">
+    <header className="sticky top-0 z-30 border-b border-border bg-background">
       <div className="flex h-16 items-center gap-3 px-4 lg:px-6">
         <PageHeading onOpenMenu={onOpenMenu} />
         <div className="ml-auto flex shrink-0 items-center gap-2 sm:gap-3">

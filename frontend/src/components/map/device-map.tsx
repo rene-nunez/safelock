@@ -127,7 +127,7 @@ export function DeviceMap({ devices, fitRequest }: DeviceMapProps) {
 
       {devices.length === 0 ? (
         <div className="pointer-events-none absolute inset-0 z-[1000] grid place-items-center p-6">
-          <div className="pointer-events-auto max-w-xs rounded-xl border border-border bg-zinc-950/90 p-5 text-center shadow-xl backdrop-blur">
+          <div className="pointer-events-auto max-w-xs rounded-xl border border-border bg-background/90 p-5 text-center shadow-xl backdrop-blur">
             <MapPin className="mx-auto size-5 text-muted-foreground" />
             <p className="mt-3 text-sm font-medium">No devices yet</p>
             <p className="mt-1 text-xs text-muted-foreground">
@@ -143,17 +143,17 @@ export function DeviceMap({ devices, fitRequest }: DeviceMapProps) {
         </div>
       ) : null}
 
-      <div className="absolute bottom-4 left-4 z-[1000] flex items-center gap-3 rounded-md border border-border bg-zinc-950/90 px-3 py-1.5 text-[11px] text-muted-foreground backdrop-blur">
+      <div className="absolute bottom-4 left-4 z-[1000] flex items-center gap-3 rounded-md border border-border bg-background/90 px-3 py-1.5 text-[11px] text-muted-foreground backdrop-blur">
         <span className="flex items-center gap-1.5">
-          <span className="size-2 rounded-full bg-emerald-500" />
+          <span className="size-2 rounded-full bg-success" />
           Online
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="size-2 rounded-full bg-zinc-500" />
+          <span className="size-2 rounded-full bg-muted-foreground" />
           Offline
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="size-2 rounded-full bg-red-500" />
+          <span className="size-2 rounded-full bg-destructive" />
           Locked
         </span>
       </div>

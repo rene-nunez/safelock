@@ -9,7 +9,7 @@ export function AppShell() {
 
   return (
     <div className="flex min-h-screen bg-background text-foreground">
-      <aside className="sticky top-0 hidden h-screen w-60 shrink-0 border-r border-border bg-zinc-950 lg:block">
+      <aside className="sticky top-0 hidden h-screen w-60 shrink-0 border-r border-border bg-background lg:block">
         <Sidebar />
       </aside>
 
@@ -21,7 +21,7 @@ export function AppShell() {
             className="fixed inset-0 z-40 bg-black/60 lg:hidden"
             onClick={() => setMenuOpen(false)}
           />
-          <aside className="fixed inset-y-0 left-0 z-50 w-60 border-r border-border bg-zinc-950 lg:hidden">
+          <aside className="fixed inset-y-0 left-0 z-50 w-60 border-r border-border bg-background lg:hidden">
             <Sidebar onNavigate={() => setMenuOpen(false)} />
           </aside>
         </>

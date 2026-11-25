@@ -91,7 +91,7 @@ export function LoginPage() {
                   {...form.register('email')}
                 />
                 {form.formState.errors.email ? (
-                  <p className="text-xs text-red-400">
+                  <p className="text-xs text-destructive">
                     {form.formState.errors.email.message}
                   </p>
                 ) : null}
@@ -106,14 +106,14 @@ export function LoginPage() {
                   {...form.register('password')}
                 />
                 {form.formState.errors.password ? (
-                  <p className="text-xs text-red-400">
+                  <p className="text-xs text-destructive">
                     {form.formState.errors.password.message}
                   </p>
                 ) : null}
               </div>
 
               {form.formState.errors.root ? (
-                <p className="text-sm text-red-400">
+                <p className="text-sm text-destructive">
                   {form.formState.errors.root.message}
                 </p>
               ) : null}

@@ -111,7 +111,7 @@ export function ActivityPage() {
             Loading activity…
           </p>
         ) : eventsQuery.isError ? (
-          <p className="py-12 text-center text-sm text-red-400">
+          <p className="py-12 text-center text-sm text-destructive">
             {errorMessage(eventsQuery.error)}
           </p>
         ) : items.length === 0 ? (

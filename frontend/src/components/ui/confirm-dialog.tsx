@@ -43,7 +43,7 @@ export function ConfirmDialog({
       aria-labelledby={titleId}
       aria-describedby={descriptionId}
       onCancel={onCancel}
-      className="m-auto w-full max-w-md rounded-lg border border-border bg-zinc-950 p-0 text-foreground shadow-xl backdrop:bg-black/70"
+      className="m-auto w-full max-w-md rounded-lg border border-border bg-background p-0 text-foreground shadow-xl backdrop:bg-black/70"
     >
       <div className="p-6">
         <h2 id={titleId} className="text-base font-semibold">

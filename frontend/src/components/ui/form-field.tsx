@@ -42,7 +42,7 @@ export function FormField({
       {error || hint || reserveMessage ? (
         <div className="min-h-4 text-xs">
           {error ? (
-            <p id={errorId} className="text-red-400">
+            <p id={errorId} className="text-destructive">
               {error}
             </p>
           ) : hint ? (

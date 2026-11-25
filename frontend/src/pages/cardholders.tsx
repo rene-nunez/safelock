@@ -590,7 +590,7 @@ export function CardholdersPage() {
                           setSelectedId(cardholder.id)
                         }}
                         className={cn(
-                          'flex w-full flex-wrap items-center gap-x-3 gap-y-2 px-6 py-3 text-left transition-colors hover:bg-accent/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50',
+                          'flex w-full flex-wrap items-center gap-x-3 gap-y-2 px-6 py-3 text-left transition-colors hover:bg-accent/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/60',
                           active && 'bg-accent',
                         )}
                       >
@@ -668,7 +668,6 @@ export function CardholdersPage() {
                   <FormActions className="sm:col-span-2">
                     <Button
                       type="submit"
-                      variant="brand"
                       disabled={updateMutation.isPending}
                     >
                       Save changes
@@ -1197,7 +1196,6 @@ export function CardholdersPage() {
                           </Button>
                           <Button
                             type="submit"
-                            variant="brand"
                             disabled={editMutation.isPending || !hasChanges || windowInvalid}
                           >
                             {editMutation.isPending ? 'Saving…' : 'Save changes'}

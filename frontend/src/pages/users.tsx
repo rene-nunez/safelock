@@ -291,7 +291,7 @@ export function UsersPage() {
                           'flex w-full flex-wrap items-center gap-x-3 gap-y-2 px-6 py-3 text-left transition-colors',
                           own
                             ? 'cursor-default'
-                            : 'hover:bg-accent/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50',
+                            : 'hover:bg-accent/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/60',
                           active && 'bg-accent',
                         )}
                       >
@@ -396,7 +396,6 @@ export function UsersPage() {
                 <FormActions className="sm:col-span-2">
                   <Button
                     type="submit"
-                    variant="brand"
                     disabled={
                       updateMutation.isPending || !editForm.formState.isDirty
                     }

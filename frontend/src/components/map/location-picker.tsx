@@ -159,7 +159,7 @@ export function LocationPicker({
 
       {value === null && (disabled || !interacted) ? (
         <div className="pointer-events-none absolute inset-0 z-[1000] grid place-items-center p-4">
-          <div className="rounded-lg border border-border bg-zinc-950/85 px-4 py-3 text-center text-xs text-muted-foreground backdrop-blur">
+          <div className="rounded-lg border border-border bg-background/85 px-4 py-3 text-center text-xs text-muted-foreground backdrop-blur">
             {disabled
               ? 'No location set.'
               : 'Click the map to place the lock, then drag the marker to adjust.'}
