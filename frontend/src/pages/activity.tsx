@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { Select } from '@/components/ui/select'
+import { TableSkeleton } from '@/components/ui/skeleton'
 import { useAccessEvents } from '@/hooks/use-access-events'
 import { useDevices } from '@/hooks/use-devices'
 import { ApiError, type AccessDecision } from '@/lib/api'
@@ -67,7 +68,9 @@ export function ActivityPage() {
             Access decisions reported by the devices.
           </CardDescription>
         </div>
-        <Badge variant="outline">{total} events</Badge>
+        <Badge variant="outline" className="tabular-nums">
+          {total} events
+        </Badge>
       </CardHeader>
       <CardContent>
         <div className="flex flex-wrap items-end gap-3">
@@ -107,9 +110,7 @@ export function ActivityPage() {
         </div>
 
         {eventsQuery.isPending ? (
-          <p className="py-12 text-center text-sm text-muted-foreground">
-            Loading activity…
-          </p>
+          <TableSkeleton columns={7} />
         ) : eventsQuery.isError ? (
           <p className="py-12 text-center text-sm text-destructive">
             {errorMessage(eventsQuery.error)}
@@ -148,7 +149,9 @@ export function ActivityPage() {
                     </td>
                     <td className="px-3 py-3 whitespace-nowrap">
                       {devices.find((device) => device.device_id === event.device_id)
-                        ?.name ?? event.device_id}
+                        ?.name ?? (
+                        <span className="font-mono">{event.device_id}</span>
+                      )}
                     </td>
                     <td className="px-3 py-3 capitalize">{event.source}</td>
                     <td className="px-3 py-3">
@@ -178,7 +181,7 @@ export function ActivityPage() {
             >
               Previous
             </Button>
-            <span className="text-xs text-muted-foreground">
+            <span className="text-xs tabular-nums text-muted-foreground">
               Page {Math.floor(offset / limit) + 1} of {pages}
             </span>
             <Button

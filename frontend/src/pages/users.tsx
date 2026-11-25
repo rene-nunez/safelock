@@ -15,6 +15,7 @@ import { Input } from '@/components/ui/input'
 import { PageToolbar } from '@/components/ui/page-toolbar'
 import { PasswordInput } from '@/components/ui/password-input'
 import { Select } from '@/components/ui/select'
+import { ListSkeleton } from '@/components/ui/skeleton'
 import { useAuth } from '@/hooks/use-auth'
 import { useConfirm } from '@/hooks/use-confirm'
 import {
@@ -264,9 +265,7 @@ export function UsersPage() {
               className="mx-6 mb-3"
             />
             {usersQuery.isPending ? (
-              <p className="px-6 py-10 text-center text-sm text-muted-foreground">
-                Loading users…
-              </p>
+              <ListSkeleton rows={4} />
             ) : users.length === 0 ? (
               <p className="px-6 py-10 text-center text-sm text-muted-foreground">
                 No users yet.

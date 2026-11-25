@@ -28,6 +28,7 @@ import { InlineNotice } from '@/components/ui/inline-notice'
 import { Input } from '@/components/ui/input'
 import { PageToolbar } from '@/components/ui/page-toolbar'
 import { Select } from '@/components/ui/select'
+import { ListSkeleton } from '@/components/ui/skeleton'
 import { useAuth } from '@/hooks/use-auth'
 import { useConfirm } from '@/hooks/use-confirm'
 import {
@@ -548,9 +549,7 @@ export function DevicesPage() {
               className="mx-6 mb-3"
             />
             {devicesQuery.isPending ? (
-              <p className="flex items-center justify-center px-6 py-10 text-center text-sm text-muted-foreground">
-                Loading devices…
-              </p>
+              <ListSkeleton rows={4} />
             ) : devices.length === 0 ? (
               <p className="flex items-center justify-center px-6 py-10 text-center text-sm text-muted-foreground">
                 No devices yet.

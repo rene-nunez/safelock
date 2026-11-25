@@ -14,6 +14,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select } from '@/components/ui/select'
+import { TableSkeleton } from '@/components/ui/skeleton'
 import { ApiError, listAuditLogs } from '@/lib/api'
 import { formatDateTime } from '@/lib/format'
 
@@ -53,7 +54,9 @@ export function AuditPage() {
             Administrative actions recorded by the backend.
           </CardDescription>
         </div>
-        <Badge variant="outline">{total} entries</Badge>
+        <Badge variant="outline" className="tabular-nums">
+          {total} entries
+        </Badge>
       </CardHeader>
       <CardContent>
         <form
@@ -107,9 +110,7 @@ export function AuditPage() {
         </form>
 
         {auditQuery.isPending ? (
-          <p className="py-12 text-center text-sm text-muted-foreground">
-            Loading audit entries…
-          </p>
+          <TableSkeleton columns={6} />
         ) : auditQuery.isError ? (
           <p className="py-12 text-center text-sm text-destructive">
             {errorMessage(auditQuery.error)}
@@ -174,7 +175,7 @@ export function AuditPage() {
         )}
 
         <div className="mt-4 flex items-center justify-between border-t border-border pt-4 text-sm">
-          <span className="text-muted-foreground">
+          <span className="tabular-nums text-muted-foreground">
             Page {page} of {pages}
           </span>
           <div className="flex gap-2">

@@ -92,7 +92,8 @@ export function DeviceMap({ devices, fitRequest }: DeviceMapProps) {
                   <div>
                     <p className="text-sm font-medium">{device.name}</p>
                     <p className="text-xs text-muted-foreground">
-                      {device.device_id} · {device.site ?? 'No site'}
+                      <span className="font-mono">{device.device_id}</span> ·{' '}
+                      {device.site ?? 'No site'}
                     </p>
                   </div>
                   <div className="flex flex-wrap items-center gap-1.5">

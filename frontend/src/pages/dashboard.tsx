@@ -17,6 +17,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
+import { Skeleton } from '@/components/ui/skeleton'
 import { useAccessEvents } from '@/hooks/use-access-events'
 import { useDevices } from '@/hooks/use-devices'
 import { listEnrollments } from '@/lib/api'
@@ -124,7 +125,7 @@ export function DashboardPage() {
           <CardContent className="px-0">
             <div className="h-[360px] border-t border-border sm:h-[420px]">
               <Suspense
-                fallback={<div className="h-full w-full animate-pulse bg-secondary/40" />}
+                fallback={<Skeleton className="size-full rounded-none" />}
               >
                 <DeviceMap devices={devices} fitRequest={fitRequest} />
               </Suspense>
@@ -151,7 +152,9 @@ export function DashboardPage() {
                   <div className="min-w-0">
                     <p className="truncate text-sm">
                       {devices.find((device) => device.device_id === event.device_id)
-                        ?.name ?? event.device_id}
+                        ?.name ?? (
+                        <span className="font-mono">{event.device_id}</span>
+                      )}
                     </p>
                     <p className="text-xs text-muted-foreground">
                       {formatDateTime(event.ts)} · {event.reason}

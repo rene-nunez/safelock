@@ -15,6 +15,7 @@ import { Input } from '@/components/ui/input'
 import { PageToolbar } from '@/components/ui/page-toolbar'
 import { PasswordInput } from '@/components/ui/password-input'
 import { Select } from '@/components/ui/select'
+import { ListSkeleton, Skeleton } from '@/components/ui/skeleton'
 import { useAuth } from '@/hooks/use-auth'
 import { useConfirm } from '@/hooks/use-confirm'
 import {
@@ -569,9 +570,7 @@ export function CardholdersPage() {
               className="mx-6 mb-3"
             />
             {cardholdersQuery.isPending ? (
-              <p className="flex items-center justify-center px-6 py-10 text-center text-sm text-muted-foreground">
-                Loading cardholders…
-              </p>
+              <ListSkeleton />
             ) : cardholders.length === 0 ? (
               <p className="flex items-center justify-center px-6 py-10 text-center text-sm text-muted-foreground">
                 No cardholders yet.
@@ -882,9 +881,16 @@ export function CardholdersPage() {
                           {pendingEnrollment ? (
                             <div>
                               <Badge variant={pendingEnrollment.status === 'scanned' ? 'secondary' : 'muted'}>
-                                {pendingEnrollment.status === 'scanned'
-                                  ? `Scanned: ${pendingEnrollment.uid}`
-                                  : 'Waiting for card…'}
+                                {pendingEnrollment.status === 'scanned' ? (
+                                  <>
+                                    Scanned:{' '}
+                                    <span className="font-mono">
+                                      {pendingEnrollment.uid}
+                                    </span>
+                                  </>
+                                ) : (
+                                  'Waiting for card…'
+                                )}
                               </Badge>
                             </div>
                           ) : null}
@@ -985,9 +991,15 @@ export function CardholdersPage() {
                   />
 
                   {credentialsQuery.isPending ? (
-                    <p className="py-6 text-center text-sm text-muted-foreground">
-                      Loading credentials…
-                    </p>
+                    <div
+                      className="mt-3 grid gap-3 sm:grid-cols-2"
+                      role="status"
+                    >
+                      <span className="sr-only">Loading credentials…</span>
+                      {Array.from({ length: 4 }, (_, index) => (
+                        <Skeleton key={index} className="h-28 rounded-lg" />
+                      ))}
+                    </div>
                   ) : credentials.length === 0 ? (
                     <p className="py-6 text-center text-sm text-muted-foreground">
                       No credentials yet.
