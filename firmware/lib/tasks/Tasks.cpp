@@ -157,6 +157,7 @@ void Tasks::run_numpad_task() {
   if (key == NO_KEY) return;
 
   if (pin_active) {
+
     if (current_millis > pin_until) {
       cancel_pin_entry();
       deny_access();
@@ -164,15 +165,30 @@ void Tasks::run_numpad_task() {
     }
     if (key == '*') {
       pin_buffer = "";
+
+      display.show_pin(0);
+
       return;
     }
     if (key == '#') {
-      if (pin_buffer.length() >= 6) submit_pin();
+
+      if (pin_buffer.length() >= 6) {
+        submit_pin();
+      }
+
       return;
     }
-    if (key >= '0' && key <= '9' && pin_buffer.length() < 32) {
+    if (
+      key >= '0' &&
+      key <= '9' &&
+      pin_buffer.length() < 32
+    ) {
       pin_buffer += key;
+      display.show_pin(
+        static_cast<uint8_t>(pin_buffer.length())
+      );
     }
+
     return;
   }
 
@@ -358,12 +374,18 @@ void Tasks::cancel_enrollment() {
   enrollment_until = 0;
 }
 
-void Tasks::start_pin_entry(const String &uid, const String &credential_id) {
+void Tasks::start_pin_entry(
+  const String &uid,
+  const String &credential_id
+) {
   pin_active = true;
   pin_uid = uid;
   pin_credential_id = credential_id;
   pin_buffer = "";
   pin_until = millis() + 30000UL;
+
+  // Mostrar pantalla de contraseña.
+  display.show_pin(0);
 }
 
 void Tasks::cancel_pin_entry() {

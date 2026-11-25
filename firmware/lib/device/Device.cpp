@@ -50,7 +50,10 @@ void Device::begin() {
   indicators.begin();
   indicators.show_locked();
   numpad.begin();
+
   display.begin();
+  display.show_logo();
+  delay(1500);
   display.show_lock();
   rfid.begin();
 }
