@@ -120,6 +120,21 @@ bool Storage::read_file(const char *path, String &output) {
   return true;
 }
 
+bool Storage::read_file_with_fallback(
+  const char *path, const char *temp_path, String &output
+) {
+  if (read_file(path, output)) return true;
+
+  // A power loss between removing the final file and renaming the temp file
+  // leaves only the temp file; it holds the last complete snapshot.
+  if (!read_file(temp_path, output)) return false;
+  Serial.print("Storage: recovered ");
+  Serial.println(path);
+  if (SD.remove(path) && SD.rename(temp_path, path)) return true;
+  SD.remove(temp_path);
+  return true;
+}
+
 bool Storage::write_file(const char *path, const String &content) {
   if (!ready) return false;
 

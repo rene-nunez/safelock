@@ -108,7 +108,7 @@ bool Acl::begin() {
   if (!storage.is_ready()) return false;
 
   String payload;
-  if (!storage.read_file(ACL_FILE, payload)) return false;
+  if (!storage.read_file_with_fallback(ACL_FILE, ACL_TEMP_FILE, payload)) return false;
 
   JsonDocument document;
   if (deserializeJson(document, payload) != DeserializationError::Ok) return false;

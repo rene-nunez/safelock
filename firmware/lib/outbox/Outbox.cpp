@@ -10,7 +10,19 @@ bool Outbox::begin() {
   if (!storage.is_ready()) return false;
 
   std::vector<String> lines;
-  if (!storage.read_lines(OUTBOX_FILE, lines)) return true;
+  String payload;
+  if (!storage.read_file_with_fallback(OUTBOX_FILE, OUTBOX_TMP_FILE, payload)) return true;
+
+  lines.clear();
+  size_t start = 0;
+  while (start < payload.length()) {
+    const int end = payload.indexOf('\n', start);
+    String line = (end < 0) ? payload.substring(start) : payload.substring(start, end);
+    line.trim();
+    if (line.length() > 0) lines.push_back(line);
+    if (end < 0) break;
+    start = static_cast<size_t>(end) + 1;
+  }
 
   next_id = 1;
   for (const String &line : lines) {
@@ -40,24 +52,23 @@ bool Outbox::persist() {
     document["topic"] = entry.topic;
     document["payload"] = entry.payload;
     document["qos"] = entry.qos;
-    serializeJson(document, payload);
+
+    // serializeJson clears the destination String, so append through a line.
+    String line;
+    serializeJson(document, line);
+    payload += line;
     payload += '\n';
   }
   return storage.write_atomic(OUTBOX_FILE, OUTBOX_TMP_FILE, payload);
 }
 
 bool Outbox::enqueue(const String &topic, const String &payload, uint8_t qos) {
+  // Keep the dropped entries until the new snapshot is on disk: if the write
+  // fails, restoring them is the only way to avoid losing events silently.
+  std::vector<OutboxEntry> dropped;
   while (entries.size() >= OUTBOX_MAX_ENTRIES) {
-    const uint16_t dropped_id = entries.front().id;
+    dropped.push_back(entries.front());
     entries.erase(entries.begin());
-    for (auto it = in_flight.begin(); it != in_flight.end();) {
-      if (it->second == dropped_id) {
-        it = in_flight.erase(it);
-      } else {
-        ++it;
-      }
-    }
-    Serial.printf("Outbox: dropped oldest id=%u (full)\n", static_cast<unsigned>(dropped_id));
   }
 
   OutboxEntry entry;
@@ -69,9 +80,22 @@ bool Outbox::enqueue(const String &topic, const String &payload, uint8_t qos) {
 
   if (!persist()) {
     entries.pop_back();
+    entries.insert(entries.begin(), dropped.begin(), dropped.end());
     Serial.println("Outbox: persist failed; entry dropped");
     return false;
   }
+
+  for (const OutboxEntry &old : dropped) {
+    for (auto it = in_flight.begin(); it != in_flight.end();) {
+      if (it->second == old.id) {
+        it = in_flight.erase(it);
+      } else {
+        ++it;
+      }
+    }
+    Serial.printf("Outbox: dropped oldest id=%u (full)\n", static_cast<unsigned>(old.id));
+  }
+
   Serial.printf(
     "Outbox: queued id=%u qos=%u (%u pending)\n",
     static_cast<unsigned>(entry.id),
