@@ -4,6 +4,12 @@
 
 #include <Wire.h>
 
+namespace {
+
+constexpr unsigned long PCF_RETRY_MS = 500;
+
+} // namespace
+
 uint8_t Indicators::find_address() {
   // PCF8574T
   for (uint8_t addr = 0x20; addr <= 0x27; addr++) {
@@ -32,6 +38,7 @@ bool Indicators::begin() {
   } else {
     ready = true;
     pcf_state = 0xFF;
+    pcf_desired = 0xFF;
     write_pcf();
 
     Serial.printf(
@@ -52,17 +59,24 @@ bool Indicators::begin() {
   return ready;
 }
 
-void Indicators::write_pcf() {
-  if (!ready) return;
+bool Indicators::write_pcf() {
+  if (!ready) return true;
 
   Wire.beginTransmission(address);
-  Wire.write(pcf_state);
-  Wire.endTransmission();
+  Wire.write(pcf_desired);
+  if (Wire.endTransmission() != 0) {
+    pcf_pending = true;
+    return false;
+  }
+
+  pcf_state = pcf_desired;
+  pcf_pending = false;
+  return true;
 }
 
 void Indicators::set_leds(bool red, bool green) {
   const uint8_t mask = (1 << PCF8574_RED_BIT) | (1 << PCF8574_GREEN_BIT);
-  uint8_t next = pcf_state & ~mask;
+  uint8_t next = pcf_desired & ~mask;
 
   if (red) next |= 1 << PCF8574_RED_BIT;
   if (green) next |= 1 << PCF8574_GREEN_BIT;
@@ -72,9 +86,13 @@ void Indicators::set_leds(bool red, bool green) {
   next ^= mask;
 #endif
 
-  if (next == pcf_state) return;
+  pcf_desired = next;
+  if (next == pcf_state) {
+    pcf_pending = false;
+    return;
+  }
 
-  pcf_state = next;
+  pcf_pending = true;
   write_pcf();
 }
 
@@ -133,10 +151,18 @@ void Indicators::beep_alert() {
 }
 
 void Indicators::update() {
+  unsigned long now = millis();
+
+  // A failed I2C write leaves the cached state stale; retry until the
+  // expander acknowledges instead of assuming the LEDs changed.
+  if (pcf_pending && static_cast<int32_t>(now - pcf_retry_at) >= 0) {
+    pcf_retry_at = now + PCF_RETRY_MS;
+    write_pcf();
+  }
+
   if (!beep_active) return;
 
-  unsigned long now = millis();
-  if ((int32_t)(now - beep_phase_end) < 0) return;
+  if (static_cast<int32_t>(now - beep_phase_end) < 0) return;
 
   beep_on = !beep_on;
 

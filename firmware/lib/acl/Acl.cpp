@@ -2,11 +2,23 @@
 
 #include "config.h"
 
+#include <limits>
+
 namespace {
 
+// ArduinoJson stores timestamps above 2038 as uint32/uint64, not as int.
 time_t optional_epoch(JsonVariantConst value) {
-  if (!value.is<int>()) return 0;
-  return static_cast<time_t>(value.as<int>());
+  if (value.is<int>()) {
+    const int epoch = value.as<int>();
+    return epoch > 0 ? static_cast<time_t>(epoch) : 0;
+  }
+  if (value.is<uint32_t>()) return static_cast<time_t>(value.as<uint32_t>());
+  if (value.is<uint64_t>()) {
+    const uint64_t epoch = value.as<uint64_t>();
+    if (epoch > static_cast<uint64_t>(std::numeric_limits<time_t>::max())) return 0;
+    return static_cast<time_t>(epoch);
+  }
+  return 0;
 }
 
 } // namespace
@@ -17,7 +29,9 @@ bool Acl::parse(const JsonObject &data, bool persist, time_t now) {
   if (!data["acl_version"].is<int>()) return false;
   if (!data["entries"].is<JsonArray>()) return false;
 
-  const uint32_t new_version = data["acl_version"].as<uint32_t>();
+  const int raw_version = data["acl_version"].as<int>();
+  if (raw_version < 0) return false;
+  const uint32_t new_version = static_cast<uint32_t>(raw_version);
   const bool new_requires_pin = data["requires_pin"] | false;
   const bool new_locked = data["locked"] | false;
   const String new_policy = data["offline_policy"] | "allow";
@@ -35,7 +49,6 @@ bool Acl::parse(const JsonObject &data, bool persist, time_t now) {
     AclEntry entry;
     entry.uid = item["uid"] | "";
     entry.credential_id = item["credential_id"] | "";
-    entry.holder_id = item["holder_id"] | "";
     entry.active = String(item["status"] | "active") == "active";
     entry.valid_from = optional_epoch(item["valid_from"]);
     entry.valid_to = optional_epoch(item["valid_to"]);
@@ -70,7 +83,6 @@ bool Acl::parse(const JsonObject &data, bool persist, time_t now) {
       JsonObject item = output.add<JsonObject>();
       item["uid"] = entry.uid;
       item["credential_id"] = entry.credential_id;
-      item["holder_id"] = entry.holder_id;
       item["status"] = entry.active ? "active" : "inactive";
       if (entry.valid_from > 0) {
         item["valid_from"] = static_cast<uint64_t>(entry.valid_from);
@@ -165,11 +177,8 @@ uint32_t Acl::age_s(bool clock_valid, time_t now) const {
   return static_cast<uint32_t>(now - received_at);
 }
 
-bool Acl::is_loaded() const { return loaded; }
 bool Acl::has_received_at() const { return received_at > 0; }
 uint32_t Acl::get_version() const { return version; }
 bool Acl::get_requires_pin() const { return requires_pin; }
 bool Acl::get_locked() const { return locked; }
-const String &Acl::get_policy() const { return policy; }
-uint16_t Acl::get_stale_hours() const { return stale_hours; }
 uint16_t Acl::get_unlock_ms() const { return unlock_duration; }

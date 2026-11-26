@@ -324,7 +324,7 @@ void Tasks::run_display_task() {
 void Tasks::start_entry() {
   ensure_rfid_ready();
   state = ENTERING;
-  display.show_entry(0);
+  display.show_entry();
 }
 
 void Tasks::grant_access(const char *method, uint16_t duration_ms) {

@@ -211,10 +211,8 @@ void Display::show_manual_open() {
   display.display();
 }
 
-void Display::show_entry(uint8_t digits) {
+void Display::show_entry() {
   if (!ready) return;
-
-  (void)digits;
 
   display.clearDisplay();
 

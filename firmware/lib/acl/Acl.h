@@ -14,7 +14,6 @@
 struct AclEntry {
   String uid;
   String credential_id;
-  String holder_id;
   bool active;
   time_t valid_from;
   time_t valid_to;
@@ -53,12 +52,9 @@ class Acl {
     const String &credential_id_for(const String &uid) const;
     uint32_t age_s(bool clock_valid, time_t now) const;
 
-    bool is_loaded() const;
     bool has_received_at() const;
     uint32_t get_version() const;
     bool get_requires_pin() const;
     bool get_locked() const;
-    const String &get_policy() const;
-    uint16_t get_stale_hours() const;
     uint16_t get_unlock_ms() const;
 };

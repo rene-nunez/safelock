@@ -107,6 +107,7 @@ bool Outbox::enqueue(const String &topic, const String &payload, uint8_t qos) {
 
 void Outbox::flush(MqttTransport &mqtt) {
   unsigned sent = 0;
+  std::vector<uint16_t> sent_without_ack;
   for (const OutboxEntry &entry : entries) {
     bool already_sent = false;
     for (const auto &pending : in_flight) {
@@ -122,9 +123,25 @@ void Outbox::flush(MqttTransport &mqtt) {
     );
     if (token == 0) continue;
 
-    // QoS0 has no PUBACK and the library reports token 1 for every publish.
-    if (entry.qos > 0) in_flight[token] = entry.id;
+    if (entry.qos > 0) {
+      in_flight[token] = entry.id;
+    } else {
+      // QoS0 has no PUBACK: remove it now instead of republishing forever.
+      sent_without_ack.push_back(entry.id);
+    }
     sent++;
+  }
+
+  if (!sent_without_ack.empty()) {
+    for (uint16_t id : sent_without_ack) {
+      for (auto it = entries.begin(); it != entries.end(); ++it) {
+        if (it->id == id) {
+          entries.erase(it);
+          break;
+        }
+      }
+    }
+    persist();
   }
 
   if (sent > 0) {

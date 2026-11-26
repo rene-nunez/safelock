@@ -8,7 +8,9 @@ namespace {
 constexpr unsigned long WIFI_CONNECT_TIMEOUT_MS = 15000;
 constexpr unsigned long WIFI_RETRY_MS = 5000;
 constexpr unsigned long TIME_SYNC_TIMEOUT_MS = 10000;
-constexpr unsigned long TIME_RETRY_MS = 30000;
+// SNTP polls on its own: re-arming configTime() too often resets its state
+// before a slow DNS lookup can converge. Reconnects still re-arm immediately.
+constexpr unsigned long TIME_RETRY_MS = 300000;
 constexpr time_t MIN_VALID_EPOCH = 1700000000; // 2023-11-14
 
 } // namespace

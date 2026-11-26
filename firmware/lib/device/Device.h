@@ -33,7 +33,7 @@ class Device {
     Acl acl;
     Outbox outbox;
     MqttTransport mqtt;
-    bool clock_synced = false;
+    unsigned long last_clock_sync = 0;
 
     // Must stay last: it holds references to all the members above
     Tasks tasks;

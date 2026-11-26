@@ -16,7 +16,8 @@ class Settings {
     bool is_provisioned() const;
 
     // Returns an empty string on success, or a validation error.
-    // All fields are checked before anything is written, so a bad value cannot leave NVS half-set.
+    // All fields are validated first and committed as one NVS value, so a
+    // power loss cannot leave a half-updated configuration.
     String set(const String &device_id, const String &wifi_ssid, const String &wifi_password, const String &mqtt_password);
     void clear();
 

@@ -5,7 +5,10 @@
 class Indicators {
   private:
     uint8_t address = 0;
-    uint8_t pcf_state = 0xFF;
+    uint8_t pcf_state = 0xFF;    // last state acknowledged by the expander
+    uint8_t pcf_desired = 0xFF;  // state we want
+    bool pcf_pending = false;
+    unsigned long pcf_retry_at = 0;
     bool ready = false;
 
     uint16_t beep_freq = 0;
@@ -20,7 +23,7 @@ class Indicators {
     unsigned long beep_phase_end = 0;
 
     uint8_t find_address();
-    void write_pcf();
+    bool write_pcf();
     void set_leds(bool red, bool green);
     void start_beep(uint16_t freq, uint16_t on_ms, uint16_t off_ms, uint8_t repeats, uint16_t alternate_freq = 0);
     void buzzer_on();
