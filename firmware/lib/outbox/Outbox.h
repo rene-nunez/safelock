@@ -13,7 +13,7 @@
 class MqttTransport;
 
 struct OutboxEntry {
-  uint16_t id;
+  uint32_t id;
   String topic;
   String payload;
   uint8_t qos;
@@ -23,8 +23,8 @@ class Outbox {
   private:
     Storage &storage;
     std::vector<OutboxEntry> entries;
-    std::map<uint16_t, uint16_t> in_flight;
-    uint16_t next_id = 1;
+    std::map<uint16_t, uint32_t> in_flight;
+    uint32_t next_id = 1;
 
     bool persist();
 

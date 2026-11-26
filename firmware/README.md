@@ -18,7 +18,7 @@ commit
 
 Any field can be corrected later over the same USB cable: stage the new value, `commit` and the device restarts with it. `factory-reset` erases all settings and restarts into the first-boot flow; `reboot` restarts without changes.
 
-Double quotes let a credential contain spaces (but not `"`). WiFi passwords are 8-63 characters, SSIDs 1-32 and MQTT passwords 1-128. The MQTT username is the `device_id`. Alternatively, run `make provision PORT=/dev/ttyUSB0` for a guided flow that validates the values before sending them.
+Double quotes let a credential contain spaces (but not `"`). Values are printable ASCII only: UTF-8 SSIDs or passwords cannot be entered over this serial prompt. WiFi passwords are 8-63 characters, SSIDs 1-32 and MQTT passwords 1-128. The MQTT username is the `device_id`. Alternatively, run `make provision PORT=/dev/ttyUSB0` for a guided flow that validates the values before sending them.
 
 ## Runtime
 

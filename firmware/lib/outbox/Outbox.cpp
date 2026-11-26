@@ -29,8 +29,13 @@ bool Outbox::begin() {
     JsonDocument document;
     if (deserializeJson(document, line) != DeserializationError::Ok) continue;
 
+    if (!document["id"].is<uint32_t>() &&
+        !(document["id"].is<int>() && document["id"].as<int>() > 0)) {
+      continue;
+    }
+
     OutboxEntry entry;
-    entry.id = document["id"] | 0;
+    entry.id = document["id"].as<uint32_t>();
     entry.topic = document["topic"] | "";
     entry.payload = document["payload"] | "";
     entry.qos = document["qos"] | 0;
@@ -107,7 +112,7 @@ bool Outbox::enqueue(const String &topic, const String &payload, uint8_t qos) {
 
 void Outbox::flush(MqttTransport &mqtt) {
   unsigned sent = 0;
-  std::vector<uint16_t> sent_without_ack;
+  std::vector<uint32_t> sent_without_ack;
   for (const OutboxEntry &entry : entries) {
     bool already_sent = false;
     for (const auto &pending : in_flight) {
@@ -133,7 +138,7 @@ void Outbox::flush(MqttTransport &mqtt) {
   }
 
   if (!sent_without_ack.empty()) {
-    for (uint16_t id : sent_without_ack) {
+    for (uint32_t id : sent_without_ack) {
       for (auto it = entries.begin(); it != entries.end(); ++it) {
         if (it->id == id) {
           entries.erase(it);
@@ -158,7 +163,7 @@ void Outbox::confirm_publish(uint16_t token) {
   const auto pending = in_flight.find(token);
   if (pending == in_flight.end()) return;
 
-  const uint16_t entry_id = pending->second;
+  const uint32_t entry_id = pending->second;
   in_flight.erase(pending);
 
   for (auto it = entries.begin(); it != entries.end(); ++it) {

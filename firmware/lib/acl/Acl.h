@@ -9,7 +9,6 @@
 
 #define ACL_FILE "/acl.json"
 #define ACL_TEMP_FILE "/acl.tmp"
-#define ACL_MAX_ENTRIES 256
 
 struct AclEntry {
   String uid;

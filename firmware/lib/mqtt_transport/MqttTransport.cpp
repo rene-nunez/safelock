@@ -1,6 +1,7 @@
 #include "MqttTransport.h"
 
 #include <esp_system.h>
+#include <protocol.h>
 #include <time.h>
 
 #include "mqtt_config.h"
@@ -295,28 +296,26 @@ void MqttTransport::handle_command_payload(
     return;
   }
 
-  const JsonObject envelope = document.as<JsonObject>();
-  const JsonObject data = envelope["data"].as<JsonObject>();
-  const String request_id = data["request_id"] | "";
-  if (request_id.length() == 0) {
+  const protocol::CommandEnvelope command = protocol::parse_command_envelope(
+    document.as<JsonObject>()
+  );
+  if (command.request_id.empty()) {
     Serial.println("MQTT command without request_id");
     return;
   }
-
-  // Every command from the backend carries expires_at; never accept a replay
-  // that omitted it, and reject commands that are already past their deadline.
-  const int64_t expires_at = data["expires_at"] | 0;
-  if (expires_at <= 0) {
-    publish_response(request_id, "error", "missing_expiry");
+  if (!command.valid) {
+    publish_response(command.request_id.c_str(), "error", "missing_expiry");
     return;
   }
-  const time_t now = time(nullptr);
-  if (now > 0 && static_cast<int64_t>(now) > expires_at) {
-    publish_response(request_id, "expired", "command_expired");
+  if (protocol::command_expired(command, time(nullptr))) {
+    publish_response(command.request_id.c_str(), "expired", "command_expired");
     return;
   }
 
-  handle_command(command_suffix(topic), data);
+  handle_command(
+    command_suffix(topic),
+    document["data"].as<JsonObject>()
+  );
 }
 
 void MqttTransport::handle_command(const String &command, const JsonObject &data) {
