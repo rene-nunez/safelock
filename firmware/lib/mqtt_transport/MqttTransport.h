@@ -5,6 +5,7 @@
 #include <espMqttClient.h>
 
 #include <atomic>
+#include <deque>
 #include <mutex>
 #include <vector>
 
@@ -61,15 +62,30 @@ class MqttTransport {
     String command_buffer;
     size_t command_expected = 0;
 
+    struct CallbackEvent {
+      enum class Type { Connected, Disconnected, Message };
+
+      CallbackEvent() : type(Type::Connected) {}
+      explicit CallbackEvent(Type event_type) : type(event_type) {}
+
+      Type type;
+      String topic;
+      String payload;
+      espMqttClientTypes::DisconnectReason reason{};
+    };
+
     unsigned long last_reconnect = 0;
     unsigned long last_flush = 0;
     std::atomic<unsigned long> last_heartbeat{0};
-    std::atomic<bool> reset_in_flight_pending{false};
 
-    // PUBACK runs in the MQTT task; the outbox is only touched from the loop task
+    // Callbacks run in the MQTT task. They only queue data; all application
+    // state (ACL, tasks, outbox, SD) is touched from the loop task.
+    std::mutex callbacks_mutex;
+    std::deque<CallbackEvent> callback_events;
     std::mutex acks_mutex;
     std::vector<uint16_t> pending_acks;
 
+    void drain_callbacks();
     String uuid4() const;
     String envelope(const JsonObject &data) const;
     String status_payload(bool online);

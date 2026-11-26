@@ -115,23 +115,17 @@ void MqttTransport::begin() {
 
   client.onConnect([this](bool session_present) {
     (void)session_present;
-    Serial.printf("MQTT connected (uptime=%lu s)\n", millis() / 1000);
-    reset_in_flight_pending.store(true);
-
-    if (client.subscribe(commands_topic.c_str(), MQTT_QOS1) == 0) {
-      Serial.println("MQTT subscribe failed");
-    }
-    publish_status();
-    last_flush = 0;
-    last_heartbeat.store(millis());
+    std::lock_guard<std::mutex> guard(callbacks_mutex);
+    callback_events.push_back(CallbackEvent(CallbackEvent::Type::Connected));
   });
 
   client.onDisconnect([this](espMqttClientTypes::DisconnectReason reason) {
-    Serial.print("MQTT disconnected: ");
-    Serial.println(espMqttClientTypes::disconnectReasonToString(reason));
-    reset_in_flight_pending.store(true);
     command_buffer = "";
     command_expected = 0;
+    std::lock_guard<std::mutex> guard(callbacks_mutex);
+    CallbackEvent event{CallbackEvent::Type::Disconnected};
+    event.reason = reason;
+    callback_events.push_back(std::move(event));
   });
 
   client.onMessage([this](
@@ -158,9 +152,13 @@ void MqttTransport::begin() {
     command_buffer.concat(reinterpret_cast<const char *>(payload), len);
     if (index + len < total) return;
 
-    handle_command_payload(topic, reinterpret_cast<const uint8_t *>(command_buffer.c_str()), command_buffer.length());
+    CallbackEvent event{CallbackEvent::Type::Message};
+    event.topic = topic;
+    event.payload = command_buffer;
     command_buffer = "";
     command_expected = 0;
+    std::lock_guard<std::mutex> guard(callbacks_mutex);
+    callback_events.push_back(std::move(event));
   });
 
   // Only PUBACK/PUBCOMP tokens arrive here; never log the acknowledged payload.
@@ -168,6 +166,45 @@ void MqttTransport::begin() {
     std::lock_guard<std::mutex> guard(acks_mutex);
     pending_acks.push_back(packet_id);
   });
+}
+
+void MqttTransport::drain_callbacks() {
+  for (;;) {
+    CallbackEvent event;
+    {
+      std::lock_guard<std::mutex> guard(callbacks_mutex);
+      if (callback_events.empty()) return;
+      event = std::move(callback_events.front());
+      callback_events.pop_front();
+    }
+
+    switch (event.type) {
+      case CallbackEvent::Type::Connected:
+        Serial.printf("MQTT connected (uptime=%lu s)\n", millis() / 1000);
+        outbox.reset_in_flight();
+        if (client.subscribe(commands_topic.c_str(), MQTT_QOS1) == 0) {
+          Serial.println("MQTT subscribe failed");
+        }
+        publish_status();
+        last_flush = 0;
+        last_heartbeat.store(millis());
+        break;
+
+      case CallbackEvent::Type::Disconnected:
+        Serial.print("MQTT disconnected: ");
+        Serial.println(espMqttClientTypes::disconnectReasonToString(event.reason));
+        outbox.reset_in_flight();
+        break;
+
+      case CallbackEvent::Type::Message:
+        handle_command_payload(
+          event.topic.c_str(),
+          reinterpret_cast<const uint8_t *>(event.payload.c_str()),
+          event.payload.length()
+        );
+        break;
+    }
+  }
 }
 
 void MqttTransport::drain_acks() {
@@ -182,15 +219,13 @@ void MqttTransport::drain_acks() {
 }
 
 void MqttTransport::update() {
+  // These callbacks only move data into the loop task; process them even while
+  // offline so a disconnect clears in-flight state immediately.
+  drain_acks();
+  drain_callbacks();
+
   // TLS needs a real clock: without network time the device stays offline.
   if (!net.is_connected() || !net.time_valid()) return;
-
-  drain_acks();
-
-  if (reset_in_flight_pending.exchange(false)) {
-    outbox.reset_in_flight();
-    last_flush = 0;
-  }
 
   if (client.connected()) {
     if ((millis() - last_flush) >= 1000) {
