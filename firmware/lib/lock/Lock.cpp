@@ -41,7 +41,8 @@ void Lock::unlock(uint16_t duration_ms) {
   activated_millis = millis();
   has_command = true;
   command_millis = activated_millis;
-  manual_open = false;
+  // A manual-open flag already queued must survive until take_manual_open();
+  // clearing it here would silently drop the alert.
   Serial.println("Lock unlock: energized");
 }
 

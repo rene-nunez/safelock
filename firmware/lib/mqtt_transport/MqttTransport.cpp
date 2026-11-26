@@ -44,14 +44,17 @@ String MqttTransport::uuid4() const {
   bytes[6] = (bytes[6] & 0x0F) | 0x40;
   bytes[8] = (bytes[8] & 0x3F) | 0x80;
 
+  // %x takes an unsigned int; passing uint8_t is undefined and truncates.
+  const auto hex = [](uint8_t byte) { return static_cast<unsigned>(byte); };
   char output[37];
   snprintf(
     output,
     sizeof(output),
     "%02x%02x%02x%02x-%02x%02x-%02x%02x-%02x%02x-%02x%02x%02x%02x%02x%02x%02x",
-    bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6],
-    bytes[7], bytes[8], bytes[9], bytes[10], bytes[11], bytes[12], bytes[13],
-    bytes[14], bytes[15]
+    hex(bytes[0]), hex(bytes[1]), hex(bytes[2]), hex(bytes[3]), hex(bytes[4]),
+    hex(bytes[5]), hex(bytes[6]), hex(bytes[7]), hex(bytes[8]), hex(bytes[9]),
+    hex(bytes[10]), hex(bytes[11]), hex(bytes[12]), hex(bytes[13]), hex(bytes[14]),
+    hex(bytes[15])
   );
   return String(output);
 }
@@ -300,9 +303,15 @@ void MqttTransport::handle_command_payload(
     return;
   }
 
-  const int expires_at = data["expires_at"] | 0;
+  // Every command from the backend carries expires_at; never accept a replay
+  // that omitted it, and reject commands that are already past their deadline.
+  const int64_t expires_at = data["expires_at"] | 0;
+  if (expires_at <= 0) {
+    publish_response(request_id, "error", "missing_expiry");
+    return;
+  }
   const time_t now = time(nullptr);
-  if (now > 0 && expires_at > 0 && now > expires_at) {
+  if (now > 0 && static_cast<int64_t>(now) > expires_at) {
     publish_response(request_id, "expired", "command_expired");
     return;
   }

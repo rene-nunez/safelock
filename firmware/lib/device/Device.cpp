@@ -53,6 +53,7 @@ void Device::begin() {
   display.begin();
   display.show_lock();
   rfid.begin();
+  tasks.begin();
 }
 
 void Device::run() {

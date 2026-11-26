@@ -170,6 +170,10 @@ void Provisioning::handle_line(const String &line) {
     Serial.println("Invalid command; check quotes and the number of arguments");
     return;
   }
+  if (count == 0) {
+    Serial.println("Empty command");
+    return;
+  }
 
   if (tokens[0] == "set") {
     if (count < 2) {

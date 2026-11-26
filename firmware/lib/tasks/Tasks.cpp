@@ -11,6 +11,11 @@ String mask_uid(const char *uid) {
   return text.substring(0, 2) + ":..:..:" + text.substring(text.length() - 2);
 }
 
+// millis() wraps every ~49 days; a signed difference keeps deadlines valid.
+bool deadline_passed(unsigned long now, unsigned long deadline) {
+  return static_cast<int32_t>(now - deadline) >= 0;
+}
+
 }  // namespace
 
 Tasks::Tasks(
@@ -23,9 +28,15 @@ Tasks::Tasks(
   Indicators &indicators,
   Acl &acl,
   MqttTransport &mqtt
-) : rfid(rfid), numpad(numpad), display(display), clock(clock), storage(storage), lock(lock), indicators(indicators), acl(acl), mqtt(mqtt) {
+) : rfid(rfid), numpad(numpad), display(display), clock(clock), storage(storage), lock(lock), indicators(indicators), acl(acl), mqtt(mqtt) {}
+
+void Tasks::begin() {
+  // Global constructors run before the Arduino core starts millis().
   state_millis = millis();
   last_sd_attempt = state_millis;
+  last_rfid_recover_millis = state_millis;
+  previous_rfid_millis = state_millis;
+  previous_numpad_millis = state_millis;
 }
 
 void Tasks::run() {
@@ -72,12 +83,9 @@ void Tasks::run_rfid_task() {
 
   previous_rfid_millis = current_millis;
 
-  // A coil pulse or an SD write can drop the antenna with no card due.
-  if ((current_millis - last_rfid_health_millis) >= RFID_HEALTH_INTERVAL) {
-    last_rfid_health_millis = current_millis;
-    ensure_rfid_ready();
-  }
-
+  // Recovery is driven by the UNHEALTHY result below and by start_entry():
+  // polling health from every state used to block keypad and lock updates for
+  // up to a second even when no card was due.
   if (state != ENTERING) return;
 
   Rfid::ScanResult scan = rfid.poll();
@@ -135,7 +143,7 @@ void Tasks::handle_card(const String &uid) {
   if (pin_active) return;
 
   if (enrollment_active) {
-    if (current_millis > enrollment_until) {
+    if (deadline_passed(current_millis, enrollment_until)) {
       cancel_enrollment();
     } else {
       JsonDocument document;
@@ -196,7 +204,7 @@ void Tasks::run_numpad_task() {
 
   // Expire on time even when the user walks away without pressing a key,
   // otherwise PIN entry would block RFID recovery indefinitely.
-  if (pin_active && current_millis > pin_until) {
+  if (pin_active && deadline_passed(current_millis, pin_until)) {
     cancel_pin_entry();
     deny_access();
     return;
@@ -367,8 +375,12 @@ void Tasks::deny_access() {
 
 void Tasks::alert_manual_open() {
   current_millis = millis();
-  state = ALERT;
-  state_millis = current_millis;
+  // Do not abandon the microSD retries during boot: the alert is still shown
+  // locally and logged, and WAIT_SD finishes its own transition afterwards.
+  if (state != WAIT_SD) {
+    state = ALERT;
+    state_millis = current_millis;
+  }
 
   indicators.show_locked();
   indicators.beep_alert();
@@ -392,9 +404,14 @@ void Tasks::alert_manual_open() {
 
 bool Tasks::begin_enrollment(const String &request_id, uint32_t ttl_s) {
   if (state != ENTERING && state != ALERT && state != ERROR) return false;
+  if (pin_active) return false;
+  if (enrollment_active && !deadline_passed(millis(), enrollment_until)) return false;
+
+  // The broker command carries a TTL; cap it so a bad value cannot overflow.
+  const uint32_t ttl_ms = ttl_s > 300 ? 300000UL : ttl_s * 1000UL;
   enrollment_active = true;
   enrollment_request_id = request_id;
-  enrollment_until = millis() + (ttl_s * 1000UL);
+  enrollment_until = millis() + ttl_ms;
   return true;
 }
 
@@ -405,6 +422,8 @@ void Tasks::cancel_enrollment() {
 }
 
 void Tasks::start_pin_entry(const String &uid, const String &credential_id) {
+  // A PIN prompt and an enrolment tap must never compete for the same reader.
+  cancel_enrollment();
   pin_active = true;
   pin_uid = uid;
   pin_credential_id = credential_id;
@@ -433,7 +452,8 @@ void Tasks::submit_pin() {
   JsonObject data = document["data"].to<JsonObject>();
   data["uid"] = pin_uid;
   data["pin"] = pin_buffer;
-  char req[33];
+  // UUID4 text is 36 chars plus NUL; a 32-byte buffer truncated the request_id.
+  char req[37];
   snprintf(req, sizeof(req), "%08lx-%04lx-4000-8000-%08lx%04lx", (unsigned long)millis(), (unsigned long)random(0xffff), (unsigned long)random(0xffffffff), (unsigned long)random(0xffff));
   data["request_id"] = req;
   mqtt.publish_event("events/pin-entry", data);
@@ -443,6 +463,20 @@ void Tasks::submit_pin() {
 
 void Tasks::handle_remote_unlock(uint16_t duration_ms) {
   publish_decision("granted", "remote", "remote", "", "");
+
+  // A command arriving during PIN entry or enrolment must clear that state,
+  // otherwise its timeout later shows a denial after the door already opened.
+  if (pin_active) cancel_pin_entry();
+  if (enrollment_active) cancel_enrollment();
+
+  if (state == LOGGING) {
+    // Keep the pending access log: opening again must not drop its retries.
+    lock.unlock(duration_ms);
+    indicators.show_unlocked();
+    indicators.beep_ok();
+    return;
+  }
+
   grant_access("remote", duration_ms);
 }
 

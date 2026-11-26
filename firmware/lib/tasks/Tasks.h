@@ -15,7 +15,6 @@
 // Poll and recovery intervals
 #define RFID_POLL_INTERVAL 200
 #define NUMPAD_POLL_INTERVAL 20
-#define RFID_HEALTH_INTERVAL 2000 // Check the reader in every state, not only while waiting for a card
 #define RFID_RECOVER_INTERVAL 2000 // Throttle blocking recovery attempts
 
 // Screen timings
@@ -72,7 +71,6 @@ class Tasks : public MqttCommandHandler {
 
     // Poll throttles
     unsigned long previous_rfid_millis = 0;
-    unsigned long last_rfid_health_millis = 0;
     unsigned long last_rfid_recover_millis = 0;
     unsigned long previous_numpad_millis = 0;
 
@@ -135,6 +133,7 @@ class Tasks : public MqttCommandHandler {
       MqttTransport &mqtt
     );
 
+    void begin();
     void run();
     bool begin_enrollment(const String &request_id, uint32_t ttl_s) override;
     void handle_remote_unlock(uint16_t duration_ms) override;
