@@ -130,8 +130,11 @@ bool Storage::read_file_with_fallback(
   if (!read_file(temp_path, output)) return false;
   Serial.print("Storage: recovered ");
   Serial.println(path);
-  if (SD.remove(path) && SD.rename(temp_path, path)) return true;
-  SD.remove(temp_path);
+  // Promote the surviving temp file when possible. If promotion fails, keep
+  // it: it remains the only complete copy until the next successful write.
+  if ((!SD.exists(path) || SD.remove(path)) && SD.rename(temp_path, path)) {
+    return true;
+  }
   return true;
 }
 
