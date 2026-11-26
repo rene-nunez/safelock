@@ -25,7 +25,7 @@ Safelock es un sistema de control de acceso con RFID (MFRC522), teclado, pantall
 | Sin conexión | Tarjetas: según `offline_policy` y `stale_acl_hours` (72 h). PIN: siempre denegado sin backend |
 | Bloqueo remoto | `locked: true` en la configuración: el dispositivo niega todo acceso |
 | Enrolamiento | **Por toque**: el backend inicia el modo, el dispositivo envía el UID leído y el admin confirma en la web |
-| Instalación | Credenciales iniciales por **serie/USB** una sola vez (device_id, WiFi, MQTT). Sin credencial de fábrica |
+| Instalación | Credenciales iniciales por **serie/USB** (device_id, WiFi, MQTT); se pueden corregir en cualquier momento por el mismo puerto. Sin credencial de fábrica |
 | Roles | `admin`: usuarios, configuración de dispositivos y auditoría. `operator`: operación diaria (ver, abrir, portadores, credenciales, enrolamiento) |
 | Mapa | Leaflet + Stadia Maps (Alidade Bright, estilo claro). UI solo en modo oscuro. Ubicación manual por dispositivo |
 
@@ -139,7 +139,7 @@ Ya están `net`, `mqtt_transport`, `settings`, `storage`, `acl` (`lib/acl`), `ou
 
 El firmware maneja `commands/enroll` y `commands/unlock`, publica `events/card-scan` y `events/pin-entry`, y usa el teclado para entrada de PIN (`*` borra, `#` envía, mínimo 6 dígitos). El PIN se valida solo en el backend; el dispositivo nunca lo guarda ni lo valida.
 
-Arranque: NVS → reloj válido → WiFi → hora → MQTT + LWT → publicar `status` → suscribirse a `commands/#` → sincronizar si hace falta → listo. Sin lista cargada, no hay acceso.
+Arranque: NVS → reloj válido → WiFi → hora → MQTT + LWT → publicar `status` → suscribirse a `commands/#` → sincronizar si hace falta → listo. Sin lista cargada, no hay acceso. El CLI serie está disponible en todo momento (se anuncia en cada boot); solo se bloquea el arranque mientras no haya credenciales válidas.
 
 ## Infra local (sin Docker)
 

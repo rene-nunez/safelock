@@ -16,7 +16,6 @@ void Device::begin() {
   provisioning.begin();
   if (!settings.is_provisioned()) {
     Serial.println("Waiting for provisioning over serial");
-    Serial.println("Type 'help' for commands");
     while (!settings.is_provisioned()) {
       provisioning.poll();
       delay(20);

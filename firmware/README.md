@@ -4,7 +4,7 @@ Before flashing, replace the broker values and the placeholder CA in `include/mq
 
 ## First boot
 
-Open the serial monitor at 115200 baud and type `help` to see the commands. A new device waits for provisioning before starting WiFi or MQTT. Stage each value, review it with `show`, then commit:
+The serial command prompt is announced on every boot at 115200 baud; type `help` to see the commands. A new device waits for provisioning before starting WiFi or MQTT. Stage each value, review it with `show`, then commit:
 
 ```text
 set device-id sl-0001

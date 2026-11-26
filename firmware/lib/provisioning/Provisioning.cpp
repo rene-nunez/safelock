@@ -42,7 +42,7 @@ bool tokenize(const String &line, String *tokens, size_t &count) {
 
 Provisioning::Provisioning(Settings &settings) : settings(settings) {}
 
-void Provisioning::begin() { Serial.println("Provisioning ready; type 'help' for commands"); }
+void Provisioning::begin() { Serial.println("Serial commands available over USB at any time; type 'help' for commands"); }
 
 void Provisioning::poll() {
   while (Serial.available() > 0) {
