@@ -51,7 +51,7 @@ String MqttTransport::uuid4() const {
   snprintf(
     output,
     sizeof(output),
-    "%02x%02x%02x%02x-%02x%02x-%02x%02x-%02x%02x-%02x%02x%02x%02x%02x%02x%02x",
+    "%02x%02x%02x%02x-%02x%02x-%02x%02x-%02x%02x-%02x%02x%02x%02x%02x%02x",
     hex(bytes[0]), hex(bytes[1]), hex(bytes[2]), hex(bytes[3]), hex(bytes[4]),
     hex(bytes[5]), hex(bytes[6]), hex(bytes[7]), hex(bytes[8]), hex(bytes[9]),
     hex(bytes[10]), hex(bytes[11]), hex(bytes[12]), hex(bytes[13]), hex(bytes[14]),

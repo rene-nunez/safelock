@@ -168,13 +168,20 @@ void Outbox::confirm_publish(uint16_t token) {
 
   for (auto it = entries.begin(); it != entries.end(); ++it) {
     if (it->id == entry_id) {
+      const OutboxEntry confirmed = *it;
       entries.erase(it);
+      if (!persist()) {
+        // The event was delivered but not removed on disk: keep it in memory
+        // so a reboot replays it. The backend deduplicates by message id.
+        entries.push_back(confirmed);
+        Serial.println("Outbox: confirm persist failed; keeping entry for replay");
+        return;
+      }
       Serial.printf(
         "Outbox: confirmed id=%u (%u pending)\n",
         static_cast<unsigned>(entry_id),
         static_cast<unsigned>(entries.size())
       );
-      persist();
       return;
     }
   }
