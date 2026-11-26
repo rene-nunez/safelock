@@ -148,7 +148,9 @@ void Tasks::handle_card(const String &uid) {
     }
   }
 
-  const AclDecision verdict = acl.evaluate(uid, clock.is_valid(), time(nullptr), mqtt.connected());
+  // Validity windows can be checked with either source: the RTC or SNTP.
+  const bool time_ok = clock.is_valid() || mqtt.time_valid();
+  const AclDecision verdict = acl.evaluate(uid, time_ok, time(nullptr), mqtt.connected());
   const String credential_id = acl.credential_id_for(uid);
 
   if (strcmp(verdict.decision, "granted") == 0) {
@@ -181,7 +183,8 @@ void Tasks::publish_decision(const char *decision, const char *reason, const cha
   if (uid.length() > 0) data["uid"] = uid;
   if (credential_id.length() > 0) data["credential_id"] = credential_id;
   data["acl_version"] = acl.get_version();
-  data["acl_age_s"] = acl.age_s(clock.is_valid(), time(nullptr));
+  const bool time_ok = clock.is_valid() || mqtt.time_valid();
+  data["acl_age_s"] = acl.age_s(time_ok, time(nullptr));
 
   mqtt.publish_event("events/access-decision", data);
 }

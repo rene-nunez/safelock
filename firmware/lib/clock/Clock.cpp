@@ -1,6 +1,8 @@
 #include "Clock.h"
 #include "pins.h"
 
+#include <time.h>
+
 bool Clock::begin() {
   Wire.begin(RTC_SDA, RTC_SCL);
 
@@ -11,8 +13,9 @@ bool Clock::begin() {
   }
 
   if (!rtc.isrunning()) {
-    Serial.println("Clock begin: no valid time, set to compile time");
-    rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
+    // Never seed a stopped RTC with the compile time: that timestamp is not
+    // trustworthy and would silently enable validity checks with a wrong date.
+    Serial.println("Clock begin: RTC not running, waiting for network time");
   }
 
   Serial.println("Clock begin: ok");
@@ -21,21 +24,35 @@ bool Clock::begin() {
 }
 
 String Clock::timestamp() {
-  if (!ready) return "";
+  if (ready && rtc.isrunning()) {
+    return rtc.now().timestamp(DateTime::TIMESTAMP_FULL);
+  }
 
-  // Returns the current date and time as a String in ISO 8601 format ("YYYY-MM-DDThh:mm:ss").
-  DateTime now = rtc.now();
-  return now.timestamp(DateTime::TIMESTAMP_FULL);
+  // Network time is the fallback while the DS1307 is unavailable or stopped.
+  const time_t epoch = time(nullptr);
+  if (epoch < 1700000000) return "";
+
+  struct tm utc;
+  gmtime_r(&epoch, &utc);
+  char buffer[20];
+  strftime(buffer, sizeof(buffer), "%Y-%m-%dT%H:%M:%S", &utc);
+  return String(buffer);
 }
 
 bool Clock::is_valid() { return ready && rtc.isrunning(); }
 
 void Clock::sync_from_epoch(time_t epoch) {
   if (!ready) return;
+  if (epoch <= 0) return;
 
-  // The RTC may hold the compile time from a previous boot;
-  // correct it once network time is available instead of trusting that value.
-  const long drift = static_cast<long>(epoch) - static_cast<long>(rtc.now().unixtime());
+  if (!rtc.isrunning()) {
+    rtc.adjust(DateTime(epoch));
+    Serial.println("Clock synced from network time");
+    return;
+  }
+
+  const int64_t drift =
+    static_cast<int64_t>(epoch) - static_cast<int64_t>(rtc.now().unixtime());
   if (drift >= -5 && drift <= 5) return;
 
   rtc.adjust(DateTime(epoch));

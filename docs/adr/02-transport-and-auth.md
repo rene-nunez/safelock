@@ -21,5 +21,5 @@ We need a simple and secure way for devices and the backend to communicate. The 
 
 - Fewer secrets and simpler firmware (no message signing code).
 - `espMqttClient` does not persist outgoing QoS 1 packets across a reboot. The firmware outbox (planned) has to cover that gap for `events/*`.
-- TLS needs a correct clock: seed from the RTC and sync with network time when possible. If the clock is not valid, do not try TLS.
+- TLS needs a correct clock: SNTP provides network time and corrects the RTC when possible. A missing or stopped RTC does not block TLS, but no TLS connection is attempted without network time.
 - Device identity depends on the broker; the backend trusts the broker to identify which `device_id` sent a message.

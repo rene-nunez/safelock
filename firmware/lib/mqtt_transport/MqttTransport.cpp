@@ -59,7 +59,7 @@ String MqttTransport::uuid4() const {
 String MqttTransport::envelope(const JsonObject &data) const {
   JsonDocument document;
   document["id"] = uuid4();
-  document["ts"] = clock.is_valid() ? static_cast<uint64_t>(time(nullptr)) : 0;
+  document["ts"] = net.time_valid() ? static_cast<uint64_t>(time(nullptr)) : 0;
   document["device_id"] = device_id;
 
   JsonObject target = document["data"].to<JsonObject>();

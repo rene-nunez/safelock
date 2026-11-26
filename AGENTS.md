@@ -43,7 +43,7 @@ Lo importante es si **el dispositivo puede comunicarse con el backend ahora**.
 - Bloqueo remoto (`locked`): niega todo acceso mientras esté activo.
 - Tarjeta fuera de la lista: se niega localmente (`decision: "denied"`, `reason: "acl_absent"`) pero se envía el evento.
 - Apertura manual (llave o switch): el pestillo se abre sin energizar la bobina → alerta local (OLED + buzzer) y evento `decision: "unknown"`, `source: "manual"`, `reason: "manual_open"`. Sin energía no se registra.
-- RTC inválido: no se evalúan vigencias ni se intenta TLS; se reporta en el `heartbeat`.
+- RTC inválido: se reporta en el `heartbeat`; las vigencias se evalúan con la hora de red cuando está disponible y TLS depende solo de esa hora.
 
 ## Protocolo MQTT
 

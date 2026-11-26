@@ -110,6 +110,7 @@ class MqttTransport {
     void set_command_handler(MqttCommandHandler &handler);
 
     bool connected() const;
+    bool time_valid() const { return net.time_valid(); }
     uint16_t publish_queued(
       const char *topic, const String &payload, uint8_t qos
     );

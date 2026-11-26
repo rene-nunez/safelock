@@ -24,7 +24,7 @@ Double quotes let a credential contain spaces (but not `"`). WiFi passwords are 
 
 On boot the device loads NVS, starts the RTC, restores `/acl.json` and `/outbox.json` from the microSD, connects to WiFi, syncs the clock with SNTP and then connects to MQTT over TLS. It publishes a retained `status` and a `heartbeat` every 30 s. On the LAN it uses the DHCP hostname `safelock-<device_id>`, derived from the device ID during provisioning; some routers still list the MAC address instead.
 
-SNTP is re-armed whenever WiFi reconnects and retried every 30 s while network time is invalid; MQTT only connects once that time is valid. TCP connect is capped at 10 s and the TLS handshake at 15 s so a failed attempt cannot stall reconnection. TLS uses network time and does not require a working RTC; card expiry checks are skipped while the RTC is invalid. The RTC is corrected from network time whenever it becomes available after boot.
+SNTP is re-armed whenever WiFi reconnects and retried every 30 s while network time is invalid; MQTT only connects once that time is valid. TCP connect is capped at 10 s and the TLS handshake at 15 s so a failed attempt cannot stall reconnection. TLS uses network time and does not require a working RTC; card expiry checks use network time when the RTC is invalid and are skipped only while neither source is valid. The RTC is corrected from network time whenever it becomes available after boot; a stopped RTC is never seeded with the compile time.
 The Last Will publishes `online: false` to `status` on an unexpected disconnect.
 
 The RFID reader is checked every 2 s in every state, not only while waiting for a card. A coil pulse or an SD write can reset the MFRC522 and clear its antenna bits; recovery verifies a software antenna-on write and falls back to a hard reset of NRSTPD. `CommandReg` and `TxControlReg` are logged when the reader is unhealthy.
@@ -41,7 +41,7 @@ The backend sends the full snapshot on `commands/synchronize-access-list`. The d
 
 The `unlock_ms` value in the snapshot overrides the initial `LOCK_OPEN_MS` from `include/config.h`, which is only a boot default. The manual-open attribution window follows the active duration.
 
-Snapshots are stamped with the network epoch even when the RTC is degraded. A restored snapshot without a usable timestamp is reported as `acl_version: 0` in `status` so the backend resends it. Validity windows and `acl_stale` are still evaluated only while the RTC is valid; command expiry uses the network epoch.
+Snapshots are stamped with the network epoch even when the RTC is degraded. A restored snapshot without a usable timestamp is reported as `acl_version: 0` in `status` so the backend resends it. Validity windows and `acl_stale` use network time when the RTC is invalid; command expiry uses the network epoch.
 
 Every `events/*` and `response` message is queued in `/outbox.json` and resent when the broker is reachable. The broker deduplicates by message `id`, so a reboot can safely replay in-flight messages. `status` and `heartbeat` are never queued.
 
