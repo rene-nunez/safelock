@@ -24,6 +24,19 @@ class MqttCommandHandler {
     virtual void handle_remote_unlock(uint16_t duration_ms) = 0;
 };
 
+// The library keeps the TLS transport protected; expose its timeouts so a
+// blocked handshake cannot stall reconnection for the default 120 s.
+class SafelockMqttClient : public espMqttClientSecure {
+  public:
+    explicit SafelockMqttClient(espMqttClientTypes::UseInternalTask use_internal_task)
+      : espMqttClientSecure(use_internal_task) {}
+
+    void set_timeouts(uint16_t tcp_seconds, uint16_t handshake_seconds) {
+      _client.client.setTimeout(tcp_seconds);
+      _client.client.setHandshakeTimeout(handshake_seconds);
+    }
+};
+
 class MqttTransport {
   private:
     Settings &settings;
@@ -34,7 +47,7 @@ class MqttTransport {
     Outbox &outbox;
     MqttCommandHandler *command_handler = nullptr;
 
-    espMqttClientSecure client;
+    SafelockMqttClient client;
 
     // espMqttClient does not copy these strings: they must outlive the client
     String device_id;

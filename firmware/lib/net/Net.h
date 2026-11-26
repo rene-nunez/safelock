@@ -7,6 +7,11 @@ class Net {
   String ssid;
   String password;
   unsigned long last_attempt = 0;
+  unsigned long last_time_attempt = 0;
+  bool was_connected = false;
+  bool time_was_valid = false;
+
+  void request_time();
 
  public:
   void begin(const String &ssid, const String &password);

@@ -7,6 +7,7 @@
 #include <vector>
 
 #define OUTBOX_FILE "/outbox.json"
+#define OUTBOX_TMP_FILE "/outbox.tmp"
 #define OUTBOX_MAX_ENTRIES 256
 
 class MqttTransport;
@@ -35,4 +36,6 @@ class Outbox {
     void flush(MqttTransport &mqtt);
     void confirm_publish(uint16_t token);
     void reset_in_flight();
+
+    size_t size() const { return entries.size(); }
 };

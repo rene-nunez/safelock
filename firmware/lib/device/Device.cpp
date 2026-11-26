@@ -42,7 +42,8 @@ void Device::begin() {
   lock.set_unlock_ms(acl.get_unlock_ms());
   outbox.begin();
   net.begin(settings.get_wifi_ssid(), settings.get_wifi_password());
-  if (net.time_valid()) clock.sync_from_epoch(time(nullptr));
+  clock_synced = net.time_valid();
+  if (clock_synced) clock.sync_from_epoch(time(nullptr));
   mqtt.begin();
   mqtt.set_command_handler(tasks);
 
@@ -57,6 +58,10 @@ void Device::begin() {
 void Device::run() {
   provisioning.poll();
   net.update();
+  if (!clock_synced && net.time_valid()) {
+    clock.sync_from_epoch(time(nullptr));
+    clock_synced = true;
+  }
   mqtt.update();
   tasks.run();
 }

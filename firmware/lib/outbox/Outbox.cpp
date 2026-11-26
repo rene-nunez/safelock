@@ -43,12 +43,21 @@ bool Outbox::persist() {
     serializeJson(document, payload);
     payload += '\n';
   }
-  return storage.write_file(OUTBOX_FILE, payload);
+  return storage.write_atomic(OUTBOX_FILE, OUTBOX_TMP_FILE, payload);
 }
 
 bool Outbox::enqueue(const String &topic, const String &payload, uint8_t qos) {
   while (entries.size() >= OUTBOX_MAX_ENTRIES) {
+    const uint16_t dropped_id = entries.front().id;
     entries.erase(entries.begin());
+    for (auto it = in_flight.begin(); it != in_flight.end();) {
+      if (it->second == dropped_id) {
+        it = in_flight.erase(it);
+      } else {
+        ++it;
+      }
+    }
+    Serial.printf("Outbox: dropped oldest id=%u (full)\n", static_cast<unsigned>(dropped_id));
   }
 
   OutboxEntry entry;
@@ -60,12 +69,20 @@ bool Outbox::enqueue(const String &topic, const String &payload, uint8_t qos) {
 
   if (!persist()) {
     entries.pop_back();
+    Serial.println("Outbox: persist failed; entry dropped");
     return false;
   }
+  Serial.printf(
+    "Outbox: queued id=%u qos=%u (%u pending)\n",
+    static_cast<unsigned>(entry.id),
+    static_cast<unsigned>(qos),
+    static_cast<unsigned>(entries.size())
+  );
   return true;
 }
 
 void Outbox::flush(MqttTransport &mqtt) {
+  unsigned sent = 0;
   for (const OutboxEntry &entry : entries) {
     bool already_sent = false;
     for (const auto &pending : in_flight) {
@@ -79,7 +96,20 @@ void Outbox::flush(MqttTransport &mqtt) {
     const uint16_t token = mqtt.publish_queued(
       entry.topic.c_str(), entry.payload, entry.qos
     );
-    if (token > 0) in_flight[token] = entry.id;
+    if (token == 0) continue;
+
+    // QoS0 has no PUBACK and the library reports token 1 for every publish.
+    if (entry.qos > 0) in_flight[token] = entry.id;
+    sent++;
+  }
+
+  if (sent > 0) {
+    Serial.printf(
+      "Outbox: flushed %u (pending=%u, in-flight=%u)\n",
+      sent,
+      static_cast<unsigned>(entries.size()),
+      static_cast<unsigned>(in_flight.size())
+    );
   }
 }
 
@@ -93,6 +123,11 @@ void Outbox::confirm_publish(uint16_t token) {
   for (auto it = entries.begin(); it != entries.end(); ++it) {
     if (it->id == entry_id) {
       entries.erase(it);
+      Serial.printf(
+        "Outbox: confirmed id=%u (%u pending)\n",
+        static_cast<unsigned>(entry_id),
+        static_cast<unsigned>(entries.size())
+      );
       persist();
       return;
     }
@@ -100,5 +135,8 @@ void Outbox::confirm_publish(uint16_t token) {
 }
 
 void Outbox::reset_in_flight() {
+  if (!in_flight.empty()) {
+    Serial.printf("Outbox: reset %u in-flight\n", static_cast<unsigned>(in_flight.size()));
+  }
   in_flight.clear();
 }

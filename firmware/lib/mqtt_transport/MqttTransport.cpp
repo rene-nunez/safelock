@@ -8,6 +8,8 @@
 namespace {
 
 constexpr size_t MAX_COMMAND_SIZE = 4096;
+constexpr uint16_t MQTT_TCP_TIMEOUT_S = 10;
+constexpr uint16_t MQTT_TLS_HANDSHAKE_TIMEOUT_S = 15;
 
 String command_suffix(const char *topic) {
   const char *marker = "/commands/";
@@ -105,6 +107,7 @@ void MqttTransport::begin() {
   client.setServer(MQTT_HOST, MQTT_PORT);
   client.setKeepAlive(60);
   client.setCleanSession(true);
+  client.set_timeouts(MQTT_TCP_TIMEOUT_S, MQTT_TLS_HANDSHAKE_TIMEOUT_S);
 
   // The library keeps pointers, not copies, so these strings have to stay alive.
   will_payload = status_payload(false);
@@ -112,7 +115,7 @@ void MqttTransport::begin() {
 
   client.onConnect([this](bool session_present) {
     (void)session_present;
-    Serial.println("MQTT connected");
+    Serial.printf("MQTT connected (uptime=%lu s)\n", millis() / 1000);
     reset_in_flight_pending.store(true);
 
     if (client.subscribe(commands_topic.c_str(), MQTT_QOS1) == 0) {
@@ -124,8 +127,8 @@ void MqttTransport::begin() {
   });
 
   client.onDisconnect([this](espMqttClientTypes::DisconnectReason reason) {
-    (void)reason;
-    Serial.println("MQTT disconnected");
+    Serial.print("MQTT disconnected: ");
+    Serial.println(espMqttClientTypes::disconnectReasonToString(reason));
     reset_in_flight_pending.store(true);
     command_buffer = "";
     command_expected = 0;
@@ -207,6 +210,12 @@ void MqttTransport::update() {
   if (millis() - last_reconnect < MQTT_RECONNECT_MS) return;
   last_reconnect = millis();
 
+  Serial.printf(
+    "MQTT connecting (wifi=%d, time=%d, outbox=%u)\n",
+    net.is_connected() ? 1 : 0,
+    net.time_valid() ? 1 : 0,
+    static_cast<unsigned>(outbox.size())
+  );
   if (!client.connect()) Serial.println("MQTT connect failed");
 }
 
