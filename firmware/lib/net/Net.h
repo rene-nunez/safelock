@@ -14,7 +14,7 @@ class Net {
   void request_time();
 
  public:
-  void begin(const String &ssid, const String &password);
+  void begin(const String &ssid, const String &password, const String &device_id);
   void update();
 
   bool is_connected() const;

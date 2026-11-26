@@ -22,7 +22,7 @@ Double quotes let a credential contain spaces (but not `"`). WiFi passwords are 
 
 ## Runtime
 
-On boot the device loads NVS, starts the RTC, restores `/acl.json` and `/outbox.json` from the microSD, connects to WiFi, syncs the clock with SNTP and then connects to MQTT over TLS. It publishes a retained `status` and a `heartbeat` every 30 s.
+On boot the device loads NVS, starts the RTC, restores `/acl.json` and `/outbox.json` from the microSD, connects to WiFi, syncs the clock with SNTP and then connects to MQTT over TLS. It publishes a retained `status` and a `heartbeat` every 30 s. On the LAN it uses the DHCP hostname `safelock-<device_id>`, derived from the device ID during provisioning; some routers still list the MAC address instead.
 
 SNTP is re-armed whenever WiFi reconnects and retried every 30 s while network time is invalid; MQTT only connects once that time is valid. TCP connect is capped at 10 s and the TLS handshake at 15 s so a failed attempt cannot stall reconnection. TLS uses network time and does not require a working RTC; card expiry checks are skipped while the RTC is invalid. The RTC is corrected from network time whenever it becomes available after boot.
 The Last Will publishes `online: false` to `status` on an unexpected disconnect.

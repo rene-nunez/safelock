@@ -13,9 +13,15 @@ constexpr time_t MIN_VALID_EPOCH = 1700000000; // 2023-11-14
 
 } // namespace
 
-void Net::begin(const String &ssid, const String &password) {
+void Net::begin(const String &ssid, const String &password, const String &device_id) {
   this->ssid = ssid;
   this->password = password;
+
+  // The core applies the hostname in WiFi.mode(), so set it before that call.
+  const String hostname = "safelock-" + device_id;
+  WiFi.setHostname(hostname.c_str());
+  Serial.print("WiFi hostname: ");
+  Serial.println(hostname);
 
   WiFi.mode(WIFI_STA);
   WiFi.setAutoReconnect(true);

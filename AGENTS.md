@@ -139,7 +139,7 @@ Ya están `net`, `mqtt_transport`, `settings`, `storage`, `acl` (`lib/acl`), `ou
 
 El firmware maneja `commands/enroll` y `commands/unlock`, publica `events/card-scan` y `events/pin-entry`, y usa el teclado para entrada de PIN (`*` borra, `#` envía, mínimo 6 dígitos). El PIN se valida solo en el backend; el dispositivo nunca lo guarda ni lo valida.
 
-Arranque: NVS → reloj válido → WiFi → hora → MQTT + LWT → publicar `status` → suscribirse a `commands/#` → sincronizar si hace falta → listo. Sin lista cargada, no hay acceso. El CLI serie está disponible en todo momento (se anuncia en cada boot); solo se bloquea el arranque mientras no haya credenciales válidas. SNTP se rearma al reconectar WiFi y se reintenta mientras la hora de red sea inválida; MQTT usa esa hora para TLS (un RTC inválido no bloquea TLS) con timeouts de 10 s en TCP y 15 s en el handshake. El outbox se persiste de forma atómica.
+Arranque: NVS → reloj válido → WiFi → hora → MQTT + LWT → publicar `status` → suscribirse a `commands/#` → sincronizar si hace falta → listo. Sin lista cargada, no hay acceso. El CLI serie está disponible en todo momento (se anuncia en cada boot); solo se bloquea el arranque mientras no haya credenciales válidas. El hostname WiFi es `safelock-<device_id>` (se fija antes de `WiFi.mode()`). SNTP se rearma al reconectar WiFi y se reintenta mientras la hora de red sea inválida; MQTT usa esa hora para TLS (un RTC inválido no bloquea TLS) con timeouts de 10 s en TCP y 15 s en el handshake. El outbox se persiste de forma atómica.
 
 ## Infra local (sin Docker)
 
