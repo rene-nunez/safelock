@@ -214,7 +214,7 @@ Result of a command.
 - With no access list loaded, all card access is denied.
 - A card not in the access list is denied locally (`acl_absent`) but the event is still sent.
 - Manual opening (key or switch): local alert and an `access-decision` event with `decision: "unknown"`, `source: "manual"`, `reason: "manual_open"`. If there is no power, it is not recorded.
-- Remote lockdown (`locked: true`): deny all access.
+- Remote lockdown (`locked: true`): deny all access, including remote unlock commands.
 - If the RTC is not valid: report it in `heartbeat`. TLS and validity windows use network time (SNTP); without any valid time source, expiry checks are skipped and events are marked `degraded`.
 
 ### Event Queue

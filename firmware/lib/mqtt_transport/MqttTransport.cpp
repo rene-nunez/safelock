@@ -329,6 +329,11 @@ void MqttTransport::handle_command(const String &command, const JsonObject &data
   }
 
   if (command == "unlock") {
+    // A remote lockdown denies every opening, including a replayed command.
+    if (acl.get_locked()) {
+      publish_response(request_id, "error", "door_locked");
+      return;
+    }
     if (command_handler == nullptr) {
       publish_response(request_id, "error", "not_ready");
       return;

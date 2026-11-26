@@ -229,6 +229,26 @@ async def test_operator_can_unlock_online_device(
     assert r.status_code == 503
 
 
+async def test_unlock_is_rejected_while_device_is_locked(
+    api: AsyncClient, admin_headers: dict[str, str], db: Database
+) -> None:
+    created = await create_device(api, admin_headers)
+    await db.devices.update_one(
+        {"device_id": "sl-0001"},
+        {"$set": {"last_seen": datetime.now(UTC), "locked": True}},
+    )
+
+    r = await api.post(
+        f"/api/v1/devices/{created['id']}/unlock", headers=admin_headers
+    )
+
+    assert r.status_code == 409
+    document = await db.devices.find_one({"device_id": "sl-0001"})
+    assert document is not None
+    assert document.get("unlock_cooldown_until") is None
+    assert await db.audit_logs.count_documents({"action": "device.unlock"}) == 0
+
+
 async def test_unlock_cooldown_returns_429(
     api: AsyncClient,
     admin_headers: dict[str, str],

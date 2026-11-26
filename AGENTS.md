@@ -23,7 +23,7 @@ Safelock es un sistema de control de acceso con RFID (MFRC522), teclado, pantall
 | PIN | Lo verifica **solo el backend**, por TLS. Largo variable (≥ 6; `#` envía, `*` borra). El dispositivo nunca lo valida ni lo guarda. El `operator` puede fijar o resetear el PIN de una credencial; solo el `admin` cambia `requires_pin` del dispositivo |
 | Bajas | Credenciales y dispositivos se **revocan o retiran**; el borrado duro solo se permite sin historial (credencial sin `access_events`, dispositivo que nunca se conectó). Baja del portador revoca todas sus credenciales; su borrado duro solo se permite sin credenciales ni historial y es solo para `admin`. Reactivar al portador restaura solo las tarjetas revocadas por esa baja; el `restore` individual exige portador activo |
 | Sin conexión | Tarjetas: según `offline_policy` y `stale_acl_hours` (72 h). PIN: siempre denegado sin backend |
-| Bloqueo remoto | `locked: true` en la configuración: el dispositivo niega todo acceso |
+| Bloqueo remoto | `locked: true` en la configuración: el dispositivo niega todo acceso, incluida la apertura remota |
 | Enrolamiento | **Por toque**: el backend inicia el modo, el dispositivo envía el UID leído y el admin confirma en la web |
 | Instalación | Credenciales iniciales por **serie/USB** (device_id, WiFi, MQTT); se pueden corregir en cualquier momento por el mismo puerto. Sin credencial de fábrica |
 | Roles | `admin`: usuarios, configuración de dispositivos y auditoría. `operator`: operación diaria (ver, abrir, portadores, credenciales, enrolamiento) |

@@ -237,6 +237,10 @@ async def unlock_device_endpoint(
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT, detail="The device is offline"
         )
+    if target.get("locked", False):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail="The device is locked"
+        )
     throttle = await claim_device_cooldown(
         db,
         device_id=target["device_id"],
