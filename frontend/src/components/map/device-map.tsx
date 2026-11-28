@@ -178,21 +178,6 @@ export function DeviceMap({
           </div>
         </div>
       ) : null}
-
-      <div className="absolute bottom-4 left-4 z-[1000] flex items-center gap-3 rounded-md border border-border bg-background/90 px-3 py-1.5 text-[11px] text-muted-foreground backdrop-blur">
-        <span className="flex items-center gap-1.5">
-          <span className="size-2 rounded-full bg-success" />
-          Online
-        </span>
-        <span className="flex items-center gap-1.5">
-          <span className="size-2 rounded-full bg-muted-foreground" />
-          Offline
-        </span>
-        <span className="flex items-center gap-1.5">
-          <span className="size-2 rounded-full bg-destructive" />
-          Locked
-        </span>
-      </div>
     </div>
   )
 }
