@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/card'
 import { EventTime } from '@/components/ui/event-time'
 import { Freshness } from '@/components/ui/freshness'
+import { InlineNotice } from '@/components/ui/inline-notice'
 import { Label } from '@/components/ui/label'
 import { Select } from '@/components/ui/select'
 import { TableSkeleton } from '@/components/ui/skeleton'
@@ -116,9 +117,10 @@ export function ActivityPage() {
         {eventsQuery.isPending ? (
           <TableSkeleton columns={7} />
         ) : eventsQuery.isError ? (
-          <p className="py-12 text-center text-sm text-destructive">
-            {errorMessage(eventsQuery.error)}
-          </p>
+          <InlineNotice
+            message={errorMessage(eventsQuery.error)}
+            className="mx-auto my-12 max-w-md"
+          />
         ) : items.length === 0 ? (
           <p className="py-12 text-center text-sm text-muted-foreground">
             No access events yet.

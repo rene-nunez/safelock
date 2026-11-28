@@ -5,12 +5,14 @@ import { cn } from '@/lib/utils'
 type InlineNoticeProps = {
   message: string | null | undefined
   tone?: 'success' | 'error'
+  compact?: boolean
   className?: string
 }
 
 export function InlineNotice({
   message,
   tone = 'error',
+  compact = false,
   className,
 }: InlineNoticeProps) {
   if (!message) return null
@@ -21,7 +23,8 @@ export function InlineNotice({
     <p
       role={success ? 'status' : 'alert'}
       className={cn(
-        'flex items-start gap-2 rounded-md border px-3 py-2 text-sm',
+        'flex items-start rounded-md border px-3 py-2 text-sm',
+        compact ? 'gap-1.5 px-2 py-1.5 text-xs' : 'gap-2',
         success
           ? 'border-success/30 bg-success/10 text-success'
           : 'border-destructive/30 bg-destructive/10 text-destructive',
@@ -29,9 +32,13 @@ export function InlineNotice({
       )}
     >
       {success ? (
-        <CircleCheck className="mt-0.5 size-4 shrink-0" />
+        <CircleCheck
+          className={cn('mt-0.5 shrink-0', compact ? 'size-3.5' : 'size-4')}
+        />
       ) : (
-        <CircleAlert className="mt-0.5 size-4 shrink-0" />
+        <CircleAlert
+          className={cn('mt-0.5 shrink-0', compact ? 'size-3.5' : 'size-4')}
+        />
       )}
       <span>{message}</span>
     </p>

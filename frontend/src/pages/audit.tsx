@@ -12,6 +12,7 @@ import {
   CardTitle,
 } from '@/components/ui/card'
 import { EventTime } from '@/components/ui/event-time'
+import { InlineNotice } from '@/components/ui/inline-notice'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select } from '@/components/ui/select'
@@ -112,9 +113,10 @@ export function AuditPage() {
         {auditQuery.isPending ? (
           <TableSkeleton columns={6} />
         ) : auditQuery.isError ? (
-          <p className="py-12 text-center text-sm text-destructive">
-            {errorMessage(auditQuery.error)}
-          </p>
+          <InlineNotice
+            message={errorMessage(auditQuery.error)}
+            className="mx-auto my-12 max-w-md"
+          />
         ) : items.length === 0 ? (
           <p className="py-12 text-center text-sm text-muted-foreground">
             No audit entries match this filter.

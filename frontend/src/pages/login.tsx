@@ -8,6 +8,7 @@ import { SessionLoader } from '@/components/auth/session-loader'
 import { SafelockLogo } from '@/components/brand/safelock-logo'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
+import { InlineNotice } from '@/components/ui/inline-notice'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { PasswordInput } from '@/components/ui/password-input'
@@ -86,11 +87,10 @@ export function LoginPage() {
                   aria-invalid={Boolean(form.formState.errors.email)}
                   {...form.register('email')}
                 />
-                {form.formState.errors.email ? (
-                  <p className="text-xs text-destructive">
-                    {form.formState.errors.email.message}
-                  </p>
-                ) : null}
+                <InlineNotice
+                  compact
+                  message={form.formState.errors.email?.message}
+                />
               </div>
 
               <div className="grid gap-2">
@@ -101,18 +101,13 @@ export function LoginPage() {
                   aria-invalid={Boolean(form.formState.errors.password)}
                   {...form.register('password')}
                 />
-                {form.formState.errors.password ? (
-                  <p className="text-xs text-destructive">
-                    {form.formState.errors.password.message}
-                  </p>
-                ) : null}
+                <InlineNotice
+                  compact
+                  message={form.formState.errors.password?.message}
+                />
               </div>
 
-              {form.formState.errors.root ? (
-                <p className="text-sm text-destructive">
-                  {form.formState.errors.root.message}
-                </p>
-              ) : null}
+              <InlineNotice message={form.formState.errors.root?.message} />
 
               <Button
                 type="submit"
