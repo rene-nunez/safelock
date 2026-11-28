@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { LoaderCircle } from 'lucide-react'
 import { useForm } from 'react-hook-form'
@@ -26,11 +27,25 @@ type LoginLocationState = {
   from?: string
 }
 
+const currentTimestamp = () => Date.now()
+
 export function LoginPage() {
   const { user, isLoading, signIn } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const from = (location.state as LoginLocationState | null)?.from ?? '/'
+  const [lockoutUntil, setLockoutUntil] = useState<number | null>(null)
+  const [now, setNow] = useState(() => currentTimestamp())
+  const remaining = lockoutUntil
+    ? Math.max(0, Math.ceil((lockoutUntil - now) / 1000))
+    : 0
+  const locked = remaining > 0
+
+  useEffect(() => {
+    if (!locked) return
+    const timer = window.setInterval(() => setNow(currentTimestamp()), 500)
+    return () => window.clearInterval(timer)
+  }, [locked])
 
   const form = useForm<LoginValues>({
     resolver: zodResolver(loginSchema),
@@ -41,16 +56,24 @@ export function LoginPage() {
     form.clearErrors('root')
     try {
       await signIn(values.email, values.password)
+      setLockoutUntil(null)
       navigate(from, { replace: true })
     } catch (error) {
-      let message = 'Could not sign in. Try again.'
-      if (error instanceof ApiError) {
-        message =
-          error.status === 429 && error.retryAfter !== undefined
-            ? `Too many attempts. Try again in ${error.retryAfter} s.`
-            : error.message
+      if (
+        error instanceof ApiError &&
+        error.status === 429 &&
+        error.retryAfter !== undefined
+      ) {
+        setNow(currentTimestamp())
+        setLockoutUntil(currentTimestamp() + error.retryAfter * 1000)
+        return
       }
-      form.setError('root', { message })
+      form.setError('root', {
+        message:
+          error instanceof ApiError
+            ? error.message
+            : 'Could not sign in. Try again.',
+      })
     }
   }
 
@@ -84,6 +107,7 @@ export function LoginPage() {
                   type="email"
                   autoComplete="email"
                   placeholder="admin@example.com"
+                  disabled={locked}
                   aria-invalid={Boolean(form.formState.errors.email)}
                   {...form.register('email')}
                 />
@@ -98,6 +122,7 @@ export function LoginPage() {
                 <PasswordInput
                   id="password"
                   autoComplete="current-password"
+                  disabled={locked}
                   aria-invalid={Boolean(form.formState.errors.password)}
                   {...form.register('password')}
                 />
@@ -107,18 +132,26 @@ export function LoginPage() {
                 />
               </div>
 
-              <InlineNotice message={form.formState.errors.root?.message} />
+              <InlineNotice
+                message={
+                  locked
+                    ? `Too many attempts. Try again in ${remaining} s.`
+                    : form.formState.errors.root?.message
+                }
+              />
 
               <Button
                 type="submit"
                 className="mt-1 w-full"
-                disabled={form.formState.isSubmitting}
+                disabled={locked || form.formState.isSubmitting}
               >
                 {form.formState.isSubmitting ? (
                   <>
                     <LoaderCircle className="size-4 animate-spin" />
                     Signing in
                   </>
+                ) : locked ? (
+                  `Try again in ${remaining} s`
                 ) : (
                   'Sign in'
                 )}
