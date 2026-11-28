@@ -45,7 +45,7 @@ export function Freshness({
       )}
     >
       <CircleAlert className="size-3.5 shrink-0" />
-      last update {formatAge(age)}
+      Last update {formatAge(age)}
     </span>
   )
 }
