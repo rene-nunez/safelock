@@ -1,38 +1,18 @@
-import {
-  lazy,
-  Suspense,
-  useEffect,
-  useState,
-  type ComponentProps,
-  type ReactNode,
-} from 'react'
-import { zodResolver } from '@hookform/resolvers/zod'
+import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ChevronRight, Lock, LockOpen, Plus, RefreshCw, X } from 'lucide-react'
-import { useForm, useWatch } from 'react-hook-form'
+import { ChevronRight, Plus, X } from 'lucide-react'
 import { useSearchParams } from 'react-router-dom'
-import { z } from 'zod'
 
-import { deviceMarkerColor } from '@/components/map/map-config'
+import { DeviceCreateForm } from '@/components/devices/device-create-form'
+import { DeviceDetailPanel } from '@/components/devices/device-detail-panel'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
-import { EventTime } from '@/components/ui/event-time'
+import { Card, CardContent } from '@/components/ui/card'
 import { Freshness } from '@/components/ui/freshness'
-import { FormActions } from '@/components/ui/form-actions'
-import { FormField } from '@/components/ui/form-field'
 import { InlineNotice } from '@/components/ui/inline-notice'
-import { Input } from '@/components/ui/input'
 import { PageToolbar } from '@/components/ui/page-toolbar'
-import { Select } from '@/components/ui/select'
 import { ListSkeleton } from '@/components/ui/skeleton'
 import { useAuth } from '@/hooks/use-auth'
-import { useConfirm } from '@/hooks/use-confirm'
 import {
   ApiError,
   createDevice,
@@ -42,68 +22,10 @@ import {
   unlockDevice,
   updateDevice,
   type CreateDeviceInput,
-  type Device,
-  type DeviceLocation,
   type UpdateDeviceInput,
 } from '@/lib/api'
 import { cn } from '@/lib/utils'
 
-const coordinate = (min: number, max: number) =>
-  z
-    .string()
-    .trim()
-    .refine(
-      (value) =>
-        value === '' ||
-        (!Number.isNaN(Number(value)) &&
-          Number(value) >= min &&
-          Number(value) <= max),
-      { message: `Use a number between ${min} and ${max}` },
-    )
-
-const createSchema = z
-  .object({
-    device_id: z
-      .string()
-      .trim()
-      .regex(/^sl-\d{4}$/i, 'Use the format sl-0001'),
-    name: z.string().trim().min(1, 'Enter a name'),
-    site: z.string().trim(),
-    lat: coordinate(-90, 90),
-    lng: coordinate(-180, 180),
-  })
-  .refine((values) => (values.lat === '') === (values.lng === ''), {
-    message: 'Set both latitude and longitude, or neither',
-    path: ['lng'],
-  })
-
-const settingsSchema = z
-  .object({
-    name: z.string().trim().min(1, 'Enter a name'),
-    site: z.string().trim(),
-    lat: coordinate(-90, 90),
-    lng: coordinate(-180, 180),
-    offline_policy: z.enum(['allow', 'deny']),
-    stale_acl_hours: z
-      .string()
-      .regex(/^\d+$/, 'Use a whole number')
-      .refine((value) => Number(value) >= 1 && Number(value) <= 8760, {
-        message: 'Use 1 to 8760 hours',
-      }),
-    unlock_ms: z
-      .string()
-      .regex(/^\d+$/, 'Use a whole number')
-      .refine((value) => Number(value) >= 100 && Number(value) <= 10_000, {
-        message: 'Use 100 to 10000 ms',
-      }),
-  })
-  .refine((values) => (values.lat === '') === (values.lng === ''), {
-    message: 'Set both latitude and longitude, or neither',
-    path: ['lng'],
-  })
-
-type CreateValues = z.infer<typeof createSchema>
-type SettingsValues = z.infer<typeof settingsSchema>
 type NoticeArea = 'page' | 'detail' | 'settings'
 
 function errorMessage(error: unknown): string | null {
@@ -113,69 +35,8 @@ function errorMessage(error: unknown): string | null {
     : 'Something went wrong. Try again.'
 }
 
-function locationFrom(lat: string, lng: string) {
-  return lat === '' ? null : { lat: Number(lat), lng: Number(lng) }
-}
-
-function parseLocation(lat: string, lng: string): DeviceLocation | null {
-  if (lat.trim() === '' || lng.trim() === '') return null
-  const parsedLat = Number(lat)
-  const parsedLng = Number(lng)
-  if (
-    Number.isNaN(parsedLat) ||
-    Number.isNaN(parsedLng) ||
-    parsedLat < -90 ||
-    parsedLat > 90 ||
-    parsedLng < -180 ||
-    parsedLng > 180
-  ) {
-    return null
-  }
-  return { lat: parsedLat, lng: parsedLng }
-}
-
-const LocationPicker = lazy(async () => {
-  const module = await import('@/components/map/location-picker')
-  return { default: module.LocationPicker }
-})
-
-function LazyMapPicker(props: ComponentProps<typeof LocationPicker>) {
-  return (
-    <Suspense
-      fallback={
-        <div
-          className={`w-full animate-pulse rounded-lg border border-border bg-secondary/40 ${props.className ?? ''}`}
-        />
-      }
-    >
-      <LocationPicker {...props} />
-    </Suspense>
-  )
-}
-
-function StatusTile({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div className="rounded-lg border border-border p-3">
-      <p className="text-xs text-muted-foreground">{label}</p>
-      <div className="mt-1.5 flex flex-wrap items-center gap-2 text-sm">
-        {children}
-      </div>
-    </div>
-  )
-}
-
-function StatusRow({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1.5 py-2.5 first:pt-3 last:pb-3">
-      <dt className="text-xs text-muted-foreground">{label}</dt>
-      <dd className="min-w-0 text-right text-sm">{children}</dd>
-    </div>
-  )
-}
-
 export function DevicesPage() {
   const { user } = useAuth()
-  const { confirm, dialog } = useConfirm()
   const isAdmin = user?.role === 'admin'
   const queryClient = useQueryClient()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -190,22 +51,9 @@ export function DevicesPage() {
     setSuccess({ message, area })
   }
 
-  function resetSettingsForm(device: Device) {
-    settingsForm.reset({
-      name: device.name,
-      site: device.site ?? '',
-      lat: device.location ? String(device.location.lat) : '',
-      lng: device.location ? String(device.location.lng) : '',
-      offline_policy: device.offline_policy,
-      stale_acl_hours: String(device.stale_acl_hours),
-      unlock_ms: String(device.unlock_ms),
-    })
-  }
-
   function closeDetail() {
     setSuccess(null)
     resetPanelMutations()
-    settingsForm.reset()
     setSelectedId(null)
     if (requestedDevice) setSearchParams({}, { replace: true })
   }
@@ -223,76 +71,20 @@ export function DevicesPage() {
         device.device_id.toLowerCase() === requestedDevice.toLowerCase(),
     )
     if (!match) return
+    // The URL is an entry point: resolve it once the device list loads.
+    // oxlint-disable react/set-state-in-effect
     setSelectedId(match.id)
     setSearchParams({}, { replace: true })
+    // oxlint-enable react/set-state-in-effect
   }, [devicesQuery.data, requestedDevice, setSearchParams])
 
   const invalidate = () =>
     queryClient.invalidateQueries({ queryKey: ['devices'] })
 
-  const createForm = useForm<CreateValues>({
-    resolver: zodResolver(createSchema),
-    defaultValues: {
-      device_id: '',
-      name: '',
-      site: '',
-      lat: '',
-      lng: '',
-    },
-  })
-  const settingsForm = useForm<SettingsValues>({
-    resolver: zodResolver(settingsSchema),
-    defaultValues: {
-      name: '',
-      site: '',
-      lat: '',
-      lng: '',
-      offline_policy: 'allow',
-      stale_acl_hours: '72',
-      unlock_ms: '3000',
-    },
-  })
-
-  const createLat = useWatch({ control: createForm.control, name: 'lat' })
-  const createLng = useWatch({ control: createForm.control, name: 'lng' })
-  const settingsLat = useWatch({ control: settingsForm.control, name: 'lat' })
-  const settingsLng = useWatch({ control: settingsForm.control, name: 'lng' })
-  const createLocation = parseLocation(createLat, createLng)
-  const settingsLocation = parseLocation(settingsLat, settingsLng)
-
-  function applyCreateLocation(next: DeviceLocation | null) {
-    createForm.setValue('lat', next ? String(next.lat) : '', {
-      shouldValidate: true,
-    })
-    createForm.setValue('lng', next ? String(next.lng) : '', {
-      shouldValidate: true,
-    })
-  }
-
-  function applySettingsLocation(next: DeviceLocation | null) {
-    settingsForm.setValue('lat', next ? String(next.lat) : '', {
-      shouldValidate: true,
-      shouldDirty: true,
-    })
-    settingsForm.setValue('lng', next ? String(next.lng) : '', {
-      shouldValidate: true,
-      shouldDirty: true,
-    })
-  }
-
-  useEffect(() => {
-    resetPanelMutations()
-    if (!selected) return
-    resetSettingsForm(selected)
-    // Reset only when switching devices, not after a background refetch.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selected?.id])
-
   const createMutation = useMutation({
     mutationFn: createDevice,
     onMutate: () => setSuccess(null),
     onSuccess: (device) => {
-      createForm.reset()
       setCreateOpen(false)
       setSelectedId(device.id)
       showSuccess('Device added.')
@@ -327,9 +119,9 @@ export function DevicesPage() {
         )
       } else {
         showSuccess('Device settings saved.', 'settings')
-        resetSettingsForm(updated)
       }
       void invalidate()
+      return updated
     },
   })
 
@@ -373,8 +165,6 @@ export function DevicesPage() {
     },
   })
 
-
-
   function resetDetailMutations(skip?: 'update' | 'delete' | 'sync' | 'unlock') {
     if (skip !== 'update') updateMutation.reset()
     if (skip !== 'delete') deleteMutation.reset()
@@ -387,30 +177,12 @@ export function DevicesPage() {
     createMutation.reset()
   }
 
-  function onCreate(values: CreateValues) {
-    const input: CreateDeviceInput = {
-      device_id: values.device_id.toLowerCase(),
-      name: values.name,
-      site: values.site === '' ? null : values.site,
-      location: locationFrom(values.lat, values.lng),
-    }
-    createMutation.mutate(input)
-  }
-
-  function onSave(values: SettingsValues) {
-    if (!selected) return
-    updateMutation.mutate({
-      id: selected.id,
-      input: {
-        name: values.name,
-        site: values.site === '' ? null : values.site,
-        location: locationFrom(values.lat, values.lng),
-        offline_policy: values.offline_policy,
-        stale_acl_hours: Number(values.stale_acl_hours),
-        unlock_ms: Number(values.unlock_ms),
-      },
-    })
-  }
+  const mutationError = errorMessage(
+    updateMutation.error ??
+      deleteMutation.error ??
+      syncMutation.error ??
+      unlockMutation.error,
+  )
 
   return (
     <div className="flex flex-col gap-4 lg:gap-6">
@@ -435,103 +207,14 @@ export function DevicesPage() {
       />
 
       {createOpen && isAdmin ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>Add device</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form
-              noValidate
-              className="grid gap-4 sm:grid-cols-2"
-              onSubmit={createForm.handleSubmit(onCreate)}
-            >
-              <FormField
-                label="Device ID"
-                htmlFor="device-id"
-                error={createForm.formState.errors.device_id?.message}
-              >
-                <Input
-                  placeholder="sl-0001"
-                  {...createForm.register('device_id')}
-                />
-              </FormField>
-              <FormField
-                label="Name"
-                htmlFor="device-name"
-                error={createForm.formState.errors.name?.message}
-              >
-                <Input
-                  placeholder="Front door"
-                  {...createForm.register('name')}
-                />
-              </FormField>
-              <FormField label="Site (optional)" htmlFor="device-site">
-                <Input placeholder="HQ" {...createForm.register('site')} />
-              </FormField>
-              <div className="sm:col-span-2">
-                <p className="mb-2 text-sm font-medium">Location on map</p>
-                <LazyMapPicker
-                  value={createLocation}
-                  onChange={applyCreateLocation}
-                  className="h-[448px] w-full"
-                />
-                <div className="mt-4 grid gap-2 sm:grid-cols-2">
-                  <FormField
-                    label="Latitude"
-                    htmlFor="device-lat"
-                    error={createForm.formState.errors.lat?.message}
-                    reserveMessage={false}
-                  >
-                    <Input
-                      inputMode="decimal"
-                      placeholder="-33.45"
-                      {...createForm.register('lat')}
-                    />
-                  </FormField>
-                  <FormField
-                    label="Longitude"
-                    htmlFor="device-lng"
-                    error={createForm.formState.errors.lng?.message}
-                    reserveMessage={false}
-                  >
-                    <Input
-                      inputMode="decimal"
-                      placeholder="-70.66"
-                      {...createForm.register('lng')}
-                    />
-                  </FormField>
-                </div>
-                <div className="mt-2 flex justify-end">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    disabled={createLocation === null}
-                    onClick={() => applyCreateLocation(null)}
-                  >
-                    Clear location
-                  </Button>
-                </div>
-              </div>
-              <FormActions className="mt-4 sm:col-span-2">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  onClick={() => setCreateOpen(false)}
-                >
-                  Cancel
-                </Button>
-                <Button type="submit" disabled={createMutation.isPending}>
-                  <Plus className="size-4" />
-                  {createMutation.isPending ? 'Adding…' : 'Add device'}
-                </Button>
-              </FormActions>
-            </form>
-            <InlineNotice
-              message={errorMessage(createMutation.error)}
-              className="mt-3"
-            />
-          </CardContent>
-        </Card>
+        <DeviceCreateForm
+          onCreate={(input: CreateDeviceInput) =>
+            createMutation.mutateAsync(input)
+          }
+          onCancel={() => setCreateOpen(false)}
+          isPending={createMutation.isPending}
+          error={errorMessage(createMutation.error)}
+        />
       ) : null}
 
       <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] xl:gap-6">
@@ -610,450 +293,41 @@ export function DevicesPage() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex-row items-center justify-between gap-4">
-            <div className="min-w-0 flex-1">
-              <CardTitle className="break-words leading-snug">
-                {selected ? selected.name : 'Select a device'}
-              </CardTitle>
-            </div>
-            {selected ? (
-              <Button
-                className="shrink-0"
-                variant="ghost"
-                size="icon"
-                aria-label="Close details"
-                onClick={closeDetail}
-              >
-                <X className="size-4" />
-              </Button>
-            ) : null}
-          </CardHeader>
-          <CardContent className="flex flex-col">
-            {selected ? null : (
-              <InlineNotice
-                tone="success"
-                className="mb-4"
-                message={success?.area === 'detail' ? success.message : null}
-              />
-            )}
-            {selected ? (
-              <div className="flex flex-col gap-6">
-                <section aria-label="Device status">
-                  <dl className="divide-y divide-border rounded-lg border border-border px-4">
-                    <StatusRow label="Connection">
-                      <Badge variant={selected.online ? 'success' : 'muted'}>
-                        {selected.online ? 'Online' : 'Offline'}
-                      </Badge>
-                    </StatusRow>
-                    <StatusRow label="Device ID">
-                      <span className="break-all font-mono">
-                        {selected.device_id}
-                      </span>
-                    </StatusRow>
-                    <StatusRow label="Firmware">
-                      <span className="font-mono">{selected.fw ?? 'Unknown'}</span>
-                    </StatusRow>
-                    <StatusRow label="Last seen">
-                      <span className="text-muted-foreground">
-                        {selected.last_seen ? (
-                          <EventTime value={selected.last_seen} />
-                        ) : (
-                          'Never connected'
-                        )}
-                      </span>
-                    </StatusRow>
-                    <StatusRow label="Access list">
-                      <span className="text-muted-foreground">
-                        v{selected.acl_version} ·{' '}
-                        {selected.last_sync_at ? (
-                          <EventTime value={selected.last_sync_at} />
-                        ) : (
-                          'Never synced'
-                        )}
-                      </span>
-                    </StatusRow>
-                  </dl>
-                </section>
-
-                <section className="border-t border-border pt-5">
-                  <h3 className="text-sm font-medium">Actions</h3>
-                  <p className="mt-3 text-xs text-muted-foreground">Operation</p>
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    <Button
-                      variant={selected.locked ? 'secondary' : 'danger'}
-                      size="sm"
-                      title={
-                        selected.locked
-                          ? 'Allow access again'
-                          : 'Deny all access while enabled'
-                      }
-                      disabled={updateMutation.isPending}
-                      onClick={() =>
-                        confirm({
-                          title: selected.locked
-                            ? 'Disable remote lock?'
-                            : 'Enable remote lock?',
-                          description: selected.locked
-                            ? 'Access will follow the device configuration again.'
-                            : 'All access will be denied while the lock is enabled.',
-                          confirmLabel: selected.locked
-                            ? 'Disable lock'
-                            : 'Enable lock',
-                          onConfirm: () =>
-                            updateMutation.mutate({
-                              id: selected.id,
-                              input: { locked: !selected.locked },
-                            }),
-                        })
-                      }
-                    >
-                      {selected.locked ? (
-                        <LockOpen className="size-4" />
-                      ) : (
-                        <Lock className="size-4" />
-                      )}
-                      {selected.locked
-                        ? 'Disable remote lock'
-                        : 'Enable remote lock'}
-                    </Button>
-                    {isAdmin ? (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        title={
-                          selected.online
-                            ? 'Send the full access list now'
-                            : 'The device must be online to receive the access list'
-                        }
-                        disabled={!selected.online || syncMutation.isPending}
-                        onClick={() =>
-                          confirm({
-                            title: 'Synchronize access list?',
-                            description: `${selected.device_id} will receive the full configuration and access list now.`,
-                            confirmLabel: 'Sync',
-                            onConfirm: () => syncMutation.mutate(selected.id),
-                          })
-                        }
-                      >
-                        <RefreshCw className="size-4" />
-                        {syncMutation.isPending
-                          ? 'Syncing ACL...'
-                          : 'Sync ACL'}
-                      </Button>
-                    ) : null}
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      title={
-                        selected.online
-                          ? 'Send a remote unlock command'
-                          : 'The device must be online to unlock remotely'
-                      }
-                      disabled={!selected.online || unlockMutation.isPending}
-                      onClick={() =>
-                        confirm({
-                          title: 'Unlock remotely?',
-                          description: `${selected.device_id} will open for a few seconds and the action will be audited.`,
-                          confirmLabel: 'Unlock',
-                          onConfirm: () => unlockMutation.mutate(selected.id),
-                        })
-                      }
-                    >
-                      <LockOpen className="size-4" />
-                      {unlockMutation.isPending ? 'Unlocking...' : 'Unlock'}
-                    </Button>
-                  </div>
-                  {isAdmin ? (
-                    <>
-                      <p className="mt-4 text-xs text-muted-foreground">
-                        Configuration
-                      </p>
-                      <div className="mt-2 flex flex-wrap gap-2">
-                        <Button
-                          variant={
-                            selected.requires_pin ? 'secondary' : 'outline'
-                          }
-                          size="sm"
-                          title={
-                            selected.requires_pin
-                              ? 'Removing PIN allows offline card access'
-                              : 'PIN-enabled doors are online-only'
-                          }
-                          aria-label={
-                            selected.requires_pin
-                              ? 'Remove PIN requirement'
-                              : 'Require PIN'
-                          }
-                          disabled={updateMutation.isPending}
-                          onClick={() =>
-                            confirm({
-                              title: selected.requires_pin
-                                ? 'Remove PIN requirement?'
-                                : 'Require PIN?',
-                              description: selected.requires_pin
-                                ? 'Card access will work offline again.'
-                                : 'This door will be online-only: access will be denied without the backend.',
-                              confirmLabel: selected.requires_pin
-                                ? 'Remove PIN'
-                                : 'Require PIN',
-                              onConfirm: () =>
-                                updateMutation.mutate({
-                                  id: selected.id,
-                                  input: { requires_pin: !selected.requires_pin },
-                                }),
-                            })
-                          }
-                        >
-                          {selected.requires_pin ? 'Remove PIN' : 'Require PIN'}
-                        </Button>
-                        <Button
-                          variant={
-                            selected.status === 'active' ? 'outline' : 'secondary'
-                          }
-                          size="sm"
-                          disabled={updateMutation.isPending}
-                          onClick={() =>
-                            confirm({
-                              title:
-                                selected.status === 'active'
-                                  ? 'Retire device?'
-                                  : 'Reactivate device?',
-                              description:
-                                selected.status === 'active'
-                                  ? 'The device will keep its history but stop operating.'
-                                  : 'The device will be able to operate again.',
-                              confirmLabel:
-                                selected.status === 'active' ? 'Retire' : 'Reactivate',
-                              onConfirm: () =>
-                                updateMutation.mutate({
-                                  id: selected.id,
-                                  input: {
-                                    status:
-                                      selected.status === 'active'
-                                        ? 'retired'
-                                        : 'active',
-                                  },
-                                }),
-                            })
-                          }
-                        >
-                          {selected.status === 'active'
-                            ? 'Retire'
-                            : 'Reactivate'}
-                        </Button>
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          disabled={deleteMutation.isPending}
-                          onClick={() =>
-                            confirm({
-                              title: 'Delete device?',
-                              description: `${selected.device_id} can only be deleted if it never connected and has no history.`,
-                              confirmLabel: 'Delete',
-                              onConfirm: () => deleteMutation.mutate(selected.id),
-                            })
-                          }
-                        >
-                          Delete permanently
-                        </Button>
-                      </div>
-                    </>
-                  ) : null}
-                  <InlineNotice
-                    tone="success"
-                    message={success?.area === 'detail' ? success.message : null}
-                    className="mt-3"
-                  />
-                  <InlineNotice
-                    message={errorMessage(
-                      updateMutation.error ??
-                        deleteMutation.error ??
-                        syncMutation.error ??
-                        unlockMutation.error,
-                    )}
-                    className="mt-3"
-                  />
-                </section>
-
-                {isAdmin ? (
-                  <form
-                    noValidate
-                    className="flex flex-col gap-4 border-t border-border pt-5"
-                    onSubmit={settingsForm.handleSubmit(onSave)}
-                  >
-                    <h3 className="text-sm font-medium">Settings</h3>
-                    <div className="grid gap-4 sm:grid-cols-2">
-                      <FormField
-                        label="Name"
-                        htmlFor="settings-name"
-                        error={settingsForm.formState.errors.name?.message}
-                      >
-                        <Input {...settingsForm.register('name')} />
-                      </FormField>
-                      <FormField label="Site" htmlFor="settings-site">
-                        <Input {...settingsForm.register('site')} />
-                      </FormField>
-                      <FormField
-                        label="Offline policy"
-                        htmlFor="settings-policy"
-                      >
-                        <Select {...settingsForm.register('offline_policy')}>
-                          <option value="allow">Allow with cached ACL</option>
-                          <option value="deny">Deny without backend</option>
-                        </Select>
-                      </FormField>
-                      <FormField
-                        label="Stale ACL hours"
-                        htmlFor="settings-stale"
-                        error={
-                          settingsForm.formState.errors.stale_acl_hours?.message
-                        }
-                      >
-                        <Input
-                          inputMode="numeric"
-                          {...settingsForm.register('stale_acl_hours')}
-                        />
-                      </FormField>
-                      <FormField
-                        label="Unlock duration (ms)"
-                        htmlFor="settings-unlock"
-                        error={settingsForm.formState.errors.unlock_ms?.message}
-                      >
-                        <Input
-                          inputMode="numeric"
-                          {...settingsForm.register('unlock_ms')}
-                        />
-                      </FormField>
-                      <div className="sm:col-span-2">
-                        <p className="mb-2 text-sm font-medium">
-                          Location on map
-                        </p>
-                        <LazyMapPicker
-                          value={settingsLocation}
-                          onChange={applySettingsLocation}
-                          markerColor={deviceMarkerColor(selected)}
-                          className="h-64"
-                        />
-                        <div className="mt-4 grid gap-2 sm:grid-cols-2">
-                          <FormField
-                            label="Latitude"
-                            htmlFor="settings-lat"
-                            error={settingsForm.formState.errors.lat?.message}
-                            reserveMessage={false}
-                          >
-                            <Input
-                              inputMode="decimal"
-                              placeholder="-33.45"
-                              {...settingsForm.register('lat')}
-                            />
-                          </FormField>
-                          <FormField
-                            label="Longitude"
-                            htmlFor="settings-lng"
-                            error={settingsForm.formState.errors.lng?.message}
-                            reserveMessage={false}
-                          >
-                            <Input
-                              inputMode="decimal"
-                              placeholder="-70.66"
-                              {...settingsForm.register('lng')}
-                            />
-                          </FormField>
-                        </div>
-                        <div className="mt-2 flex justify-end">
-                          <Button
-                            type="button"
-                            variant="outline"
-                            disabled={settingsLocation === null}
-                            onClick={() => applySettingsLocation(null)}
-                          >
-                            Clear location
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                    <InlineNotice
-                      tone="success"
-                      message={
-                        success?.area === 'settings' ? success.message : null
-                      }
-                    />
-                    <FormActions className="mt-4">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        disabled={
-                          updateMutation.isPending ||
-                          !settingsForm.formState.isDirty
-                        }
-                        onClick={() => {
-                          if (selected) resetSettingsForm(selected)
-                          updateMutation.reset()
-                          setSuccess(null)
-                        }}
-                      >
-                        Revert changes
-                      </Button>
-                      <Button
-                        type="submit"
-                        disabled={updateMutation.isPending}
-                      >
-                        Save settings
-                      </Button>
-                    </FormActions>
-                  </form>
-                ) : (
-                  <section className="flex flex-col gap-4 border-t border-border pt-5">
-                    <h3 className="text-sm font-medium">Settings</h3>
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      <StatusTile label="Offline policy">
-                        <span className="text-sm">
-                          {selected.offline_policy === 'allow'
-                            ? 'Allow with cached ACL'
-                            : 'Deny without backend'}
-                        </span>
-                      </StatusTile>
-                      <StatusTile label="Stale ACL">
-                        <span className="text-sm">
-                          {selected.stale_acl_hours} h
-                        </span>
-                      </StatusTile>
-                      <StatusTile label="Unlock duration">
-                        <span className="text-sm">{selected.unlock_ms} ms</span>
-                      </StatusTile>
-                      <StatusTile label="PIN required">
-                        <Badge
-                          variant={selected.requires_pin ? 'secondary' : 'muted'}
-                        >
-                          {selected.requires_pin ? 'Yes (online only)' : 'No'}
-                        </Badge>
-                      </StatusTile>
-                    </div>
-                    <div>
-                      <p className="mb-2 text-sm font-medium">
-                        Location on map
-                      </p>
-                      <LazyMapPicker
-                        value={selected.location}
-                        onChange={() => undefined}
-                        disabled
-                        markerColor={deviceMarkerColor(selected)}
-                        className="h-56"
-                      />
-                    </div>
-                  </section>
-                )}
-              </div>
-            ) : (
-              <p className="flex items-center justify-center py-10 text-center text-sm text-muted-foreground">
-                Pick a device from the list.
-              </p>
-            )}
-          </CardContent>
-        </Card>
+        <DeviceDetailPanel
+          device={selected}
+          isAdmin={isAdmin}
+          pending={{
+            update: updateMutation.isPending,
+            delete: deleteMutation.isPending,
+            sync: syncMutation.isPending,
+            unlock: unlockMutation.isPending,
+          }}
+          error={mutationError}
+          successMessage={
+            success?.area === 'detail' ? success.message : null
+          }
+          settingsSuccessMessage={
+            success?.area === 'settings' ? success.message : null
+          }
+          onClose={closeDetail}
+          onUpdate={(input: UpdateDeviceInput) =>
+            selected && updateMutation.mutate({ id: selected.id, input })
+          }
+          onSaveSettings={(input: UpdateDeviceInput) =>
+            updateMutation.mutateAsync({
+              id: selected?.id ?? '',
+              input,
+            })
+          }
+          onRevertSettings={() => {
+            updateMutation.reset()
+            setSuccess(null)
+          }}
+          onDelete={() => selected && deleteMutation.mutate(selected.id)}
+          onSync={() => selected && syncMutation.mutate(selected.id)}
+          onUnlock={() => selected && unlockMutation.mutate(selected.id)}
+        />
       </div>
-      {dialog}
     </div>
   )
 }
