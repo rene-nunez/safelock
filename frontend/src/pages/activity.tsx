@@ -4,7 +4,6 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { EventTime } from '@/components/ui/event-time'
-import { Freshness } from '@/components/ui/freshness'
 import { InlineNotice } from '@/components/ui/inline-notice'
 import { Label } from '@/components/ui/label'
 import { Select } from '@/components/ui/select'
@@ -65,7 +64,6 @@ export function ActivityPage() {
       <CardHeader className="flex-row flex-wrap items-end justify-between gap-4">
         <div className="flex flex-col gap-1.5">
           <CardTitle>Activity</CardTitle>
-          <Freshness updatedAt={eventsQuery.dataUpdatedAt} />
         </div>
         <Badge variant="outline" className="tabular-nums">
           {total} events
