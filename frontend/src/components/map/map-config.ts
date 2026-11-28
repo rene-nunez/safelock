@@ -20,7 +20,7 @@ export function pinIcon(color: string) {
 }
 
 export function deviceMarkerColor(device: Device): string {
-  if (device.locked) return '#ef4444'
-  if (!device.online) return '#71717a'
-  return '#22c55e'
+  if (device.locked) return 'var(--destructive)'
+  if (!device.online) return 'var(--muted-foreground)'
+  return 'var(--success)'
 }

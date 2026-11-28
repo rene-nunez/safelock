@@ -78,7 +78,7 @@ function LocationHandler({
     <Marker
       position={[value.lat, value.lng]}
       draggable={!disabled}
-      icon={pinIcon(markerColor ?? (disabled ? '#71717a' : '#22c55e'))}
+      icon={pinIcon(markerColor ?? (disabled ? 'var(--muted-foreground)' : 'var(--success)'))}
       eventHandlers={{
         dragend(event) {
           const position = (event.target as L.Marker).getLatLng()
