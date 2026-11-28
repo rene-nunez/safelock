@@ -94,12 +94,21 @@ function SystemStatus({ status }: { status: SystemStatusInfo }) {
 
   return (
     <>
-      <StatusChip title={`System ${apiLabel.toLowerCase()}`}>
+      <StatusChip
+        title={`System ${apiLabel.toLowerCase()}`}
+        className={cn(
+          apiOnline
+            ? 'border-success/25 bg-success/10 text-success'
+            : apiConnecting
+              ? 'border-warning/25 bg-warning/10 text-warning'
+              : 'border-destructive/25 bg-destructive/10 text-destructive',
+        )}
+      >
         <span
           className={cn(
             'size-2 rounded-full',
             apiOnline
-              ? 'bg-brand'
+              ? 'bg-success'
               : apiConnecting
                 ? 'bg-warning'
                 : 'bg-destructive',
@@ -199,7 +208,7 @@ export function AppHeader({ onOpenMenu }: { onOpenMenu: () => void }) {
   const status = useSystemStatus()
 
   return (
-    <header className="sticky top-0 z-30 border-b border-border bg-background">
+    <header className="sticky top-0 z-30 border-b border-brand/20 bg-background/80 backdrop-blur-md">
       <div className="flex h-16 items-center gap-3 px-4 lg:px-6">
         <PageHeading onOpenMenu={onOpenMenu} />
         <div className="ml-auto flex shrink-0 items-center gap-2 sm:gap-3">
@@ -212,7 +221,7 @@ export function AppHeader({ onOpenMenu }: { onOpenMenu: () => void }) {
       {!status.apiOnline && !status.apiConnecting ? (
         <div
           role="status"
-          className="border-t border-border bg-secondary px-4 py-2 text-center text-xs text-foreground/90 lg:px-6"
+          className="border-t border-destructive/25 bg-destructive/10 px-4 py-2 text-center text-xs text-destructive backdrop-blur-md lg:px-6"
         >
           Connection lost. Trying to reconnect…
         </div>

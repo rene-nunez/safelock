@@ -38,28 +38,29 @@
 
 :root {
   --radius: 0.625rem;
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
+  --background: oklch(0.155 0.018 250);
+  --foreground: oklch(0.97 0.005 250);
+  --card: oklch(0.205 0.022 250);
+  --card-foreground: oklch(0.965 0.006 250);
+  --popover: oklch(0.225 0.022 250);
+  --popover-foreground: oklch(0.965 0.006 250);
+  --primary: oklch(0.78 0.15 205);
+  --primary-foreground: oklch(0.14 0.035 220);
+  --secondary: oklch(0.265 0.025 250);
+  --secondary-foreground: oklch(0.965 0.006 250);
+  --muted: oklch(0.25 0.022 250);
+  --muted-foreground: oklch(0.72 0.025 250);
+  --accent: oklch(0.295 0.035 220);
+  --accent-foreground: oklch(0.97 0.005 250);
   --destructive: oklch(0.704 0.191 22.216);
-  --success: oklch(0.72 0.15 155);
-  --warning: oklch(0.78 0.14 75);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --brand: oklch(0.68 0.14 250);
-  --brand-foreground: oklch(0.16 0.03 250);
+  --success: oklch(0.78 0.15 155);
+  --warning: oklch(0.82 0.14 80);
+  --border: oklch(0.82 0.03 230 / 14%);
+  --input: oklch(0.82 0.03 230 / 18%);
+  --ring: oklch(0.72 0.14 205);
+  --brand: oklch(0.78 0.15 205);
+  --brand-foreground: oklch(0.14 0.035 220);
+  --brand-glow: oklch(0.78 0.15 205 / 25%);
 }
 
 @layer base {
@@ -92,7 +93,7 @@
 /* Dark map controls on the dark Stadia tiles */
 
 .leaflet-container {
-  background: #18181b;
+  background: var(--background);
   font: inherit;
 }
 
@@ -124,8 +125,8 @@
 .leaflet-popup-content-wrapper,
 .leaflet-popup-tip {
   border: 1px solid var(--border);
-  background: #18181b;
-  color: #fafafa;
+  background: var(--popover);
+  color: var(--popover-foreground);
   box-shadow: 0 10px 30px rgb(0 0 0 / 45%);
 }
 
