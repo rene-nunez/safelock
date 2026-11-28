@@ -6,6 +6,7 @@ type ConfirmOptions = {
   title: string
   description: string
   confirmLabel?: string
+  tone?: 'danger' | 'default'
   onConfirm: () => void
 }
 
@@ -22,6 +23,7 @@ export function useConfirm() {
       title={options?.title ?? ''}
       description={options?.description ?? ''}
       confirmLabel={options?.confirmLabel}
+      tone={options?.tone}
       onConfirm={() => {
         options?.onConfirm()
         setOptions(null)

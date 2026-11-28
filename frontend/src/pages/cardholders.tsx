@@ -1101,9 +1101,16 @@ export function CardholdersPage() {
                                   selected.status === 'inactive'
                                 }
                                 onClick={() =>
-                                  credentialMutation.mutate({
-                                    id: credential.id,
-                                    action: 'restore',
+                                  confirm({
+                                    title: 'Restore credential?',
+                                    description: `UID ${credential.uid} will be active again when the cardholder is active.`,
+                                    confirmLabel: 'Restore',
+                                    tone: 'default',
+                                    onConfirm: () =>
+                                      credentialMutation.mutate({
+                                        id: credential.id,
+                                        action: 'restore',
+                                      }),
                                   })
                                 }
                               >
