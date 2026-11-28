@@ -27,7 +27,7 @@ Safelock es un sistema de control de acceso con RFID (MFRC522), teclado, pantall
 | Enrolamiento | **Por toque**: el backend inicia el modo, el dispositivo envía el UID leído y el admin confirma en la web |
 | Instalación | Credenciales iniciales por **serie/USB** (device_id, WiFi, MQTT); se pueden corregir en cualquier momento por el mismo puerto. Sin credencial de fábrica |
 | Roles | `admin`: usuarios, configuración de dispositivos y auditoría. `operator`: operación diaria (ver, abrir, portadores, credenciales, enrolamiento) |
-| Mapa | Leaflet + Stadia Maps (Alidade Bright, estilo claro). UI solo en modo oscuro. Ubicación manual por dispositivo |
+| Mapa | Leaflet + Stadia Maps (Alidade Smooth Dark). UI solo en modo oscuro. Ubicación manual por dispositivo |
 
 ## Cómo se decide el acceso
 
@@ -127,7 +127,7 @@ Reglas:
 
 ## Frontend
 
-Vite + TypeScript + React Router + TanStack Query + React Hook Form + Zod + Tailwind + shadcn/ui. UI solo en modo oscuro y en inglés. El dashboard incluye un mapa Leaflet + Stadia Maps (Alidade Bright, estilo claro); Stadia usa domain auth, sin API key en el repo. El JWT se guarda en `sessionStorage` y las rutas se protegen validando `/auth/me` al cargar. El cliente API vive en `src/lib/api.ts`; la generación desde OpenAPI queda pendiente porque `openapi-typescript` aún exige TypeScript 5 y el proyecto usa TypeScript 7.
+Vite + TypeScript + React Router + TanStack Query + React Hook Form + Zod + Tailwind + shadcn/ui. UI solo en modo oscuro y en inglés. El dashboard incluye un mapa Leaflet + Stadia Maps (Alidade Smooth Dark); Stadia usa domain auth, sin API key en el repo. El JWT se guarda en `sessionStorage` y las rutas se protegen validando `/auth/me` al cargar. El cliente API vive en `src/lib/api.ts`; la generación desde OpenAPI queda pendiente porque `openapi-typescript` aún exige TypeScript 5 y el proyecto usa TypeScript 7.
 
 Páginas previstas: Login, Dashboard, Cardholders, Devices, Activity, Audit, Users.
 

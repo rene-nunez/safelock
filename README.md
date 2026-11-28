@@ -122,7 +122,7 @@ quit               Exit
 
 `scan` only works after a `commands/enroll` command opens enrollment. Environment variables: `SIM_MQTT_URL`, `SIM_PASSWORD`, `SIM_DEVICES`, `SIM_HEARTBEAT`.
 
-The dashboard map uses Leaflet with Stadia Maps (Alidade Bright, light style). Stadia allows keyless requests from localhost; production domains authenticate through Stadia's domain authentication, so no API key is stored in the repository. Device locations are set manually with latitude and longitude.
+The dashboard map uses Leaflet with Stadia Maps (Alidade Smooth Dark). Stadia allows keyless requests from localhost; production domains authenticate through Stadia's domain authentication, so no API key is stored in the repository. Device locations are set manually with latitude and longitude.
 
 Run the checks:
 

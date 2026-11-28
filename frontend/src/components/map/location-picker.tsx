@@ -152,7 +152,7 @@ export function LocationPicker({
         title="Center on location"
         disabled={disabled || value === null}
         onClick={centerOnLocation}
-        className="absolute right-3 top-3 z-[1000] flex size-9 items-center justify-center rounded-md border border-zinc-200 bg-white text-zinc-900 shadow-sm transition-colors hover:bg-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900/30 disabled:pointer-events-none disabled:opacity-50"
+        className="absolute right-3 top-3 z-[1000] flex size-9 items-center justify-center rounded-md border border-border bg-background/90 text-foreground shadow-sm backdrop-blur transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/60 disabled:pointer-events-none disabled:opacity-50"
       >
         <Crosshair className="size-4" />
       </button>

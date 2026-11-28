@@ -3,7 +3,7 @@ import L from 'leaflet'
 import type { Device } from '@/lib/api'
 
 export const TILE_URL =
-  'https://tiles.stadiamaps.com/tiles/alidade_bright/{z}/{x}/{y}{r}.png'
+  'https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png'
 
 export const ATTRIBUTION =
   '&copy; <a href="https://stadiamaps.com/" target="_blank" rel="noreferrer">Stadia Maps</a> ' +

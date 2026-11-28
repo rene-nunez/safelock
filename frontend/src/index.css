@@ -89,30 +89,30 @@
   }
 }
 
-/* Light map controls on the clear Stadia tiles */
+/* Dark map controls on the dark Stadia tiles */
 
 .leaflet-container {
-  background: #f4f4f5;
+  background: #18181b;
   font: inherit;
 }
 
 .leaflet-control-zoom a {
-  border-color: #e4e4e7 !important;
-  background: #ffffff !important;
-  color: #18181b !important;
+  border-color: var(--border) !important;
+  background: var(--popover) !important;
+  color: var(--popover-foreground) !important;
 }
 
 .leaflet-control-zoom a:hover {
-  background: #f4f4f5 !important;
+  background: var(--accent) !important;
 }
 
 .leaflet-control-attribution {
-  background: rgb(255 255 255 / 85%) !important;
-  color: #52525b !important;
+  background: rgb(24 24 27 / 85%) !important;
+  color: #a1a1aa !important;
 }
 
 .leaflet-control-attribution a {
-  color: #3f3f46 !important;
+  color: #d4d4d8 !important;
 }
 
 /* Leaflet adds a 10px inset to bottom controls; keep the credits flush. */
