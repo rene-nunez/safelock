@@ -677,9 +677,10 @@ export function CardholdersPage() {
                   <div className="sm:col-span-2">
                     <h3 className="text-sm font-medium">Cardholder state</h3>
                   </div>
-                  <FormActions className="sm:col-span-2">
+                  <FormActions className="sm:col-span-2 justify-start sm:justify-start">
                     <Button
                       type="submit"
+                      size="sm"
                       disabled={updateMutation.isPending}
                     >
                       Save changes
@@ -688,7 +689,7 @@ export function CardholdersPage() {
                       <Button
                         type="button"
                         variant="danger"
-                        className="sm:min-w-56"
+                        size="sm"
                         disabled={updateMutation.isPending}
                         onClick={() =>
                           confirm({
@@ -709,7 +710,7 @@ export function CardholdersPage() {
                       <Button
                         type="button"
                         variant="secondary"
-                        className="sm:min-w-56"
+                        size="sm"
                         title="Restores the cards revoked when this cardholder was deactivated"
                         disabled={
                           updateMutation.isPending ||
@@ -725,7 +726,7 @@ export function CardholdersPage() {
                       <Button
                         type="button"
                         variant="secondary"
-                        className="sm:min-w-56"
+                        size="sm"
                         disabled={updateMutation.isPending}
                         onClick={() =>
                           updateMutation.mutate({
@@ -741,6 +742,7 @@ export function CardholdersPage() {
                       <Button
                         type="button"
                         variant="destructive"
+                        size="sm"
                         disabled={deleteMutation.isPending}
                         onClick={() =>
                           confirm({
