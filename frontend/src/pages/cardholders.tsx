@@ -23,6 +23,7 @@ import {
   ApiError,
   activateAndRestoreCardholder,
   confirmEnrollment,
+  isBackendUnavailable,
   createCardholder,
   createCredential,
   createEnrollment,
@@ -101,7 +102,9 @@ const CREDENTIAL_MESSAGES: Record<CredentialAction, string> = {
 }
 
 function errorMessage(error: unknown): string | null {
-  if (error === null || error === undefined) return null
+  if (error === null || error === undefined || isBackendUnavailable(error)) {
+    return null
+  }
   return error instanceof ApiError
     ? error.message
     : 'Something went wrong. Try again.'

@@ -22,6 +22,7 @@ import { useConfirm } from '@/hooks/use-confirm'
 import {
   ApiError,
   createUser,
+  isBackendUnavailable,
   listUsers,
   updateUser,
   PASSWORD_MAX_LENGTH,
@@ -65,7 +66,9 @@ type EditValues = z.infer<typeof editSchema>
 type NoticeArea = 'page' | 'detail'
 
 function errorMessage(error: unknown): string | null {
-  if (error === null || error === undefined) return null
+  if (error === null || error === undefined || isBackendUnavailable(error)) {
+    return null
+  }
   return error instanceof ApiError
     ? error.message
     : 'Something went wrong. Try again.'
