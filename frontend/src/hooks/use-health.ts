@@ -14,7 +14,9 @@ export function useHealth() {
       }
       return (await response.json()) as HealthResponse
     },
-    refetchInterval: 10_000,
+    // Recover quickly after an outage, then go back to a cheap interval.
+    refetchInterval: (query) =>
+      query.state.status === 'error' ? 2_000 : 10_000,
     refetchIntervalInBackground: true,
     refetchOnWindowFocus: true,
     retry: false,
