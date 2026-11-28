@@ -220,17 +220,16 @@ export function DevicesPage() {
       <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] xl:gap-6">
         <Card>
           <CardContent className="flex flex-col px-0">
-            <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1 px-6 pb-3">
-              <span className="text-2xl font-semibold tabular-nums">
-                {onlineCount}
-              </span>
-              <span className="text-xs text-muted-foreground">
-                online / {devices.length} total
-              </span>
-              <Freshness
-                updatedAt={devicesQuery.dataUpdatedAt}
-                className="ml-auto self-center"
-              />
+            <div className="flex flex-col gap-1 px-6 pb-3">
+              <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                <span className="text-2xl font-semibold tabular-nums">
+                  {onlineCount}
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  online / {devices.length} total
+                </span>
+              </div>
+              <Freshness updatedAt={devicesQuery.dataUpdatedAt} />
             </div>
             <InlineNotice
               message={errorMessage(devicesQuery.error)}

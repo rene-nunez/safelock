@@ -2,13 +2,7 @@ import { useState } from 'react'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { EventTime } from '@/components/ui/event-time'
 import { Freshness } from '@/components/ui/freshness'
 import { InlineNotice } from '@/components/ui/inline-notice'
@@ -66,16 +60,11 @@ export function ActivityPage() {
       <CardHeader className="flex-row flex-wrap items-end justify-between gap-4">
         <div className="flex flex-col gap-1.5">
           <CardTitle>Activity</CardTitle>
-          <CardDescription>
-            Access decisions reported by the devices.
-          </CardDescription>
-        </div>
-        <div className="flex items-center gap-3">
           <Freshness updatedAt={eventsQuery.dataUpdatedAt} />
-          <Badge variant="outline" className="tabular-nums">
-            {total} events
-          </Badge>
         </div>
+        <Badge variant="outline" className="tabular-nums">
+          {total} events
+        </Badge>
       </CardHeader>
       <CardContent>
         <div className="flex flex-wrap items-end gap-3">
