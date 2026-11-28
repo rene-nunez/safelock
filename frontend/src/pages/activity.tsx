@@ -10,6 +10,7 @@ import {
   CardTitle,
 } from '@/components/ui/card'
 import { EventTime } from '@/components/ui/event-time'
+import { Freshness } from '@/components/ui/freshness'
 import { Label } from '@/components/ui/label'
 import { Select } from '@/components/ui/select'
 import { TableSkeleton } from '@/components/ui/skeleton'
@@ -68,9 +69,12 @@ export function ActivityPage() {
             Access decisions reported by the devices.
           </CardDescription>
         </div>
-        <Badge variant="outline" className="tabular-nums">
-          {total} events
-        </Badge>
+        <div className="flex items-center gap-3">
+          <Freshness updatedAt={eventsQuery.dataUpdatedAt} />
+          <Badge variant="outline" className="tabular-nums">
+            {total} events
+          </Badge>
+        </div>
       </CardHeader>
       <CardContent>
         <div className="flex flex-wrap items-end gap-3">

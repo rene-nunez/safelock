@@ -10,6 +10,7 @@ import {
   CardTitle,
 } from '@/components/ui/card'
 import { EventTime } from '@/components/ui/event-time'
+import { Freshness } from '@/components/ui/freshness'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useAccessEvents } from '@/hooks/use-access-events'
 import { useDevices } from '@/hooks/use-devices'
@@ -33,8 +34,9 @@ export function DashboardPage() {
     <div className="flex min-h-full flex-col gap-4 lg:gap-6">
       <section className="grid flex-1 gap-4 lg:grid-cols-3 lg:gap-6">
         <Card className="flex h-full gap-4 overflow-hidden pb-0 lg:col-span-2">
-          <CardHeader className="self-start">
+          <CardHeader className="flex-row items-center justify-between gap-4 self-start">
             <CardTitle>Locations</CardTitle>
+            <Freshness updatedAt={devicesQuery.dataUpdatedAt} />
           </CardHeader>
           <CardContent className="flex min-h-0 flex-1 flex-col px-0">
             <div className="relative min-h-[320px] flex-1 border-t border-border">
@@ -55,13 +57,16 @@ export function DashboardPage() {
         <Card className="h-full">
           <CardHeader className="flex-row items-center justify-between gap-4">
             <CardTitle>Recent activity</CardTitle>
-            <Link
-              to="/activity"
-              className="inline-flex shrink-0 items-center gap-1 text-xs text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline"
-            >
-              View all
-              <ChevronRight className="size-3.5" />
-            </Link>
+            <div className="flex shrink-0 items-center gap-3">
+              <Freshness updatedAt={eventsQuery.dataUpdatedAt} />
+              <Link
+                to="/activity"
+                className="inline-flex items-center gap-1 text-xs text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline"
+              >
+                View all
+                <ChevronRight className="size-3.5" />
+              </Link>
+            </div>
           </CardHeader>
           <CardContent className="flex flex-1 flex-col gap-3 pb-6">
             {recentEvents.length === 0 ? (

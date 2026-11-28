@@ -23,6 +23,7 @@ import {
   CardTitle,
 } from '@/components/ui/card'
 import { EventTime } from '@/components/ui/event-time'
+import { Freshness } from '@/components/ui/freshness'
 import { FormActions } from '@/components/ui/form-actions'
 import { FormField } from '@/components/ui/form-field'
 import { InlineNotice } from '@/components/ui/inline-notice'
@@ -543,6 +544,10 @@ export function DevicesPage() {
               <span className="text-xs text-muted-foreground">
                 online / {devices.length} total
               </span>
+              <Freshness
+                updatedAt={devicesQuery.dataUpdatedAt}
+                className="ml-auto self-center"
+              />
             </div>
             <InlineNotice
               message={errorMessage(devicesQuery.error)}
