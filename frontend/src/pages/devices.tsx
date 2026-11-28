@@ -16,6 +16,7 @@ import { useAuth } from '@/hooks/use-auth'
 import {
   ApiError,
   createDevice,
+  isBackendUnavailable,
   deleteDevice,
   listDevices,
   synchronizeAccessList,
@@ -29,7 +30,9 @@ import { cn } from '@/lib/utils'
 type NoticeArea = 'page' | 'detail' | 'settings'
 
 function errorMessage(error: unknown): string | null {
-  if (error === null || error === undefined) return null
+  if (error === null || error === undefined || isBackendUnavailable(error)) {
+    return null
+  }
   return error instanceof ApiError
     ? error.message
     : 'Something went wrong. Try again.'

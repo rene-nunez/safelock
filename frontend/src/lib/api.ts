@@ -139,6 +139,11 @@ export class ApiError extends Error {
   }
 }
 
+// The header banner already reports a lost connection; list views stay quiet.
+export function isBackendUnavailable(error: unknown): boolean {
+  return error instanceof ApiError && (error.status === 0 || error.status === 502)
+}
+
 type ErrorBody = {
   detail?: unknown
 }

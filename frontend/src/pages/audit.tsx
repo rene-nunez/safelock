@@ -17,9 +17,10 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select } from '@/components/ui/select'
 import { TableSkeleton } from '@/components/ui/skeleton'
-import { ApiError, listAuditLogs } from '@/lib/api'
+import { ApiError, isBackendUnavailable, listAuditLogs } from '@/lib/api'
 
-function errorMessage(error: unknown): string {
+function errorMessage(error: unknown): string | null {
+  if (isBackendUnavailable(error)) return null
   return error instanceof ApiError
     ? error.message
     : 'Something went wrong. Try again.'
@@ -112,7 +113,7 @@ export function AuditPage() {
 
         {auditQuery.isPending ? (
           <TableSkeleton columns={6} />
-        ) : auditQuery.isError ? (
+        ) : auditQuery.isError && auditQuery.data === undefined ? (
           <InlineNotice
             message={errorMessage(auditQuery.error)}
             className="mx-auto my-12 max-w-md"

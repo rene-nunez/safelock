@@ -11,7 +11,11 @@ import { Select } from '@/components/ui/select'
 import { TableSkeleton } from '@/components/ui/skeleton'
 import { useAccessEvents } from '@/hooks/use-access-events'
 import { useDevices } from '@/hooks/use-devices'
-import { ApiError, type AccessDecision } from '@/lib/api'
+import {
+  ApiError,
+  isBackendUnavailable,
+  type AccessDecision,
+} from '@/lib/api'
 
 const REASON_LABELS: Record<string, string> = {
   acl_match: 'Card in access list',
@@ -31,7 +35,8 @@ const REASON_LABELS: Record<string, string> = {
   manual_open: 'Manual opening',
 }
 
-function errorMessage(error: unknown): string {
+function errorMessage(error: unknown): string | null {
+  if (isBackendUnavailable(error)) return null
   return error instanceof ApiError
     ? error.message
     : 'Something went wrong. Try again.'
@@ -105,7 +110,7 @@ export function ActivityPage() {
 
         {eventsQuery.isPending ? (
           <TableSkeleton columns={7} />
-        ) : eventsQuery.isError ? (
+        ) : eventsQuery.isError && eventsQuery.data === undefined ? (
           <InlineNotice
             message={errorMessage(eventsQuery.error)}
             className="mx-auto my-12 max-w-md"
