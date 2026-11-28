@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
+import { CircleAlert } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
 
 type FreshnessProps = {
   updatedAt?: number
+  staleAfterMs?: number
   className?: string
 }
 
@@ -16,22 +18,34 @@ function formatAge(ms: number): string {
   return `${Math.floor(minutes / 60)}h ago`
 }
 
-export function Freshness({ updatedAt, className }: FreshnessProps) {
+export function Freshness({
+  updatedAt,
+  staleAfterMs = 10_000,
+  className,
+}: FreshnessProps) {
   const [now, setNow] = useState(() => Date.now())
 
   useEffect(() => {
+    if (!updatedAt) return
     const timer = window.setInterval(() => setNow(Date.now()), 1000)
     return () => window.clearInterval(timer)
-  }, [])
+  }, [updatedAt])
+
+  if (!updatedAt) return null
+
+  const age = now - updatedAt
+  if (age < staleAfterMs) return null
 
   return (
     <span
+      role="status"
       className={cn(
-        'text-xs tabular-nums text-muted-foreground',
+        'inline-flex items-center gap-1.5 text-xs text-warning',
         className,
       )}
     >
-      {updatedAt ? `Updated ${formatAge(now - updatedAt)}` : 'Updating…'}
+      <CircleAlert className="size-3.5 shrink-0" />
+      Stale · last update {formatAge(age)}
     </span>
   )
 }
